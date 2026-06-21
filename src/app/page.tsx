@@ -503,7 +503,7 @@ export default function Home() {
           {/* DEPOSIT */}
           <button 
             onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
-            className="p-4 rounded-[22px] bg-cyan-550 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="p-4 rounded-[22px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
               <ArrowDownLeft className="size-4" />
