@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-natural-primary: #0c1a13; /* Deep forest green */
+  --color-natural-accent: #c5a880;  /* Soft premium gold */
+  --color-natural-accent-hover: #b3946b;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-stone-50 text-stone-900 antialiased selection:bg-natural-accent/30;
+    font-family: var(--font-sans);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+}
