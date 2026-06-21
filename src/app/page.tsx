@@ -224,6 +224,16 @@ export default function Home() {
   const [coffreCeltiis, setCoffreCeltiis] = useState('100000')
   const [coffreCash, setCoffreCash] = useState('200000')
 
+  // Sync document class with active theme
+  useEffect(() => {
+    const root = window.document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+  }, [theme])
+
   // Synchronizers & Fetchers
   useEffect(() => {
     const client = getSupabase()
