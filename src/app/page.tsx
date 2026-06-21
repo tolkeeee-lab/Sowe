@@ -1244,7 +1244,7 @@ export default function Home() {
               </div>
 
               {/* Balance table sheet */}
-              <div className="overflow-hidden rounded-2xl border border-stone-250 dark:border-stone-800 shadow-inner bg-white dark:bg-[#0E1B15]/30">
+              <div className="overflow-hidden rounded-2xl border border-stone-250 dark:border-stone-800 shadow-inner bg-white dark:bg-[#0A0F0D]">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
                     <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-800' : 'bg-stone-50 border-stone-200'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-300`}>
