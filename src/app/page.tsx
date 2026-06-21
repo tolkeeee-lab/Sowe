@@ -889,7 +889,7 @@ export default function Home() {
             className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
               activeTab === 'caissier' 
                 ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                : 'text-stone-400 hover:text-white'
+                : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <span>Espace Caissier 👤</span>
@@ -905,7 +905,7 @@ export default function Home() {
             className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
               activeTab === 'proprietaire' 
                 ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                : 'text-stone-400 hover:text-white'
+                : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <span>Espace Propriétaire 👑</span>
