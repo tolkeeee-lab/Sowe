@@ -199,7 +199,6 @@ export default function Home() {
       if (actionType === 'adjust_ext') {
         const amount = parseFloat(amountInput) || 0
         if (adjType === 'appro_sim') {
-          // Appro SIM: Float increases, Cash unchanged (funded from outside)
           setBalances(prev => ({
             ...prev,
             [adjOperator]: prev[adjOperator] + amount
@@ -216,7 +215,6 @@ export default function Home() {
           }
           setTransactions(prev => [newTxn, ...prev])
         } else {
-          // Ajust Cash: Cash increases/decreases directly (funded/withdrawn from outside)
           const multiplier = adjCashDirection === 'inject' ? 1 : -1
           setBalances(prev => ({
             ...prev,
@@ -226,7 +224,7 @@ export default function Home() {
           const newTxn: Transaction = {
             id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
             phone: 'SYSTEM',
-            operator: 'mtn', // Default
+            operator: 'mtn',
             type: 'ajust_cash',
             amount,
             time: timeStr,
@@ -255,14 +253,12 @@ export default function Home() {
 
       setBalances(prev => {
         if (actionType === 'deposit' || actionType === 'credit' || actionType === 'forfait') {
-          // Client gives cash (+Cash), virtual SIM balance debited (-Float)
           return {
             ...prev,
             cash: prev.cash + amount,
             [opInput]: prev[opInput] - amount
           }
         } else if (actionType === 'withdrawal') {
-          // Client sends virtual (+Float), client takes cash (-Cash)
           return {
             ...prev,
             cash: prev.cash - amount,
@@ -287,7 +283,6 @@ export default function Home() {
       setLoading(false)
       setActionType(null)
 
-      // Reset
       setPhoneInput('')
       setAmountInput('')
       setSelectedForfait('')
@@ -346,20 +341,47 @@ export default function Home() {
     link.click()
   }
 
+  // Highly Contrastive Operator Badges Renderer
+  const renderOperatorBadge = (operator: string) => {
+    if (theme === 'dark') {
+      switch (operator) {
+        case 'mtn':
+          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">mtn</span>
+        case 'moov':
+          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">moov</span>
+        case 'celtiis':
+          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">celtiis</span>
+        default:
+          return null
+      }
+    } else {
+      switch (operator) {
+        case 'mtn':
+          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">mtn</span>
+        case 'moov':
+          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-blue-100 text-blue-900 border border-blue-300">moov</span>
+        case 'celtiis':
+          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">celtiis</span>
+        default:
+          return null
+      }
+    }
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${
-      theme === 'dark' ? 'bg-[#0a0a0c] text-stone-100' : 'bg-stone-50 text-stone-900'
+      theme === 'dark' ? 'bg-[#030305] text-white' : 'bg-[#fcfcfb] text-[#121214]'
     }`}>
       
       {/* Top Banner / Security active */}
-      <div className="w-full bg-[#001f3f] text-cyan-400 py-2.5 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b border-cyan-950">
+      <div className="w-full bg-[#001830] text-cyan-400 py-2.5 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b border-cyan-950/80">
         <span className="inline-block size-2 rounded-full bg-cyan-400 animate-pulse" />
         CABINE DE SÉCURITÉ ACTIVE : BENIN (COTONOU / ABOMEY-CALAVI)
       </div>
 
       {/* Header */}
       <header className={`border-b transition-colors ${
-        theme === 'dark' ? 'border-stone-900 bg-stone-950/70' : 'border-stone-200 bg-white/70'
+        theme === 'dark' ? 'border-[#151520] bg-[#07070b]/90' : 'border-stone-300 bg-white/90'
       } backdrop-blur-md sticky top-0 z-45`}>
         <div className="max-w-4xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -376,7 +398,7 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
-              theme === 'dark' ? 'bg-stone-900 text-stone-400 border-stone-800' : 'bg-stone-100 text-stone-600 border-stone-200'
+              theme === 'dark' ? 'bg-stone-900 text-stone-300 border-[#1f1f2e]' : 'bg-stone-100 text-stone-700 border-stone-300'
             }`}>
               Offline Safe 🌐
             </span>
@@ -385,8 +407,8 @@ export default function Home() {
               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
               className={`size-10 rounded-xl flex items-center justify-center border transition-all ${
                 theme === 'dark' 
-                  ? 'bg-stone-900 border-stone-800 text-yellow-400 hover:bg-stone-800' 
-                  : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-100'
+                  ? 'bg-stone-900 border-[#1f1f2e] text-yellow-400 hover:bg-stone-800' 
+                  : 'bg-white border-stone-300 text-stone-700 hover:bg-stone-100'
               }`}
             >
               {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
@@ -401,8 +423,8 @@ export default function Home() {
         {/* Global Balance Card */}
         <section className={`p-6 rounded-[32px] border transition-all ${
           theme === 'dark' 
-            ? 'bg-gradient-to-b from-stone-900/60 to-stone-950/20 border-stone-900 shadow-xl' 
-            : 'bg-white border-stone-200 shadow-sm'
+            ? 'bg-gradient-to-b from-[#0b0b10] to-[#040406] border-[#181822] shadow-xl' 
+            : 'bg-white border-stone-300 shadow-sm'
         }`}>
           <div className="flex justify-between items-center mb-4">
             <span className="text-xs uppercase tracking-wider font-bold text-stone-500">Solde Global Actuel</span>
@@ -424,7 +446,7 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-3.5">
             {/* MTN SIM */}
             <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-stone-950/40 border-stone-900' : 'bg-stone-50 border-stone-200'
+              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
             }`}>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 mb-1">
                 <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -437,7 +459,7 @@ export default function Home() {
 
             {/* MOOV SIM */}
             <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-stone-950/40 border-stone-900' : 'bg-stone-50 border-stone-200'
+              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
             }`}>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500 mb-1">
                 <span className="size-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -450,10 +472,10 @@ export default function Home() {
 
             {/* CELTIIS SIM */}
             <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-stone-950/40 border-stone-900' : 'bg-stone-50 border-stone-200'
+              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
             }`}>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 mb-1">
-                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="size-1.5 rounded-full bg-emerald-450 animate-pulse" />
                 CELTIIS CASH SIM
               </span>
               <div className="font-mono font-bold text-sm">
@@ -463,10 +485,10 @@ export default function Home() {
 
             {/* CASH IN DRAWER */}
             <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-stone-950/40 border-stone-900' : 'bg-stone-50 border-stone-200'
+              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
             }`}>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-400 mb-1">
-                <span className="size-1.5 rounded-full bg-purple-400 animate-pulse" />
+                <span className="size-1.5 rounded-full bg-purple-450 animate-pulse" />
                 CASH (DANS TIROIR)
               </span>
               <div className="font-mono font-bold text-sm">
@@ -481,13 +503,13 @@ export default function Home() {
           {/* DEPOSIT */}
           <button 
             onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
-            className="p-4 rounded-[22px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="p-4 rounded-[22px] bg-cyan-550 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
               <ArrowDownLeft className="size-4" />
               + ENVOI (DÉPÔT)
             </div>
-            <div className="text-[9px] font-bold opacity-80 uppercase tracking-widest mt-1">
+            <div className="text-[9px] font-bold opacity-90 uppercase tracking-widest mt-1">
               Cash Reçu → Float Envoyé
             </div>
           </button>
@@ -497,15 +519,15 @@ export default function Home() {
             onClick={() => { setActionType('withdrawal'); setOpInput('mtn'); }}
             className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
-                ? 'border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-white' 
-                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-850'
+                ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
+                : 'border-stone-350 bg-white hover:bg-stone-100 text-[#121214]'
             }`}
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-500">
               <ArrowUpRight className="size-4" />
               - RETRAIT (SORTIE)
             </div>
-            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+            <div className="text-[9px] font-bold text-stone-500 uppercase tracking-widest mt-1">
               Float Reçu → Cash Donné
             </div>
           </button>
@@ -515,15 +537,15 @@ export default function Home() {
             onClick={() => { setActionType('credit'); setOpInput('mtn'); }}
             className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
-                ? 'border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-white' 
-                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-850'
+                ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
+                : 'border-stone-350 bg-white hover:bg-stone-100 text-[#121214]'
             }`}
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-500">
               <Smartphone className="size-4" />
               📱 VENTE CRÉDIT
             </div>
-            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+            <div className="text-[9px] font-bold text-stone-500 uppercase tracking-widest mt-1">
               Cash Reçu → Airtime SIM
             </div>
           </button>
@@ -537,15 +559,15 @@ export default function Home() {
             }}
             className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
-                ? 'border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-white' 
-                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-850'
+                ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
+                : 'border-stone-350 bg-white hover:bg-stone-100 text-[#121214]'
             }`}
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-500">
               <Zap className="size-4" />
               ⚡ VENTE FORFAIT
             </div>
-            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+            <div className="text-[9px] font-bold text-stone-500 uppercase tracking-widest mt-1">
               Cash Reçu → Forfait SIM
             </div>
           </button>
@@ -553,7 +575,7 @@ export default function Home() {
 
         {/* Adjustments & Config section */}
         <section className={`p-4.5 rounded-[24px] border transition-colors ${
-          theme === 'dark' ? 'bg-stone-900/30 border-stone-900/80' : 'bg-white border-stone-200'
+          theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
         } flex flex-col gap-4`}>
           <div className="flex justify-between items-center gap-4">
             <div>
@@ -561,7 +583,7 @@ export default function Home() {
                 <Sliders className="size-4 text-stone-400" />
                 Mouvements de Caisse & Config
               </h3>
-              <p className="text-[10px] text-stone-400 mt-0.5">
+              <p className="text-[10px] text-stone-500 mt-0.5">
                 Approvisionnements externes & Soldes de départ
               </p>
             </div>
@@ -592,21 +614,21 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-stone-400 text-center">
+          <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-stone-500 text-center">
             <div>
-              <span className="block text-amber-500 font-bold mb-0.5">MTN Initial</span>
+              <span className="block text-amber-600 font-bold mb-0.5">MTN Initial</span>
               {coffres.mtn.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-blue-500 font-bold mb-0.5">Moov Initial</span>
+              <span className="block text-blue-600 font-bold mb-0.5">Moov Initial</span>
               {coffres.moov.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-emerald-500 font-bold mb-0.5">Celtiis Initial</span>
+              <span className="block text-emerald-600 font-bold mb-0.5">Celtiis Initial</span>
               {coffres.celtiis.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-purple-400 font-bold mb-0.5">Cash Initial</span>
+              <span className="block text-purple-500 font-bold mb-0.5">Cash Initial</span>
               {coffres.cash.toLocaleString('fr-FR')}
             </div>
           </div>
@@ -616,7 +638,7 @@ export default function Home() {
         <div className={`p-4 rounded-[20px] border flex gap-3 ${
           theme === 'dark' 
             ? 'bg-blue-950/20 border-blue-900/40 text-blue-300' 
-            : 'bg-blue-50/70 border-blue-100 text-blue-800'
+            : 'bg-blue-50/70 border-blue-100 text-blue-900 font-medium'
         }`}>
           <Info className="size-5 shrink-0 text-blue-400 mt-0.5" />
           <div className="text-[11px] leading-relaxed">
@@ -627,15 +649,15 @@ export default function Home() {
 
         {/* Weekly activity chart Mockup */}
         <section className={`p-5 rounded-[28px] border transition-colors ${
-          theme === 'dark' ? 'bg-stone-900/40 border-stone-900' : 'bg-white border-stone-200'
+          theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
         }`}>
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-sm font-bold uppercase font-serif">Activité Hebdomadaire</h3>
-              <p className="text-[9px] text-stone-400">Volume de vente de crédit & forfaits</p>
+              <p className="text-[9px] text-stone-500">Volume de vente de crédit & forfaits</p>
             </div>
-            <div className="flex gap-1 bg-stone-950/20 p-0.5 border border-stone-800 rounded-lg text-[9px] font-bold">
-              <span className="px-2 py-1 rounded bg-cyan-500 text-stone-950">VOLUME (FCFA)</span>
+            <div className="flex gap-1 bg-stone-950/20 p-0.5 border border-stone-850 rounded-lg text-[9px] font-bold">
+              <span className="px-2 py-1 rounded bg-cyan-550 text-stone-950">VOLUME (FCFA)</span>
               <span className="px-2 py-1 text-stone-400 cursor-pointer">OPÉRATIONS</span>
             </div>
           </div>
@@ -653,7 +675,7 @@ export default function Home() {
               ]
               return (
                 <div key={day} className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-full max-w-[14px] flex flex-col justify-end rounded-t overflow-hidden h-24 bg-stone-950/40">
+                  <div className="w-full max-w-[14px] flex flex-col justify-end rounded-t overflow-hidden h-24 bg-[#050508]">
                     <div className={`w-full bg-emerald-500 ${heights[idx].celtiis}`} />
                     <div className={`w-full bg-blue-600 ${heights[idx].moov}`} />
                     <div className={`w-full bg-amber-400 ${heights[idx].mtn}`} />
@@ -676,10 +698,10 @@ export default function Home() {
           <div className="flex justify-between items-end px-1">
             <div>
               <h3 className="text-sm font-bold uppercase font-serif">Historique Récent</h3>
-              <p className="text-[9px] text-stone-400">Journal d'activité de la cabine</p>
+              <p className="text-[9px] text-stone-500">Journal d'activité de la cabine</p>
             </div>
             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
-              theme === 'dark' ? 'bg-stone-900 text-stone-400' : 'bg-stone-200 text-stone-700'
+              theme === 'dark' ? 'bg-[#0f0f15] text-stone-300 border border-[#1e1e2d]' : 'bg-stone-200 text-stone-850'
             }`}>
               Total: {transactions.length} Tx
             </span>
@@ -696,19 +718,21 @@ export default function Home() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
                     txn.isScamReported 
-                      ? 'border-rose-900/60 bg-rose-950/10 text-rose-300'
+                      ? theme === 'dark' 
+                        ? 'border-rose-900 bg-rose-950/20 text-rose-300' 
+                        : 'border-rose-300 bg-rose-50 text-rose-900'
                       : txn.type === 'appro_sim' || txn.type === 'ajust_cash'
-                        ? theme === 'dark' ? 'border-purple-900 bg-purple-950/10 text-purple-200' : 'border-purple-200 bg-purple-50 text-purple-900'
+                        ? theme === 'dark' ? 'border-purple-900 bg-purple-950/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
                         : theme === 'dark'
-                          ? 'border-stone-900 bg-stone-950/40 hover:bg-stone-900/80'
-                          : 'border-stone-200 bg-white hover:bg-stone-50'
+                          ? 'border-[#151520] bg-[#08080c] hover:bg-[#121217]'
+                          : 'border-stone-300 bg-white hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                         txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait'
-                          ? 'bg-cyan-500/20 text-cyan-500' 
+                          ? 'bg-cyan-500/20 text-cyan-400' 
                           : txn.type === 'withdrawal'
                             ? 'bg-rose-500/20 text-rose-500'
                             : 'bg-purple-500/20 text-purple-400'
@@ -720,15 +744,7 @@ export default function Home() {
                       </span>
                       
                       {/* Operator badge */}
-                      {txn.type !== 'ajust_cash' && (
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                          txn.operator === 'mtn' ? 'bg-amber-400/25 text-amber-500' :
-                          txn.operator === 'moov' ? 'bg-blue-500/25 text-blue-500' :
-                          'bg-emerald-500/25 text-emerald-500'
-                        }`}>
-                          {txn.operator}
-                        </span>
-                      )}
+                      {txn.type !== 'ajust_cash' && renderOperatorBadge(txn.operator)}
 
                       <span className="text-[10px] text-stone-500 font-mono">{txn.time}</span>
                     </div>
@@ -743,11 +759,11 @@ export default function Home() {
                       <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'N° client : '}</span>
                       <span className="font-mono font-bold">{txn.phone}</span>
                       {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
-                        <span className="ml-1 text-[9px] bg-red-600 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
+                        <span className="ml-1 text-[9px] bg-red-650 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
                       )}
                     </div>
                     <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${
-                      theme === 'dark' ? 'bg-stone-900 text-stone-400' : 'bg-stone-100 text-stone-600'
+                      theme === 'dark' ? 'bg-[#0f0f15] text-stone-300' : 'bg-stone-100 text-stone-850 border border-stone-300/40'
                     }`}>
                       {txn.category}
                     </span>
@@ -755,13 +771,13 @@ export default function Home() {
 
                   {/* Actions for this transaction */}
                   {txn.phone !== 'SYSTEM' && (
-                    <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-800/40 pt-2.5 mt-1 text-[10px] font-bold">
+                    <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-850/40 pt-2.5 mt-1 text-[10px] font-bold">
                       <button 
                         onClick={() => toggleScamReport(txn.id)}
                         className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
                           txn.isScamReported 
                             ? 'bg-rose-600 border-rose-500 text-white'
-                            : 'border-rose-900/40 hover:bg-rose-950/20 text-rose-500'
+                            : 'border-rose-900/40 hover:bg-[#1a0a0d] text-rose-500'
                         }`}
                       >
                         <ShieldAlert className="size-3" />
@@ -804,14 +820,14 @@ export default function Home() {
 
         {/* Blacklist section */}
         <section className={`p-5 rounded-[28px] border transition-colors ${
-          theme === 'dark' ? 'bg-stone-900/20 border-stone-900' : 'bg-white border-stone-200'
+          theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-white border-stone-300'
         }`}>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <ShieldAlert className="size-5 text-rose-500" />
               <div>
                 <h3 className="text-sm font-bold uppercase font-serif">Blacklist Communautaire</h3>
-                <p className="text-[9px] text-stone-400">Numéros suspects recensés localement</p>
+                <p className="text-[9px] text-stone-500">Numéros suspects recensés localement</p>
               </div>
             </div>
             <Button 
@@ -871,7 +887,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
-                theme === 'dark' ? 'bg-stone-950 border-stone-800' : 'bg-white border-stone-200'
+                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
@@ -907,9 +923,9 @@ export default function Home() {
                         }}
                         className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
                           opInput === op 
-                            ? op === 'mtn' ? 'border-amber-500 bg-amber-500/10 text-amber-500'
+                            ? op === 'mtn' ? 'border-amber-550 bg-amber-500/10 text-amber-500'
                               : op === 'moov' ? 'border-blue-500 bg-blue-500/10 text-blue-500'
-                              : 'border-emerald-500 bg-emerald-500/10 text-emerald-500'
+                              : 'border-emerald-500 bg-emerald-500/10 text-emerald-550'
                             : 'border-stone-850 text-stone-400 hover:bg-stone-900/30'
                         }`}
                       >
@@ -927,7 +943,7 @@ export default function Home() {
                       value={selectedForfait}
                       onChange={e => setSelectedForfait(e.target.value)}
                       className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
-                        theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                        theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                       }`}
                     >
                       {BENIN_FORFAITS[opInput].map(f => (
@@ -944,11 +960,11 @@ export default function Home() {
                     type="number"
                     required
                     disabled={actionType === 'forfait'}
-                    placeholder="Ex: 10000"
+                    placeholder="Ex: 1000"
                     value={amountInput}
                     onChange={e => setAmountInput(e.target.value)}
                     className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                     }`}
                   />
                 </div>
@@ -963,12 +979,12 @@ export default function Home() {
                     value={phoneInput}
                     onChange={e => setPhoneInput(e.target.value)}
                     className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                     }`}
                   />
                   {phoneInput && blacklist.includes(phoneInput.trim()) && (
-                    <span className="text-[10px] text-red-500 font-bold flex items-center gap-1">
-                      <AlertTriangle className="size-3" /> ATTENTION : Numéro répertorié comme arnaqueur !
+                    <span className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1">
+                      <AlertTriangle className="size-3 text-red-500" /> ATTENTION : Numéro répertorié comme arnaqueur !
                     </span>
                   )}
                 </div>
@@ -999,7 +1015,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
-                theme === 'dark' ? 'bg-stone-950 border-stone-800' : 'bg-white border-stone-200'
+                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
@@ -1055,7 +1071,7 @@ export default function Home() {
                           className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
                             adjOperator === op 
                               ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                              : 'border-stone-800 text-stone-400'
+                              : 'border-stone-850 text-stone-400'
                           }`}
                         >
                           {op}
@@ -1072,7 +1088,7 @@ export default function Home() {
                         onClick={() => setAdjCashDirection('inject')}
                         className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
                           adjCashDirection === 'inject' 
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' 
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-450' 
                             : 'border-stone-800 text-stone-400'
                         }`}
                       >
@@ -1103,7 +1119,7 @@ export default function Home() {
                     value={amountInput}
                     onChange={e => setAmountInput(e.target.value)}
                     className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-850'
                     }`}
                   />
                 </div>
@@ -1134,7 +1150,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
-                theme === 'dark' ? 'bg-stone-950 border-stone-800' : 'bg-white border-stone-200'
+                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
@@ -1155,7 +1171,7 @@ export default function Home() {
                     value={coffreMtn}
                     onChange={e => setCoffreMtn(e.target.value)}
                     className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                     }`}
                   />
                 </div>
@@ -1167,7 +1183,7 @@ export default function Home() {
                     value={coffreMoov}
                     onChange={e => setCoffreMoov(e.target.value)}
                     className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                     }`}
                   />
                 </div>
@@ -1179,7 +1195,7 @@ export default function Home() {
                     value={coffreCeltiis}
                     onChange={e => setCoffreCeltiis(e.target.value)}
                     className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                     }`}
                   />
                 </div>
@@ -1191,7 +1207,7 @@ export default function Home() {
                     value={coffreCash}
                     onChange={e => setCoffreCash(e.target.value)}
                     className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                     }`}
                   />
                 </div>
@@ -1222,7 +1238,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 overflow-hidden border ${
-                theme === 'dark' ? 'bg-stone-950 border-stone-800' : 'bg-white border-stone-200'
+                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
@@ -1243,7 +1259,7 @@ export default function Home() {
                   value={newBlacklistPhone}
                   onChange={e => setNewBlacklistPhone(e.target.value)}
                   className={`flex-1 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 ${
-                    theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                    theme === 'dark' ? 'bg-stone-900 border-stone-850 text-white' : 'bg-stone-50 border-stone-300'
                   }`}
                 />
                 <Button variant="premium" type="submit" size="sm" className="text-xs">
@@ -1254,7 +1270,7 @@ export default function Home() {
               {/* List */}
               <div className="flex flex-col gap-2 max-h-48 overflow-y-auto mt-2 pr-1">
                 {blacklist.map(phone => (
-                  <div key={phone} className="flex justify-between items-center p-2 rounded-lg bg-stone-900/30 border border-stone-900 text-xs">
+                  <div key={phone} className="flex justify-between items-center p-2 rounded-lg bg-stone-900/30 border border-stone-850 text-xs">
                     <span className="font-mono font-bold">{phone}</span>
                     <button 
                       onClick={() => setBlacklist(prev => prev.filter(p => p !== phone))}
