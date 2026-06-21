@@ -6,7 +6,14 @@ export const getSupabase = (): SupabaseClient | null => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (
+    !supabaseUrl || 
+    supabaseUrl === 'undefined' || 
+    supabaseUrl.includes('your-') ||
+    !supabaseAnonKey || 
+    supabaseAnonKey === 'undefined' ||
+    supabaseAnonKey.includes('your-')
+  ) {
     return null;
   }
 
