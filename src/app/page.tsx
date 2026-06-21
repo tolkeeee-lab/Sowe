@@ -30,7 +30,8 @@ import {
   Trash2,
   Info,
   MapPin,
-  ShieldAlert
+  ShieldAlert,
+  Coins
 } from 'lucide-react'
 import { getSupabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
@@ -39,10 +40,10 @@ interface Transaction {
   id: string;
   phone: string;
   operator: 'mtn' | 'moov' | 'celtiis';
-  type: 'deposit' | 'withdrawal';
+  type: 'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'appro_sim' | 'ajust_cash';
   amount: number;
   time: string;
-  category: 'Business/Ventes' | 'Frais de transaction' | 'Perso / Autre';
+  category: string;
   isScamReported?: boolean;
 }
 
@@ -89,6 +90,27 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   }
 ];
 
+const BENIN_FORFAITS = {
+  mtn: [
+    { name: "MTN Internet 500F (1.2 Go)", price: 500 },
+    { name: "MTN Internet 1000F (3 Go)", price: 1000 },
+    { name: "MTN Maxi 2000F (Appels+Net)", price: 2000 },
+    { name: "MTN Appel 500F (60 min)", price: 500 }
+  ],
+  moov: [
+    { name: "Moov Giga 500F (1 Go)", price: 500 },
+    { name: "Moov Giga 1000F (2.5 Go)", price: 1000 },
+    { name: "Moov Internet 2000F (6 Go)", price: 2000 },
+    { name: "Moov Appel 500F (60 min)", price: 500 }
+  ],
+  celtiis: [
+    { name: "Celtiis Giga 500F (2 Go)", price: 500 },
+    { name: "Celtiis Giga 1000F (5 Go)", price: 1000 },
+    { name: "Celtiis Internet 2000F (12 Go)", price: 2000 },
+    { name: "Celtiis Appel 500F (70 min)", price: 500 }
+  ]
+}
+
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
@@ -119,11 +141,16 @@ export default function Home() {
   const [showBlacklistModal, setShowBlacklistModal] = useState(false)
 
   // Transaction Addition Modal State
-  const [actionType, setActionType] = useState<'deposit' | 'withdrawal' | null>(null)
+  const [actionType, setActionType] = useState<'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'adjust_ext' | null>(null)
   const [opInput, setOpInput] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
   const [phoneInput, setPhoneInput] = useState('')
   const [amountInput, setAmountInput] = useState('')
-  const [categoryInput, setCategoryInput] = useState<'Business/Ventes' | 'Frais de transaction' | 'Perso / Autre'>('Business/Ventes')
+  const [selectedForfait, setSelectedForfait] = useState('')
+  
+  // External Adjustment States
+  const [adjType, setAdjType] = useState<'appro_sim' | 'ajust_cash'>('appro_sim')
+  const [adjOperator, setAdjOperator] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
+  const [adjCashDirection, setAdjCashDirection] = useState<'inject' | 'withdraw'>('inject')
 
   // Float adjustment modal
   const [showCoffreModal, setShowCoffreModal] = useState(false)
@@ -137,6 +164,17 @@ export default function Home() {
     setSupabaseConnected(!!client)
   }, [])
 
+  // Auto-fill forfait price when selected
+  useEffect(() => {
+    if (actionType === 'forfait' && selectedForfait) {
+      const allForfaits = [...BENIN_FORFAITS.mtn, ...BENIN_FORFAITS.moov, ...BENIN_FORFAITS.celtiis]
+      const found = allForfaits.find(f => f.name === selectedForfait)
+      if (found) {
+        setAmountInput(String(found.price))
+      }
+    }
+  }, [selectedForfait, actionType])
+
   // Global actual balance: Sum of all cash + SIM floats
   const soldeGlobal = useMemo(() => {
     return balances.mtn + balances.moov + balances.celtiis + balances.cash
@@ -147,41 +185,91 @@ export default function Home() {
     return coffres.mtn + coffres.moov + coffres.celtiis + coffres.cash
   }, [coffres])
 
-  // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash)
+  // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!amountInput || !phoneInput) return
+
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
     setLoading(true)
 
     setTimeout(() => {
-      const amount = parseFloat(amountInput)
-      const now = new Date()
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      // 1. External Adjustments
+      if (actionType === 'adjust_ext') {
+        const amount = parseFloat(amountInput) || 0
+        if (adjType === 'appro_sim') {
+          // Appro SIM: Float increases, Cash unchanged (funded from outside)
+          setBalances(prev => ({
+            ...prev,
+            [adjOperator]: prev[adjOperator] + amount
+          }))
 
-      // Check if number is blacklisted
-      const isBlacklisted = blacklist.includes(phoneInput.trim())
-      if (isBlacklisted) {
-        alert("⚠️ Ce numéro est répertorié dans la BLACKLIST COMMUNAUTAIRE. Soyez prudent !")
+          const newTxn: Transaction = {
+            id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
+            phone: 'SYSTEM',
+            operator: adjOperator,
+            type: 'appro_sim',
+            amount,
+            time: timeStr,
+            category: 'Approvisionnement SIM',
+          }
+          setTransactions(prev => [newTxn, ...prev])
+        } else {
+          // Ajust Cash: Cash increases/decreases directly (funded/withdrawn from outside)
+          const multiplier = adjCashDirection === 'inject' ? 1 : -1
+          setBalances(prev => ({
+            ...prev,
+            cash: prev.cash + (amount * multiplier)
+          }))
+
+          const newTxn: Transaction = {
+            id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
+            phone: 'SYSTEM',
+            operator: 'mtn', // Default
+            type: 'ajust_cash',
+            amount,
+            time: timeStr,
+            category: adjCashDirection === 'inject' ? 'Injection Cash' : 'Retrait Cash (Dépense/Banque)',
+          }
+          setTransactions(prev => [newTxn, ...prev])
+        }
+
+        setLoading(false)
+        setActionType(null)
+        setAmountInput('')
+        return
       }
 
-      // Update balances based on the transaction type:
-      // DEPOT (ENVOI): We receive physical cash from client (+Cash), and send float to client (-Float)
-      // RETRAIT (SORTIE): We receive float from client (+Float), and give physical cash to client (-Cash)
+      // 2. Swapping transactions (Deposit, Withdrawal, Credit, Forfait)
+      if (!amountInput || !phoneInput) {
+        setLoading(false)
+        return
+      }
+
+      const amount = parseFloat(amountInput)
+      const isBlacklisted = blacklist.includes(phoneInput.trim())
+      if (isBlacklisted) {
+        alert("⚠️ Ce numéro est répertorié dans la BLACKLIST COMMUNAUTAIRE. Soyez vigilant !")
+      }
+
       setBalances(prev => {
-        if (actionType === 'deposit') {
+        if (actionType === 'deposit' || actionType === 'credit' || actionType === 'forfait') {
+          // Client gives cash (+Cash), virtual SIM balance debited (-Float)
           return {
             ...prev,
             cash: prev.cash + amount,
             [opInput]: prev[opInput] - amount
           }
-        } else {
+        } else if (actionType === 'withdrawal') {
+          // Client sends virtual (+Float), client takes cash (-Cash)
           return {
             ...prev,
             cash: prev.cash - amount,
             [opInput]: prev[opInput] + amount
           }
         }
+        return prev
       })
 
       const newTxn: Transaction = {
@@ -191,7 +279,7 @@ export default function Home() {
         type: actionType!,
         amount,
         time: timeStr,
-        category: categoryInput,
+        category: actionType === 'forfait' ? selectedForfait : (actionType === 'credit' ? 'Vente de Crédit' : (actionType === 'deposit' ? 'Dépôt client' : 'Retrait client')),
         isScamReported: false
       }
 
@@ -202,6 +290,7 @@ export default function Home() {
       // Reset
       setPhoneInput('')
       setAmountInput('')
+      setSelectedForfait('')
     }, 600)
   }
 
@@ -244,7 +333,7 @@ export default function Home() {
 
   // Export CSV
   const handleExportCSV = () => {
-    const headers = 'ID,Telephone,Operateur,Type,Montant,Heure,Categorie,Arnaque\n'
+    const headers = 'ID,Telephone,Operateur,Type,Montant,Heure,Details,Arnaque\n'
     const rows = transactions.map(t => 
       `${t.id},${t.phone},${t.operator},${t.type},${t.amount},${t.time},${t.category},${t.isScamReported ? 'OUI' : 'NON'}`
     ).join('\n')
@@ -271,7 +360,7 @@ export default function Home() {
       {/* Header */}
       <header className={`border-b transition-colors ${
         theme === 'dark' ? 'border-stone-900 bg-stone-950/70' : 'border-stone-200 bg-white/70'
-      } backdrop-blur-md sticky top-0 z-40`}>
+      } backdrop-blur-md sticky top-0 z-45`}>
         <div className="max-w-4xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`size-10 rounded-xl flex items-center justify-center shadow-md transition-colors ${
@@ -280,20 +369,18 @@ export default function Home() {
               <Wallet className="size-5" />
             </div>
             <div>
-              <span className="font-serif text-xl font-bold tracking-tight">LE WALLET</span>
-              <span className="text-[10px] block font-semibold tracking-widest uppercase text-cyan-500 -mt-1">Des Dépenses</span>
+              <span className="font-serif text-xl font-bold tracking-tight">MOMO PREMIUM</span>
+              <span className="text-[10px] block font-semibold tracking-widest uppercase text-cyan-500 -mt-1">Gestion Cabine</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Status badges */}
             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
               theme === 'dark' ? 'bg-stone-900 text-stone-400 border-stone-800' : 'bg-stone-100 text-stone-600 border-stone-200'
             }`}>
               Offline Safe 🌐
             </span>
 
-            {/* Theme toggle */}
             <button 
               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
               className={`size-10 rounded-xl flex items-center justify-center border transition-all ${
@@ -389,86 +476,137 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Big swap buttons */}
-        <section className="grid grid-cols-2 gap-4">
+        {/* 4 Operations Quick Buttons Grid */}
+        <section className="grid grid-cols-2 gap-3.5">
           {/* DEPOSIT */}
           <button 
-            onClick={() => setActionType('deposit')}
-            className="p-5 rounded-[24px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-28 shadow-lg shadow-cyan-500/10 transition-transform active:scale-[0.98] group cursor-pointer"
+            onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
+            className="p-4 rounded-[22px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
-            <div className="flex items-center gap-1 text-xs font-black uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
               <ArrowDownLeft className="size-4" />
               + ENVOI (DÉPÔT)
             </div>
-            <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-2 leading-snug">
-              ARGENT REÇU <br />→ FLOAT ENVOYÉ
+            <div className="text-[9px] font-bold opacity-80 uppercase tracking-widest mt-1">
+              Cash Reçu → Float Envoyé
             </div>
           </button>
 
           {/* WITHDRAWAL */}
           <button 
-            onClick={() => setActionType('withdrawal')}
-            className={`p-5 rounded-[24px] text-left flex flex-col justify-between h-28 border transition-all active:scale-[0.98] cursor-pointer ${
+            onClick={() => { setActionType('withdrawal'); setOpInput('mtn'); }}
+            className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
                 ? 'border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-white' 
-                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-800'
+                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-850'
             }`}
           >
-            <div className="flex items-center gap-1 text-xs font-black uppercase tracking-wider text-rose-500">
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-500">
               <ArrowUpRight className="size-4" />
               - RETRAIT (SORTIE)
             </div>
-            <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2 leading-snug">
-              FLOAT REÇU <br />→ CASH DONNÉ
+            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+              Float Reçu → Cash Donné
+            </div>
+          </button>
+
+          {/* CREDIT SALES */}
+          <button 
+            onClick={() => { setActionType('credit'); setOpInput('mtn'); }}
+            className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
+              theme === 'dark' 
+                ? 'border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-white' 
+                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-850'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-500">
+              <Smartphone className="size-4" />
+              📱 VENTE CRÉDIT
+            </div>
+            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+              Cash Reçu → Airtime SIM
+            </div>
+          </button>
+
+          {/* FORFAIT SALES */}
+          <button 
+            onClick={() => { 
+              setActionType('forfait'); 
+              setOpInput('mtn');
+              setSelectedForfait(BENIN_FORFAITS.mtn[0].name); 
+            }}
+            className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
+              theme === 'dark' 
+                ? 'border-stone-800 bg-stone-900/50 hover:bg-stone-900 text-white' 
+                : 'border-stone-200 bg-white hover:bg-stone-100 text-stone-850'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-500">
+              <Zap className="size-4" />
+              ⚡ VENTE FORFAIT
+            </div>
+            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+              Cash Reçu → Forfait SIM
             </div>
           </button>
         </section>
 
-        {/* Float initial reserves Config section */}
-        <section className={`p-5 rounded-[24px] border transition-colors ${
+        {/* Adjustments & Config section */}
+        <section className={`p-4.5 rounded-[24px] border transition-colors ${
           theme === 'dark' ? 'bg-stone-900/30 border-stone-900/80' : 'bg-white border-stone-200'
-        }`}>
+        } flex flex-col gap-4`}>
           <div className="flex justify-between items-center gap-4">
             <div>
               <h3 className="text-sm font-bold flex items-center gap-1.5">
                 <Sliders className="size-4 text-stone-400" />
-                Soldes de Départ & Flotte
+                Mouvements de Caisse & Config
               </h3>
               <p className="text-[10px] text-stone-400 mt-0.5">
-                Configure tes réserves initiales par réseau
+                Approvisionnements externes & Soldes de départ
               </p>
             </div>
-            <Button 
-              variant="outline" 
-              size="xs" 
-              onClick={() => {
-                setCoffreMtn(String(coffres.mtn))
-                setCoffreMoov(String(coffres.moov))
-                setCoffreCeltiis(String(coffres.celtiis))
-                setCoffreCash(String(coffres.cash))
-                setShowCoffreModal(true)
-              }}
-              className="text-xs shrink-0"
-            >
-              Ajuster les Coffres
-            </Button>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="xs" 
+                onClick={() => setActionType('adjust_ext')}
+                className="text-xs shrink-0"
+              >
+                ⚙️ Ajustement Flotte
+              </Button>
+              <Button 
+                variant="outline" 
+                size="xs" 
+                onClick={() => {
+                  setCoffreMtn(String(coffres.mtn))
+                  setCoffreMoov(String(coffres.moov))
+                  setCoffreCeltiis(String(coffres.celtiis))
+                  setCoffreCash(String(coffres.cash))
+                  setShowCoffreModal(true)
+                }}
+                className="text-xs shrink-0"
+              >
+                Ajuster Coffres
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 mt-4 text-[10px] font-mono text-stone-400 text-center">
+          <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-stone-400 text-center">
             <div>
-              <span className="block text-amber-500 font-bold mb-0.5">MTN</span>
+              <span className="block text-amber-500 font-bold mb-0.5">MTN Initial</span>
               {coffres.mtn.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-blue-500 font-bold mb-0.5">Moov</span>
+              <span className="block text-blue-500 font-bold mb-0.5">Moov Initial</span>
               {coffres.moov.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-emerald-500 font-bold mb-0.5">Celtiis</span>
+              <span className="block text-emerald-500 font-bold mb-0.5">Celtiis Initial</span>
               {coffres.celtiis.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-purple-400 font-bold mb-0.5">Cash</span>
+              <span className="block text-purple-400 font-bold mb-0.5">Cash Initial</span>
               {coffres.cash.toLocaleString('fr-FR')}
             </div>
           </div>
@@ -494,7 +632,7 @@ export default function Home() {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-sm font-bold uppercase font-serif">Activité Hebdomadaire</h3>
-              <p className="text-[9px] text-stone-400">Pics et répartition MTN, Moov & Celtiis</p>
+              <p className="text-[9px] text-stone-400">Volume de vente de crédit & forfaits</p>
             </div>
             <div className="flex gap-1 bg-stone-950/20 p-0.5 border border-stone-800 rounded-lg text-[9px] font-bold">
               <span className="px-2 py-1 rounded bg-cyan-500 text-stone-950">VOLUME (FCFA)</span>
@@ -502,7 +640,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Simple simulated CSS Chart */}
           <div className="flex justify-between items-end h-32 px-4 gap-2 pt-2 border-b border-stone-800/40">
             {['sam 13', 'dim 14', 'lun 15', 'mar 16', 'mer 17', 'jeu 18', 'ven 19'].map((day, idx) => {
               const heights = [
@@ -512,7 +649,7 @@ export default function Home() {
                 { mtn: 'h-6', moov: 'h-4', celtiis: 'h-3' },
                 { mtn: 'h-5', moov: 'h-6', celtiis: 'h-2' },
                 { mtn: 'h-3', moov: 'h-5', celtiis: 'h-4' },
-                { mtn: 'h-12', moov: 'h-16', celtiis: 'h-6' }, // Big peak Friday
+                { mtn: 'h-12', moov: 'h-16', celtiis: 'h-6' },
               ]
               return (
                 <div key={day} className="flex flex-col items-center gap-1.5 flex-1">
@@ -560,43 +697,52 @@ export default function Home() {
                   className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
                     txn.isScamReported 
                       ? 'border-rose-900/60 bg-rose-950/10 text-rose-300'
-                      : theme === 'dark'
-                        ? 'border-stone-900 bg-stone-950/40 hover:bg-stone-900/80'
-                        : 'border-stone-200 bg-white hover:bg-stone-50'
+                      : txn.type === 'appro_sim' || txn.type === 'ajust_cash'
+                        ? theme === 'dark' ? 'border-purple-900 bg-purple-950/10 text-purple-200' : 'border-purple-200 bg-purple-50 text-purple-900'
+                        : theme === 'dark'
+                          ? 'border-stone-900 bg-stone-950/40 hover:bg-stone-900/80'
+                          : 'border-stone-200 bg-white hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                        txn.type === 'deposit' 
+                        txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait'
                           ? 'bg-cyan-500/20 text-cyan-500' 
-                          : 'bg-rose-500/20 text-rose-500'
+                          : txn.type === 'withdrawal'
+                            ? 'bg-rose-500/20 text-rose-500'
+                            : 'bg-purple-500/20 text-purple-400'
                       }`}>
-                        {txn.type === 'deposit' ? 'DEP' : 'RET'}
+                        {txn.type === 'deposit' ? 'DEP' : 
+                         txn.type === 'withdrawal' ? 'RET' : 
+                         txn.type === 'credit' ? 'CREDIT' : 
+                         txn.type === 'forfait' ? 'FORFAIT' : 'AJUST'}
                       </span>
                       
                       {/* Operator badge */}
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                        txn.operator === 'mtn' ? 'bg-amber-400/25 text-amber-500' :
-                        txn.operator === 'moov' ? 'bg-blue-500/25 text-blue-500' :
-                        'bg-emerald-500/25 text-emerald-500'
-                      }`}>
-                        {txn.operator}
-                      </span>
+                      {txn.type !== 'ajust_cash' && (
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                          txn.operator === 'mtn' ? 'bg-amber-400/25 text-amber-500' :
+                          txn.operator === 'moov' ? 'bg-blue-500/25 text-blue-500' :
+                          'bg-emerald-500/25 text-emerald-500'
+                        }`}>
+                          {txn.operator}
+                        </span>
+                      )}
 
                       <span className="text-[10px] text-stone-500 font-mono">{txn.time}</span>
                     </div>
 
                     <div className="font-mono font-bold text-sm">
-                      {txn.type === 'deposit' ? '+' : '-'} {txn.amount.toLocaleString('fr-FR')} <span className="text-[10px] font-normal">FCFA</span>
+                      {txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : '-'} {txn.amount.toLocaleString('fr-FR')} <span className="text-[10px] font-normal">FCFA</span>
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
                     <div>
-                      <span className="text-stone-400">N° client : </span>
+                      <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'N° client : '}</span>
                       <span className="font-mono font-bold">{txn.phone}</span>
-                      {blacklist.includes(txn.phone) && (
+                      {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
                         <span className="ml-1 text-[9px] bg-red-600 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
                       )}
                     </div>
@@ -608,27 +754,29 @@ export default function Home() {
                   </div>
 
                   {/* Actions for this transaction */}
-                  <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-800/40 pt-2.5 mt-1 text-[10px] font-bold">
-                    <button 
-                      onClick={() => toggleScamReport(txn.id)}
-                      className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
-                        txn.isScamReported 
-                          ? 'bg-rose-600 border-rose-500 text-white'
-                          : 'border-rose-900/40 hover:bg-rose-950/20 text-rose-500'
-                      }`}
-                    >
-                      <ShieldAlert className="size-3" />
-                      {txn.isScamReported ? 'Arnaque Signalée !' : 'Signaler Arnaque'}
-                    </button>
+                  {txn.phone !== 'SYSTEM' && (
+                    <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-800/40 pt-2.5 mt-1 text-[10px] font-bold">
+                      <button 
+                        onClick={() => toggleScamReport(txn.id)}
+                        className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                          txn.isScamReported 
+                            ? 'bg-rose-600 border-rose-500 text-white'
+                            : 'border-rose-900/40 hover:bg-rose-950/20 text-rose-500'
+                        }`}
+                      >
+                        <ShieldAlert className="size-3" />
+                        {txn.isScamReported ? 'Arnaque Signalée !' : 'Signaler Arnaque'}
+                      </button>
 
-                    <button 
-                      onClick={() => deleteTransaction(txn.id)}
-                      className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
-                    >
-                      <Trash2 className="size-3" />
-                      Supprimer cet enregistrement
-                    </button>
-                  </div>
+                      <button 
+                        onClick={() => deleteTransaction(txn.id)}
+                        className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
+                      >
+                        <Trash2 className="size-3" />
+                        Supprimer
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -642,8 +790,8 @@ export default function Home() {
             <span>Données hébergées en local sur ton téléphone.</span>
             <button 
               onClick={() => {
-                if (confirm("Réinitialiser toutes les données de la cabine (soldes, historique) ?")) {
-                  setBalances({ mtn: 250000, moov: 150000, celtiis: 100000, cash: 200000 })
+                if (confirm("Réinitialiser toutes les données de la cabine ?")) {
+                  setBalances({ mtn: 240000, moov: 270000, celtiis: 50000, cash: 140000 })
                   setTransactions([])
                 }
               }}
@@ -699,16 +847,16 @@ export default function Home() {
       {/* FOOTER */}
       <footer className="border-t border-stone-900/10 dark:border-stone-900/60 py-8 mt-12 text-center text-xs text-stone-500">
         <p className="max-w-md mx-auto px-4 leading-relaxed">
-          « Le Wallet des Dépenses » — Outil d'assistance numérique pour les points de vente agréés MTN MoMo, Moov Money et Celtiis au Bénin.
+          « Momo Premium » — Outil d'assistance numérique pour les points de vente agréés MTN MoMo, Moov Money et Celtiis au Bénin.
         </p>
         <p className="mt-2 text-[10px] text-stone-600">
           Propulsé localement · Cotonou, Bénin · v1.1.2
         </p>
       </footer>
 
-      {/* SWAP TRANSACTION MODAL (DEPOT / RETRAIT) */}
+      {/* MODAL TRANSACTION FORM (DEPOT / RETRAIT / CREDIT / FORFAIT) */}
       <AnimatePresence>
-        {actionType && (
+        {actionType && actionType !== 'adjust_ext' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -729,10 +877,12 @@ export default function Home() {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-serif font-bold">
-                    {actionType === 'deposit' ? 'Nouvel Envoi (Dépôt)' : 'Nouveau Retrait (Sortie)'}
+                    {actionType === 'deposit' ? 'Nouvel Envoi (Dépôt)' : 
+                     actionType === 'withdrawal' ? 'Nouveau Retrait (Sortie)' : 
+                     actionType === 'credit' ? 'Nouvelle Vente Crédit' : 'Nouvelle Vente Forfait'}
                   </h3>
                   <p className="text-[10px] text-stone-500">
-                    {actionType === 'deposit' ? 'ARGENT REÇU → FLOAT ENVOYÉ' : 'FLOAT REÇU → CASH DONNÉ'}
+                    {actionType === 'withdrawal' ? 'FLOAT REÇU → CASH DONNÉ' : 'CASH REÇU → VALEUR SIM DÉBITÉE'}
                   </p>
                 </div>
                 <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600">
@@ -749,7 +899,12 @@ export default function Home() {
                       <button
                         key={op}
                         type="button"
-                        onClick={() => setOpInput(op)}
+                        onClick={() => {
+                          setOpInput(op)
+                          if (actionType === 'forfait') {
+                            setSelectedForfait(BENIN_FORFAITS[op][0].name)
+                          }
+                        }}
                         className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
                           opInput === op 
                             ? op === 'mtn' ? 'border-amber-500 bg-amber-500/10 text-amber-500'
@@ -764,12 +919,31 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Forfait Select (Only if type is forfait) */}
+                {actionType === 'forfait' && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 uppercase">Choisir le Forfait</label>
+                    <select
+                      value={selectedForfait}
+                      onChange={e => setSelectedForfait(e.target.value)}
+                      className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                        theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                      }`}
+                    >
+                      {BENIN_FORFAITS[opInput].map(f => (
+                        <option key={f.name} value={f.name}>{f.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Amount */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-stone-500 uppercase">Montant (FCFA)</label>
                   <input 
                     type="number"
                     required
+                    disabled={actionType === 'forfait'}
                     placeholder="Ex: 10000"
                     value={amountInput}
                     onChange={e => setAmountInput(e.target.value)}
@@ -799,22 +973,6 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Category select */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-500 uppercase">Catégorie</label>
-                  <select
-                    value={categoryInput}
-                    onChange={e => setCategoryInput(e.target.value as any)}
-                    className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
-                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
-                    }`}
-                  >
-                    <option value="Business/Ventes">Business/Ventes</option>
-                    <option value="Frais de transaction">Frais de transaction</option>
-                    <option value="Perso / Autre">Perso / Autre</option>
-                  </select>
-                </div>
-
                 <Button variant="premium" type="submit" loading={loading} className="w-full mt-2">
                   Valider l'Opération
                 </Button>
@@ -824,7 +982,142 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* ADJUST COFFRES MODAL */}
+      {/* EXTERNAL ADJUSTMENT MODAL */}
+      <AnimatePresence>
+        {actionType === 'adjust_ext' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActionType(null)}
+              className="absolute inset-0 bg-black"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
+                theme === 'dark' ? 'bg-stone-950 border-stone-800' : 'bg-white border-stone-200'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-serif font-bold">Ajustement Externe</h3>
+                  <p className="text-[10px] text-stone-500">Mouvements de fonds sans swap interne</p>
+                </div>
+                <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600">
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddTransaction} className="flex flex-col gap-4">
+                {/* Adjustment Type selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-stone-500 uppercase">Cible de l'ajustement</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdjType('appro_sim')}
+                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                        adjType === 'appro_sim' 
+                          ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
+                          : 'border-stone-800 text-stone-400'
+                      }`}
+                    >
+                      Flotte SIM (Virtuel)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjType('ajust_cash')}
+                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                        adjType === 'ajust_cash' 
+                          ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
+                          : 'border-stone-800 text-stone-400'
+                      }`}
+                    >
+                      Tiroir Cash (Physique)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-form based on selection */}
+                {adjType === 'appro_sim' ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 uppercase">SIM à approvisionner</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['mtn', 'moov', 'celtiis'] as const).map(op => (
+                        <button
+                          key={op}
+                          type="button"
+                          onClick={() => setAdjOperator(op)}
+                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
+                            adjOperator === op 
+                              ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
+                              : 'border-stone-800 text-stone-400'
+                          }`}
+                        >
+                          {op}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 uppercase">Sens de l'ajustement</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAdjCashDirection('inject')}
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                          adjCashDirection === 'inject' 
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' 
+                            : 'border-stone-800 text-stone-400'
+                        }`}
+                      >
+                        + Injecter Cash
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdjCashDirection('withdraw')}
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                          adjCashDirection === 'withdraw' 
+                            ? 'border-rose-500 bg-rose-500/10 text-rose-450' 
+                            : 'border-stone-800 text-stone-400'
+                        }`}
+                      >
+                        - Retirer Cash
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-stone-500 uppercase">Montant (FCFA)</label>
+                  <input 
+                    type="number"
+                    required
+                    placeholder="Ex: 50000"
+                    value={amountInput}
+                    onChange={e => setAmountInput(e.target.value)}
+                    className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                      theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'
+                    }`}
+                  />
+                </div>
+
+                <Button variant="premium" type="submit" loading={loading} className="w-full mt-2">
+                  Enregistrer l'Ajustement
+                </Button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ADJUST COFFRES INITIALS MODAL */}
       <AnimatePresence>
         {showCoffreModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
