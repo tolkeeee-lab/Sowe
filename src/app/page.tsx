@@ -1235,7 +1235,7 @@ export default function Home() {
               <div className="overflow-hidden rounded-2xl border border-stone-300 dark:border-stone-850 shadow-inner">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-850' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-bold`}>
+                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-850' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-450`}>
                       <th className="py-3 px-4">Activité</th>
                       <th className="py-3 px-4 text-right">Cumul (FCFA)</th>
                       <th className="py-3 px-4 text-center">Volume Ops</th>
@@ -1247,7 +1247,7 @@ export default function Home() {
                         <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
                         Dépôts (Envois)
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#E4EAD8] dark:text-[#E4EAD8] light:text-[#111614]">
+                      <td className="py-3 px-4 text-right font-bold text-[#111614] dark:text-[#E4EAD8]">
                         {periodicReportStats.deposit.sum.toLocaleString('fr-FR')}
                       </td>
                       <td className="py-3 px-4 text-center text-stone-500">
