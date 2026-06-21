@@ -93,8 +93,7 @@ ALTER TABLE public.momo_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Access profiles" ON public.momo_profiles
     FOR ALL USING (
         id = auth.uid() 
-        OR owner_id = auth.uid() 
-        OR owner_id = (SELECT owner_id FROM public.momo_profiles WHERE id = auth.uid())
+        OR owner_id = auth.uid()
     ) WITH CHECK (
         id = auth.uid() 
         OR owner_id = auth.uid()
