@@ -1,16 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-natural-primary: #0c1a13; /* Deep forest green */
-  --color-natural-accent: #c5a880;  /* Soft premium gold */
-  --color-natural-accent-hover: #b3946b;
+  --color-natural-primary: #0A0F0D; /* Sleek rich dark slate */
+  --color-natural-accent: #D4AF37;  /* Metallic premium gold */
+  --color-natural-accent-hover: #C59B27;
   --font-serif: 'Playfair Display', Georgia, serif;
   --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* Custom brand colors for MTN, Moov, Celtiis & Cash */
+  --color-momo-mtn: #F2A900;
+  --color-momo-moov: #0077C8;
+  --color-momo-celtiis: #00A86B;
+  --color-momo-cash: #7C3AED;
 }
 
 @layer base {
   body {
-    @apply bg-stone-50 text-stone-900 antialiased selection:bg-natural-accent/30;
+    @apply antialiased selection:bg-natural-accent/30 transition-colors duration-300;
     font-family: var(--font-sans);
   }
   
@@ -18,3 +24,4 @@
     font-family: var(--font-serif);
   }
 }
+

@@ -772,22 +772,22 @@ export default function Home() {
     if (theme === 'dark') {
       switch (operator) {
         case 'mtn':
-          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">mtn</span>
+          return <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">mtn</span>
         case 'moov':
-          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">moov</span>
+          return <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">moov</span>
         case 'celtiis':
-          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">celtiis</span>
+          return <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">celtiis</span>
         default:
           return null
       }
     } else {
       switch (operator) {
         case 'mtn':
-          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">mtn</span>
+          return <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">mtn</span>
         case 'moov':
-          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-blue-100 text-blue-900 border border-blue-300">moov</span>
+          return <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase bg-blue-100 text-blue-900 border border-blue-300">moov</span>
         case 'celtiis':
-          return <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">celtiis</span>
+          return <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">celtiis</span>
         default:
           return null
       }
@@ -795,47 +795,58 @@ export default function Home() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 font-sans ${
-      theme === 'dark' ? 'bg-[#030305] text-white' : 'bg-[#fcfcfb] text-[#121214]'
+    <div className={`min-h-screen transition-colors duration-500 font-sans ${
+      theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
     }`}>
       
       {/* Top Banner / Security active */}
-      <div className="w-full bg-[#001830] text-cyan-400 py-2.5 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b border-cyan-955/80">
-        <span className="inline-block size-2 rounded-full bg-cyan-400 animate-pulse" />
-        CABINE DE SÉCURITÉ ACTIVE : BENIN (COTONOU / ABOMEY-CALAVI)
+      <div className={`w-full py-3 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b transition-colors ${
+        theme === 'dark' 
+          ? 'bg-[#0E1B15] text-[#D4AF37] border-[#1C2C22]' 
+          : 'bg-[#F2EFE9] text-[#7C651A] border-[#DCD6CD]'
+      }`}>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-natural-accent opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-natural-accent"></span>
+        </span>
+        CABINE DE SÉCURITÉ ACTIVE : BÉNIN (COTONOU / ABOMEY-CALAVI)
       </div>
 
       {/* Header */}
-      <header className={`border-b transition-colors ${
-        theme === 'dark' ? 'border-[#151520] bg-[#07070b]/90' : 'border-stone-300 bg-white/90'
-      } backdrop-blur-md sticky top-0 z-45`}>
+      <header className={`border-b transition-colors sticky top-0 z-40 backdrop-blur-md ${
+        theme === 'dark' 
+          ? 'border-[#1C2C22] bg-[#050807]/90' 
+          : 'border-[#DCD6CD] bg-[#FAF9F6]/90'
+      }`}>
         <div className="max-w-4xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`size-10 rounded-xl flex items-center justify-center shadow-md transition-colors ${
-              theme === 'dark' ? 'bg-cyan-950 text-cyan-400' : 'bg-cyan-100 text-cyan-600'
+            <div className={`size-11 rounded-2xl flex items-center justify-center shadow-lg transition-colors ${
+              theme === 'dark' 
+                ? 'bg-[#0E1B15] text-natural-accent border border-[#1C2C22]' 
+                : 'bg-white text-natural-accent-hover border border-[#DCD6CD]'
             }`}>
               <Wallet className="size-5" />
             </div>
             <div>
-              <span className="font-serif text-xl font-bold tracking-tight">MOMO PREMIUM</span>
-              <span className="text-[10px] block font-semibold tracking-widest uppercase text-cyan-500 -mt-1">Gestion Cabine</span>
+              <span className="font-serif text-xl font-bold tracking-tight block">MOMO PREMIUM</span>
+              <span className="text-[9px] block font-bold tracking-widest uppercase text-natural-accent -mt-1">Luxury Cabin Suite</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             {/* Role Selector Pill */}
-            <div className={`flex items-center p-0.5 rounded-xl border text-[10px] font-bold transition-all ${
-              theme === 'dark' ? 'bg-[#0f0f15] border-[#1f1f2e]' : 'bg-stone-100 border-stone-300'
+            <div className={`flex items-center p-1 rounded-xl border text-[10px] font-bold transition-all ${
+              theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
             }`}>
               <button
                 onClick={handleSwitchToEmployee}
-                className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                   role === 'employe'
-                    ? theme === 'dark' ? 'bg-stone-800 text-white' : 'bg-white shadow text-stone-850'
-                    : 'text-stone-400 hover:text-stone-300'
+                    ? theme === 'dark' ? 'bg-[#1C2C22] text-white shadow-inner' : 'bg-white shadow text-[#111614]'
+                    : 'text-stone-500 hover:text-stone-400'
                 }`}
               >
-                Employé 👤
+                Gérant 👤
               </button>
               <button
                 onClick={() => {
@@ -843,111 +854,114 @@ export default function Home() {
                     setShowPinModal(true)
                   }
                 }}
-                className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                   role === 'proprio'
-                    ? 'bg-cyan-500 text-stone-950 font-black shadow-sm'
-                    : 'text-stone-400 hover:text-cyan-400'
+                    ? 'bg-natural-accent text-[#0A0F0D] font-black shadow-md'
+                    : 'text-stone-500 hover:text-natural-accent'
                 }`}
               >
                 {role === 'proprio' ? 'Proprio 👑' : 'Proprio 🔒'}
               </button>
             </div>
 
-            <span className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition-colors ${
-              theme === 'dark' ? 'bg-stone-900 text-stone-300 border-[#1f1f2e]' : 'bg-stone-100 text-stone-700 border-stone-300'
+            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-colors hidden sm:inline-block ${
+              theme === 'dark' ? 'bg-[#0E1B15] text-emerald-400 border-[#1C2C22]' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>
               {supabaseConnected ? 'Supabase Sync 🟢' : 'Offline Safe 🌐'}
             </span>
 
             <button 
               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-              className={`size-10 rounded-xl flex items-center justify-center border transition-all ${
+              className={`size-10 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
                 theme === 'dark' 
-                  ? 'bg-stone-900 border-[#1f1f2e] text-yellow-400 hover:bg-stone-800' 
-                  : 'bg-white border-stone-300 text-stone-700 hover:bg-stone-100'
+                  ? 'bg-[#0E1B15] border-[#1C2C22] text-yellow-400 hover:bg-[#1C2C22]' 
+                  : 'bg-white border-[#DCD6CD] text-stone-700 hover:bg-stone-100'
               }`}
             >
-              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              {theme === 'dark' ? <Sun className="size-4.5" /> : <Moon className="size-4.5" />}
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Body */}
-      <main className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <main className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-8">
 
         {/* Global Balance Card */}
-        <section className={`p-6 rounded-[32px] border transition-all ${
+        <section className={`p-6 rounded-[36px] border transition-all overflow-hidden relative ${
           theme === 'dark' 
-            ? 'bg-gradient-to-b from-[#0b0b10] to-[#040406] border-[#181822] shadow-xl' 
-            : 'bg-white border-stone-300 shadow-sm'
+            ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22] shadow-2xl' 
+            : 'bg-gradient-to-b from-white to-[#F2EFE9] border-[#DCD6CD] shadow-md'
         }`}>
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-xs uppercase tracking-wider font-bold text-stone-500">Solde Global Actuel</span>
+          {/* Subtle gradient orb overlay */}
+          <div className="absolute -right-16 -top-16 size-48 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+
+          <div className="flex justify-between items-center mb-4 relative z-10">
+            <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-500">Solde Global en Cabine</span>
             <button 
               onClick={() => alert(`Capital totalisé initialement configuré : ${totalCapitalise.toLocaleString('fr-FR')} FCFA`)}
-              className="text-[10px] font-bold text-cyan-500 hover:underline uppercase tracking-wider"
+              className="text-[10px] font-bold text-natural-accent hover:underline uppercase tracking-wider transition-colors"
             >
-              Solde Total Capitalisé
+              Fonds de départ
             </button>
           </div>
 
-          <div className="text-center py-2 mb-6">
-            <h2 className="text-4xl font-mono font-bold tracking-tight text-cyan-500">
-              {soldeGlobal.toLocaleString('fr-FR')} <span className="text-lg font-sans">FCFA</span>
+          <div className="text-center py-4 mb-6 relative z-10">
+            <h2 className="text-5xl font-serif font-black tracking-tight text-natural-accent">
+              {soldeGlobal.toLocaleString('fr-FR')} <span className="text-xl font-sans font-medium">FCFA</span>
             </h2>
           </div>
 
           {/* SIM and Cash grid */}
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-2 gap-4 relative z-10">
             {/* MTN SIM */}
-            <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
+            <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
             }`}>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 mb-1">
-                <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
-                MTN MOMO SIM
+              <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-amber-500 mb-1.5 uppercase tracking-wider">
+                <span className="size-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400" />
+                SIM MTN MoMo
               </span>
-              <div className="font-mono font-bold text-sm">
+              <div className="font-mono font-bold text-base text-amber-500">
                 {balances.mtn.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
               </div>
             </div>
 
             {/* MOOV SIM */}
-            <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
+            <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
             }`}>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500 mb-1">
-                <span className="size-1.5 rounded-full bg-blue-500 animate-pulse" />
-                MOOV MONEY SIM
+              <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-blue-500 mb-1.5 uppercase tracking-wider">
+                <span className="size-2 rounded-full bg-blue-500 shadow-sm shadow-blue-550" />
+                SIM Moov Money
               </span>
-              <div className="font-mono font-bold text-sm">
+              <div className="font-mono font-bold text-base text-blue-500">
                 {balances.moov.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
               </div>
             </div>
 
             {/* CELTIIS SIM */}
-            <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
+            <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
             }`}>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 mb-1">
-                <span className="size-1.5 rounded-full bg-emerald-450 animate-pulse" />
-                CELTIIS CASH SIM
+              <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-emerald-500 mb-1.5 uppercase tracking-wider">
+                <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-450" />
+                SIM Celtiis
               </span>
-              <div className="font-mono font-bold text-sm">
+              <div className="font-mono font-bold text-base text-emerald-500">
                 {balances.celtiis.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
               </div>
             </div>
 
             {/* CASH IN DRAWER */}
-            <div className={`p-3.5 rounded-2xl border transition-colors ${
-              theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
+            <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
             }`}>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-400 mb-1">
-                <span className="size-1.5 rounded-full bg-purple-455 animate-pulse" />
-                CASH (DANS TIROIR)
+              <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-purple-400 mb-1.5 uppercase tracking-wider">
+                <span className="size-2 rounded-full bg-purple-500 shadow-sm shadow-purple-450" />
+                Tiroir Cash (Physique)
               </span>
-              <div className="font-mono font-bold text-sm">
+              <div className="font-mono font-bold text-base text-purple-400">
                 {balances.cash.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
               </div>
             </div>
@@ -955,54 +969,63 @@ export default function Home() {
         </section>
 
         {/* 4 Operations Quick Buttons Grid */}
-        <section className="grid grid-cols-2 gap-3.5">
+        <section className="grid grid-cols-2 gap-4">
           {/* DEPOSIT */}
           <button 
             onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
-            className="p-4 rounded-[22px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="p-5 rounded-[28px] bg-natural-accent hover:bg-natural-accent-hover text-[#0A0F0D] text-left flex flex-col justify-between h-28 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
-            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
-              <ArrowDownLeft className="size-4" />
-              + ENVOI (DÉPÔT)
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
+              <ArrowDownLeft className="size-4.5 stroke-[3px]" />
+              ENVOI (DÉPÔT)
             </div>
-            <div className="text-[9px] font-bold opacity-90 uppercase tracking-widest mt-1">
-              Cash Reçu → Float Envoyé
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest opacity-80">
+                Cash Reçu → SIM Débitée
+              </div>
+              <div className="text-[8px] opacity-60 mt-0.5">MTN, Moov, Celtiis</div>
             </div>
           </button>
 
           {/* WITHDRAWAL */}
           <button 
             onClick={() => { setActionType('withdrawal'); setOpInput('mtn'); }}
-            className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
+            className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-28 border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
-                ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
-                : 'border-stone-355 bg-white hover:bg-stone-100 text-[#121214]'
+                ? 'border-[#1C2C22] bg-[#0E1B15] hover:bg-[#12241C] text-white shadow-lg' 
+                : 'border-[#DCD6CD] bg-white hover:bg-stone-50 text-[#111614] shadow-sm'
             }`}
           >
-            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-500">
-              <ArrowUpRight className="size-4" />
-              - RETRAIT (SORTIE)
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-rose-500">
+              <ArrowUpRight className="size-4.5 stroke-[3px]" />
+              RETRAIT (RETRAIT)
             </div>
-            <div className="text-[9px] font-bold text-stone-500 uppercase tracking-widest mt-1">
-              Float Reçu → Cash Donné
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-stone-500">
+                SIM Créditée → Cash Donné
+              </div>
+              <div className="text-[8px] text-stone-400 mt-0.5">Distribution directe de cash</div>
             </div>
           </button>
 
           {/* CREDIT SALES */}
           <button 
             onClick={() => { setActionType('credit'); setOpInput('mtn'); }}
-            className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
+            className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-28 border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
-                ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
-                : 'border-stone-355 bg-white hover:bg-stone-100 text-[#121214]'
+                ? 'border-[#1C2C22] bg-[#0E1B15] hover:bg-[#12241C] text-white shadow-lg' 
+                : 'border-[#DCD6CD] bg-white hover:bg-stone-50 text-[#111614] shadow-sm'
             }`}
           >
-            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-500">
-              <Smartphone className="size-4" />
-              📱 VENTE CRÉDIT
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-500">
+              <Smartphone className="size-4.5 stroke-[2px]" />
+              VENTE CRÉDIT
             </div>
-            <div className="text-[9px] font-bold text-stone-500 uppercase tracking-widest mt-1">
-              Cash Reçu → Airtime SIM
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-stone-500">
+                Cash Reçu → Airtime
+              </div>
+              <div className="text-[8px] text-stone-400 mt-0.5">Recharges ordinaires</div>
             </div>
           </button>
 
@@ -1013,36 +1036,39 @@ export default function Home() {
               setOpInput('mtn');
               setSelectedForfait(BENIN_FORFAITS.mtn[0].name); 
             }}
-            className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
+            className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-28 border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
-                ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
-                : 'border-stone-355 bg-white hover:bg-stone-100 text-[#121214]'
+                ? 'border-[#1C2C22] bg-[#0E1B15] hover:bg-[#12241C] text-white shadow-lg' 
+                : 'border-[#DCD6CD] bg-white hover:bg-stone-50 text-[#111614] shadow-sm'
             }`}
           >
-            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-500">
-              <Zap className="size-4" />
-              ⚡ VENTE FORFAIT
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-500">
+              <Zap className="size-4.5 stroke-[2px]" />
+              VENTE FORFAIT
             </div>
-            <div className="text-[9px] font-bold text-stone-500 uppercase tracking-widest mt-1">
-              Cash Reçu → Forfait SIM
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-stone-500">
+                Cash Reçu → Forfait Internet
+              </div>
+              <div className="text-[8px] text-stone-400 mt-0.5">Activation rapide d'offres</div>
             </div>
           </button>
         </section>
 
         {/* Bilan Périodique Section */}
-        <section className={`p-5 rounded-[28px] border transition-colors ${
-          theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300 shadow-sm'
+        <section className={`p-6 rounded-[32px] border transition-colors ${
+          theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
         }`}>
           
           {/* Period type selector segments */}
-          <div className="flex bg-[#050508]/60 dark:bg-stone-950/40 p-1 rounded-2xl border border-stone-300 dark:border-stone-850 text-xs font-bold mb-5">
+          <div className="flex bg-[#050807]/60 dark:bg-stone-950/20 p-1 rounded-2xl border border-stone-300 dark:border-stone-850 text-xs font-bold mb-5">
             {(['day', 'week', 'month', 'year'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriodType(p)}
-                className={`flex-1 py-2 rounded-xl transition-all capitalize ${
+                className={`flex-1 py-2.5 rounded-xl transition-all capitalize cursor-pointer font-bold ${
                   periodType === p 
-                    ? 'bg-cyan-500 text-stone-950 shadow-md' 
+                    ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
                     : 'text-stone-400 hover:text-white'
                 }`}
               >
@@ -1053,8 +1079,8 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <div>
-              <h3 className="text-sm font-bold uppercase font-serif tracking-wide flex items-center gap-2">
-                <Calendar className="size-4.5 text-cyan-500" />
+              <h3 className="text-sm font-bold uppercase font-serif tracking-wide flex items-center gap-2 text-natural-accent">
+                <Calendar className="size-4.5" />
                 Bilan Périodique ({formattedReportPeriodLabel})
               </h3>
               <p className="text-[9px] text-stone-500">
@@ -1063,21 +1089,21 @@ export default function Home() {
             </div>
             
             {/* Contextual Date Navigators */}
-            <div className="flex items-center gap-1.5 bg-[#050508]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-350 dark:border-stone-850 text-[10px] font-bold">
+            <div className="flex items-center gap-1.5 bg-[#050807]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-350 dark:border-stone-850 text-[10px] font-bold">
               {periodType === 'day' && (
                 <>
                   <button 
                     onClick={() => setSelectedReportDate(TODAY_STR)}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      selectedReportDate === TODAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      selectedReportDate === TODAY_STR ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
                     }`}
                   >
-                    Aujourd'hui
+                    Auj.
                   </button>
                   <button 
                     onClick={() => setSelectedReportDate(YESTERDAY_STR)}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      selectedReportDate === YESTERDAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      selectedReportDate === YESTERDAY_STR ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
                     }`}
                   >
                     Hier
@@ -1086,8 +1112,8 @@ export default function Home() {
                     type="date"
                     value={selectedReportDate}
                     onChange={e => e.target.value && setSelectedReportDate(e.target.value)}
-                    className={`px-1 bg-transparent border-0 font-mono text-[9px] focus:outline-none ${
-                      theme === 'dark' ? 'text-white' : 'text-stone-850'
+                    className={`px-1 bg-transparent border-0 font-mono text-[9px] focus:outline-none cursor-pointer ${
+                      theme === 'dark' ? 'text-white' : 'text-stone-800'
                     }`}
                   />
                 </>
@@ -1097,8 +1123,8 @@ export default function Home() {
                 <>
                   <button 
                     onClick={() => setSelectedReportDate(TODAY_STR)}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      getWeekRange(selectedReportDate).start === getWeekRange(TODAY_STR).start ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      getWeekRange(selectedReportDate).start === getWeekRange(TODAY_STR).start ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
                     }`}
                   >
                     Cette Semaine
@@ -1109,8 +1135,8 @@ export default function Home() {
                       d.setDate(d.getDate() - 7)
                       setSelectedReportDate(getLocalDateString(d))
                     }}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      getWeekRange(selectedReportDate).start === getWeekRange(getYesterdayDateString()).start && getWeekRange(selectedReportDate).start !== getWeekRange(TODAY_STR).start ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400'
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      getWeekRange(selectedReportDate).start === getWeekRange(getYesterdayDateString()).start && getWeekRange(selectedReportDate).start !== getWeekRange(TODAY_STR).start ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
                     }`}
                   >
                     Précédente
@@ -1123,7 +1149,7 @@ export default function Home() {
                   value={selectedReportDate.slice(0, 7)}
                   onChange={e => setSelectedReportDate(`${e.target.value}-01`)}
                   className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
-                    theme === 'dark' ? 'text-white bg-stone-900' : 'text-stone-850 bg-white'
+                    theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-800 bg-white'
                   }`}
                 >
                   <option value={TODAY_STR.slice(0, 7)}>Mois En Cours</option>
@@ -1138,7 +1164,7 @@ export default function Home() {
                   value={selectedReportDate.slice(0, 4)}
                   onChange={e => setSelectedReportDate(`${e.target.value}-01-01`)}
                   className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
-                    theme === 'dark' ? 'text-white bg-stone-900' : 'text-stone-850 bg-white'
+                    theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-800 bg-white'
                   }`}
                 >
                   <option value="2026">2026</option>
@@ -1151,14 +1177,14 @@ export default function Home() {
           {/* Bilan Network Filter buttons */}
           <div className="flex items-center gap-2 mb-4">
             <span className="text-[10px] font-bold text-stone-500 uppercase">Filtre Réseau :</span>
-            <div className="flex bg-[#050508]/40 dark:bg-stone-950/20 p-0.5 rounded-lg border border-stone-300 dark:border-stone-850 text-[9px] font-bold">
+            <div className="flex bg-[#050807]/40 dark:bg-stone-950/20 p-0.5 rounded-lg border border-stone-300 dark:border-stone-850 text-[9px] font-bold">
               {(['all', 'mtn', 'moov', 'celtiis'] as const).map(op => (
                 <button
                   key={op}
                   onClick={() => setReportOperator(op)}
-                  className={`px-2.5 py-1 rounded transition-all capitalize ${
+                  className={`px-3 py-1 rounded transition-all capitalize cursor-pointer ${
                     reportOperator === op 
-                      ? 'bg-cyan-500 text-stone-950' 
+                      ? 'bg-natural-accent text-[#0A0F0D]' 
                       : 'text-stone-400 hover:text-white'
                   }`}
                 >
@@ -1169,76 +1195,76 @@ export default function Home() {
           </div>
 
           {/* Balance table sheet */}
-          <div className="overflow-hidden rounded-xl border border-stone-300 dark:border-stone-850">
+          <div className="overflow-hidden rounded-2xl border border-stone-300 dark:border-stone-850 shadow-inner">
             <table className="w-full text-left text-xs font-mono">
               <thead>
-                <tr className={`border-b ${theme === 'dark' ? 'bg-[#0f0f15] border-stone-850' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-bold`}>
-                  <th className="py-2.5 px-3.5">Activité</th>
-                  <th className="py-2.5 px-3.5 text-right">Cumul (FCFA)</th>
-                  <th className="py-2.5 px-3.5 text-center">Volume Ops</th>
+                <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-850' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-bold`}>
+                  <th className="py-3 px-4">Activité</th>
+                  <th className="py-3 px-4 text-right">Cumul (FCFA)</th>
+                  <th className="py-3 px-4 text-center">Volume Ops</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-300/40 dark:divide-stone-850/40">
-                <tr>
-                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
-                    <span className="size-1.5 rounded-full bg-cyan-500" />
+              <tbody className="divide-y divide-stone-350/20 dark:divide-stone-850/40">
+                <tr className="hover:bg-stone-500/5 transition-colors">
+                  <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
                     Dépôts (Envois)
                   </td>
-                  <td className="py-2.5 px-3.5 text-right font-bold">
+                  <td className="py-3 px-4 text-right font-bold text-[#E4EAD8] dark:text-[#E4EAD8] light:text-[#111614]">
                     {periodicReportStats.deposit.sum.toLocaleString('fr-FR')}
                   </td>
-                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                  <td className="py-3 px-4 text-center text-stone-500">
                     {periodicReportStats.deposit.count} tx
                   </td>
                 </tr>
-                <tr>
-                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
-                    <span className="size-1.5 rounded-full bg-rose-500" />
+                <tr className="hover:bg-stone-500/5 transition-colors">
+                  <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500" />
                     Retraits (Sorties)
                   </td>
-                  <td className="py-2.5 px-3.5 text-right font-bold">
+                  <td className="py-3 px-4 text-right font-bold text-rose-500">
                     {periodicReportStats.withdrawal.sum.toLocaleString('fr-FR')}
                   </td>
-                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                  <td className="py-3 px-4 text-center text-stone-500">
                     {periodicReportStats.withdrawal.count} tx
                   </td>
                 </tr>
-                <tr>
-                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
-                    <span className="size-1.5 rounded-full bg-amber-500" />
+                <tr className="hover:bg-stone-500/5 transition-colors">
+                  <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500" />
                     Ventes de Crédits
                   </td>
-                  <td className="py-2.5 px-3.5 text-right font-bold">
+                  <td className="py-3 px-4 text-right font-bold text-amber-500">
                     {periodicReportStats.credit.sum.toLocaleString('fr-FR')}
                   </td>
-                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                  <td className="py-3 px-4 text-center text-stone-500">
                     {periodicReportStats.credit.count} tx
                   </td>
                 </tr>
-                <tr>
-                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
-                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                <tr className="hover:bg-stone-500/5 transition-colors">
+                  <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
                     Ventes de Forfaits
                   </td>
-                  <td className="py-2.5 px-3.5 text-right font-bold">
+                  <td className="py-3 px-4 text-right font-bold text-emerald-450">
                     {periodicReportStats.forfait.sum.toLocaleString('fr-FR')}
                   </td>
-                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                  <td className="py-3 px-4 text-center text-stone-500">
                     {periodicReportStats.forfait.count} tx
                   </td>
                 </tr>
                 {/* Total row */}
                 <tr className={`border-t font-black ${
-                  theme === 'dark' ? 'bg-[#0f0f15]/80 text-cyan-400' : 'bg-stone-50 text-[#121214]'
+                  theme === 'dark' ? 'bg-[#0A0F0D] text-natural-accent border-[#1C2C22]' : 'bg-stone-50 text-[#111614] border-[#DCD6CD]'
                 }`}>
-                  <td className="py-3 px-3.5 font-sans font-black flex items-center gap-1.5">
-                    <Coins className="size-3.5" />
+                  <td className="py-3.5 px-4 font-sans font-black flex items-center gap-2">
+                    <Coins className="size-4" />
                     Total Période
                   </td>
-                  <td className="py-3 px-3.5 text-right text-sm">
+                  <td className="py-3.5 px-4 text-right text-sm">
                     {periodicReportStats.total.sum.toLocaleString('fr-FR')}
                   </td>
-                  <td className="py-3 px-3.5 text-center text-sm">
+                  <td className="py-3.5 px-4 text-center text-sm">
                     {periodicReportStats.total.count} tx
                   </td>
                 </tr>
@@ -1248,13 +1274,13 @@ export default function Home() {
         </section>
 
         {/* Adjustments & Config section */}
-        <section className={`p-4.5 rounded-[24px] border transition-colors ${
-          theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
+        <section className={`p-5 rounded-[28px] border transition-colors ${
+          theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
         } flex flex-col gap-4`}>
           <div className="flex justify-between items-center gap-4">
             <div>
-              <h3 className="text-sm font-bold flex items-center gap-1.5">
-                <Sliders className="size-4 text-stone-400" />
+              <h3 className="text-sm font-bold flex items-center gap-2 text-stone-400">
+                <Sliders className="size-4" />
                 Mouvements de Caisse & Config
               </h3>
               <p className="text-[10px] text-stone-500 mt-0.5">
@@ -1268,9 +1294,9 @@ export default function Home() {
                   variant="outline" 
                   size="xs" 
                   onClick={() => setActionType('adjust_ext')}
-                  className="text-xs shrink-0"
+                  className="text-[10px] font-bold shrink-0 rounded-lg cursor-pointer"
                 >
-                  ⚙️ Ajustement Flotte
+                  ⚙️ Flotte
                 </Button>
                 <Button 
                   variant="outline" 
@@ -1282,67 +1308,67 @@ export default function Home() {
                     setCoffreCash(String(coffres.cash))
                     setShowCoffreModal(true)
                   }}
-                  className="text-xs shrink-0"
+                  className="text-[10px] font-bold shrink-0 rounded-lg cursor-pointer"
                 >
                   Ajuster Coffres
                 </Button>
               </div>
             ) : (
-              <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
-                🔒 Verrouillé
+              <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                🔒 Propriétaire requis
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-stone-500 text-center">
+          <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-stone-500 text-center bg-stone-500/5 p-3 rounded-xl border border-stone-500/5">
             <div>
-              <span className="block text-amber-600 font-bold mb-0.5">MTN Initial</span>
+              <span className="block text-amber-600 font-bold mb-0.5">MTN Init</span>
               {coffres.mtn.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-blue-600 font-bold mb-0.5">Moov Initial</span>
+              <span className="block text-blue-600 font-bold mb-0.5">Moov Init</span>
               {coffres.moov.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-emerald-600 font-bold mb-0.5">Celtiis Initial</span>
+              <span className="block text-emerald-600 font-bold mb-0.5">Celtiis Init</span>
               {coffres.celtiis.toLocaleString('fr-FR')}
             </div>
             <div>
-              <span className="block text-purple-500 font-bold mb-0.5">Cash Initial</span>
+              <span className="block text-purple-500 font-bold mb-0.5">Cash Init</span>
               {coffres.cash.toLocaleString('fr-FR')}
             </div>
           </div>
         </section>
 
         {/* Safety tip 1 (Terrain tip) */}
-        <div className={`p-4 rounded-[20px] border flex gap-3 ${
+        <div className={`p-4 rounded-[24px] border flex gap-3 ${
           theme === 'dark' 
-            ? 'bg-blue-950/20 border-blue-900/40 text-blue-300' 
-            : 'bg-blue-50/70 border-blue-100 text-blue-900 font-medium'
+            ? 'bg-[#0E1B15] border-[#1C2C22] text-[#E4EAD8]' 
+            : 'bg-[#F2EFE9] border-[#DCD6CD] text-[#554719] font-medium'
         }`}>
-          <Info className="size-5 shrink-0 text-blue-400 mt-0.5" />
+          <Info className="size-5 shrink-0 text-natural-accent mt-0.5" />
           <div className="text-[11px] leading-relaxed">
-            <span className="font-bold block mb-1">📢 Astuce du terrain Béninois :</span>
-            La loi suprême du gérant MoMo en cas de gros transfert (≥ 100k FCFA) : compte d'abord les billets physiques, range-les au chaud, et ne valide le transfert sur ton mobile qu'après. Méfie-toi des clients pressés ou qui passent des appels téléphoniques bruyants.
+            <span className="font-extrabold text-natural-accent block mb-1">📢 RÈGLE D'OR CABINE :</span>
+            Pour tout dépôt important (≥ 100 000 FCFA) : comptez physiquement les billets, mettez-les en sécurité dans le tiroir fermé, puis validez le transfert sur votre mobile. Ne vous laissez pas distraire.
           </div>
         </div>
 
         {/* Weekly activity chart Mockup */}
-        <section className={`p-5 rounded-[28px] border transition-colors ${
-          theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
+        <section className={`p-6 rounded-[32px] border transition-colors ${
+          theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
         }`}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-sm font-bold uppercase font-serif">Activité Hebdomadaire</h3>
+              <h3 className="text-sm font-bold uppercase font-serif text-natural-accent">Activité Hebdomadaire</h3>
               <p className="text-[9px] text-stone-500">Volume de vente de crédit & forfaits</p>
             </div>
-            <div className="flex gap-1 bg-stone-950/20 p-0.5 border border-stone-850 rounded-lg text-[9px] font-bold">
-              <span className="px-2 py-1 rounded bg-cyan-500 text-stone-950">VOLUME (FCFA)</span>
-              <span className="px-2 py-1 text-stone-400 cursor-pointer">OPÉRATIONS</span>
+            <div className="flex gap-1 bg-stone-900/10 p-0.5 border border-stone-800/10 dark:border-stone-850 rounded-lg text-[9px] font-bold">
+              <span className="px-2.5 py-1 rounded bg-natural-accent text-[#0A0F0D]">VOLUME (FCFA)</span>
+              <span className="px-2.5 py-1 text-stone-400 cursor-not-allowed">OPS</span>
             </div>
           </div>
 
-          <div className="flex justify-between items-end h-32 px-4 gap-2 pt-2 border-b border-stone-800/40">
+          <div className="flex justify-between items-end h-32 px-4 gap-2 pt-2 border-b border-stone-500/10">
             {['sam 13', 'dim 14', 'lun 15', 'mar 16', 'mer 17', 'jeu 18', 'ven 19'].map((day, idx) => {
               const heights = [
                 { mtn: 'h-2', moov: 'h-3', celtiis: 'h-1' },
@@ -1354,11 +1380,11 @@ export default function Home() {
                 { mtn: 'h-12', moov: 'h-16', celtiis: 'h-6' },
               ]
               return (
-                <div key={day} className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-full max-w-[14px] flex flex-col justify-end rounded-t overflow-hidden h-24 bg-[#050508]">
-                    <div className={`w-full bg-emerald-500 ${heights[idx].celtiis}`} />
-                    <div className={`w-full bg-blue-600 ${heights[idx].moov}`} />
-                    <div className={`w-full bg-amber-400 ${heights[idx].mtn}`} />
+                <div key={day} className="flex flex-col items-center gap-2 flex-1">
+                  <div className="w-full max-w-[16px] flex flex-col justify-end rounded-t-lg overflow-hidden h-24 bg-stone-500/5">
+                    <div className={`w-full bg-emerald-500 transition-all duration-300 ${heights[idx].celtiis}`} />
+                    <div className={`w-full bg-blue-600 transition-all duration-300 ${heights[idx].moov}`} />
+                    <div className={`w-full bg-amber-400 transition-all duration-300 ${heights[idx].mtn}`} />
                   </div>
                   <span className="text-[8px] font-mono text-stone-500 uppercase">{day.split(' ')[1]}</span>
                 </div>
@@ -1366,22 +1392,22 @@ export default function Home() {
             })}
           </div>
 
-          <div className="flex justify-center gap-4 text-[9px] font-bold uppercase mt-3">
-            <span className="flex items-center gap-1"><span className="size-2 rounded bg-emerald-500" /> Celtiis</span>
-            <span className="flex items-center gap-1"><span className="size-2 rounded bg-amber-400" /> MTN</span>
-            <span className="flex items-center gap-1"><span className="size-2 rounded bg-blue-600" /> Moov</span>
+          <div className="flex justify-center gap-4 text-[9px] font-bold uppercase mt-4">
+            <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-emerald-555" /> Celtiis</span>
+            <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-455" /> MTN</span>
+            <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-blue-555" /> Moov</span>
           </div>
         </section>
 
         {/* Recent history list with filters */}
-        <section className="flex flex-col gap-3.5">
+        <section className="flex flex-col gap-4">
           <div className="flex justify-between items-end px-1">
             <div>
-              <h3 className="text-sm font-bold uppercase font-serif">Historique Récent</h3>
-              <p className="text-[9px] text-stone-505">Journal d'activité filtrable de la cabine</p>
+              <h3 className="text-sm font-bold uppercase font-serif text-natural-accent">Historique Récent</h3>
+              <p className="text-[9px] text-stone-500">Journal d'activité filtrable de la cabine</p>
             </div>
-            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
-              theme === 'dark' ? 'bg-[#0f0f15] text-stone-300 border border-[#1e1e2d]' : 'bg-stone-200 text-stone-850'
+            <span className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg ${
+              theme === 'dark' ? 'bg-[#0E1B15] text-stone-300 border border-[#1C2C22]' : 'bg-[#F2EFE9] text-stone-700'
             }`}>
               Affichés: {filteredRecentHistory.length} Tx
             </span>
@@ -1389,24 +1415,24 @@ export default function Home() {
 
           {/* Interactive filter controls above the list */}
           <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${
-            theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
+            theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
           }`}>
             
             {/* Phone search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 size-3.5" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500 size-4" />
               <input
                 type="text"
                 value={historySearch}
                 onChange={e => setHistorySearch(e.target.value)}
                 placeholder="Filtrer par N° client..."
-                className={`w-full pl-9 pr-4 py-2 border rounded-xl text-xs focus:outline-none ${
-                  theme === 'dark' ? 'bg-[#050508] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                className={`w-full pl-10 pr-8 py-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+                  theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-850'
                 }`}
               />
               {historySearch && (
-                <button onClick={() => setHistorySearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
-                  <X className="size-3" />
+                <button onClick={() => setHistorySearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 cursor-pointer">
+                  <X className="size-3.5" />
                 </button>
               )}
             </div>
@@ -1414,12 +1440,12 @@ export default function Home() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Type filter */}
               <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
-                <label className="text-[8px] font-bold text-stone-500 uppercase">Activité</label>
+                <label className="text-[8px] font-bold text-stone-500 uppercase tracking-wide">Activité</label>
                 <select
                   value={historyType}
                   onChange={e => setHistoryType(e.target.value as any)}
-                  className={`w-full p-2 border rounded-lg text-[10px] font-bold focus:outline-none ${
-                    theme === 'dark' ? 'bg-[#050508] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                  className={`w-full p-2.5 border rounded-xl text-[10px] font-bold focus:outline-none ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-800'
                   }`}
                 >
                   <option value="all">Toutes Activités</option>
@@ -1432,12 +1458,12 @@ export default function Home() {
 
               {/* Operator filter */}
               <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
-                <label className="text-[8px] font-bold text-stone-500 uppercase">Réseau</label>
+                <label className="text-[8px] font-bold text-stone-500 uppercase tracking-wide">Réseau</label>
                 <select
                   value={historyOperator}
                   onChange={e => setHistoryOperator(e.target.value as any)}
-                  className={`w-full p-2 border rounded-lg text-[10px] font-bold focus:outline-none ${
-                    theme === 'dark' ? 'bg-[#050508] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                  className={`w-full p-2.5 border rounded-xl text-[10px] font-bold focus:outline-none ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-800'
                   }`}
                 >
                   <option value="all">Tous Réseaux</option>
@@ -1451,7 +1477,7 @@ export default function Home() {
           </div>
 
           {/* Cards for transactions */}
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-3">
             <AnimatePresence mode="popLayout">
               {filteredRecentHistory.length > 0 ? (
                 filteredRecentHistory.map(txn => (
@@ -1465,28 +1491,28 @@ export default function Home() {
                         setActiveReceipt(txn)
                       }
                     }}
-                    className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
-                      txn.type === 'deposit' ? 'cursor-pointer' : ''
+                    className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3.5 ${
+                      txn.type === 'deposit' ? 'cursor-pointer hover:border-natural-accent' : ''
                     } ${
                       txn.isScamReported 
                         ? theme === 'dark' 
-                          ? 'border-rose-900 bg-rose-955/20 text-rose-300' 
+                          ? 'border-rose-900 bg-rose-950/20 text-rose-300' 
                           : 'border-rose-300 bg-rose-50 text-rose-900'
                         : txn.type === 'appro_sim' || txn.type === 'ajust_cash'
-                          ? theme === 'dark' ? 'border-purple-900 bg-purple-955/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
+                          ? theme === 'dark' ? 'border-purple-900 bg-purple-950/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
                           : theme === 'dark'
-                            ? 'border-[#151520] bg-[#08080c] hover:bg-[#121217]'
-                            : 'border-stone-300 bg-white hover:bg-stone-50'
+                            ? 'border-[#1C2C22] bg-[#0E1B15]/40 hover:bg-[#0E1B15]/60'
+                            : 'border-[#DCD6CD] bg-white hover:bg-stone-50'
                     }`}
                   >
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                           txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait'
-                            ? 'bg-cyan-500/20 text-cyan-400' 
+                            ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' 
                             : txn.type === 'withdrawal'
-                              ? 'bg-rose-500/20 text-rose-550'
-                              : 'bg-purple-500/20 text-purple-400'
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                         }`}>
                           {txn.type === 'deposit' ? 'DEP' : 
                            txn.type === 'withdrawal' ? 'RET' : 
@@ -1497,7 +1523,7 @@ export default function Home() {
                         {/* Operator badge */}
                         {txn.type !== 'ajust_cash' && renderOperatorBadge(txn.operator)}
 
-                        <span className="text-[10px] text-stone-500 font-mono">{txn.time}</span>
+                        <span className="text-[9px] text-stone-500 font-mono font-bold">{txn.time}</span>
                       </div>
 
                       <div className="font-mono font-bold text-sm">
@@ -1507,17 +1533,17 @@ export default function Home() {
 
                     <div className="flex justify-between items-center text-xs">
                       <div>
-                        <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'N° client : '}</span>
+                        <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'Client : '}</span>
                         <span className="font-mono font-bold">{txn.phone}</span>
                         {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
-                          <span className="ml-1 text-[9px] bg-red-655 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
+                          <span className="ml-1 text-[8px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse">ARNAQUEUR</span>
                         )}
                         {txn.type === 'deposit' && (
-                          <span className="ml-2 text-[9px] font-black text-cyan-500 underline uppercase tracking-wider">📄 Reçu</span>
+                          <span className="ml-2 text-[8px] font-extrabold text-natural-accent bg-natural-accent/10 px-1.5 py-0.5 rounded border border-natural-accent/25 uppercase tracking-wider">Reçu</span>
                         )}
                       </div>
                       <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${
-                        theme === 'dark' ? 'bg-[#0f0f15] text-stone-300' : 'bg-stone-100 text-stone-850 border border-stone-300/40'
+                        theme === 'dark' ? 'bg-[#050807] text-stone-300' : 'bg-stone-100 text-stone-700 border border-stone-200'
                       }`}>
                         {txn.category}
                       </span>
@@ -1525,23 +1551,23 @@ export default function Home() {
 
                     {/* Actions for this transaction */}
                     {txn.phone !== 'SYSTEM' && (
-                      <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-850/40 pt-2.5 mt-1 text-[10px] font-bold">
+                      <div className="flex justify-between items-center border-t border-stone-500/5 pt-2.5 mt-1 text-[10px] font-bold">
                         <button 
                           onClick={(e) => { e.stopPropagation(); toggleScamReport(txn.id); }}
-                          className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                          className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
                             txn.isScamReported 
                               ? 'bg-rose-600 border-rose-500 text-white'
                               : 'border-rose-900/40 hover:bg-[#1a0a0d] text-rose-500'
                           }`}
                         >
                           <ShieldAlert className="size-3" />
-                          {txn.isScamReported ? 'Arnaque Signalée !' : 'Signaler Arnaque'}
+                          {txn.isScamReported ? 'Arnaque Signalée' : 'Signaler Arnaque'}
                         </button>
 
                         {role === 'proprio' && (
                           <button 
                             onClick={(e) => { e.stopPropagation(); deleteTransaction(txn.id); }}
-                            className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
+                            className="text-stone-500 hover:text-stone-400 flex items-center gap-1 cursor-pointer"
                           >
                             <Trash2 className="size-3" />
                             Supprimer
@@ -1559,12 +1585,12 @@ export default function Home() {
             </AnimatePresence>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleExportCSV} className="w-full mt-2">
-            <Download className="size-4 mr-2" /> TÉLÉCHARGER L'HISTORIQUE (FORMAT CSV)
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="w-full mt-2 cursor-pointer rounded-xl font-bold">
+            <Download className="size-4 mr-2" /> EXPORTER L'HISTORIQUE CSV
           </Button>
 
-          <div className="flex justify-between items-center mt-2 text-[10px] text-stone-500 px-1">
-            <span>Données hébergées en local sur ton téléphone.</span>
+          <div className="flex justify-between items-center mt-2 text-[9px] text-stone-500 px-1 font-bold">
+            <span>Stockage local chiffré dans l'appareil.</span>
             {role === 'proprio' && (
               <button 
                 onClick={async () => {
@@ -1578,9 +1604,9 @@ export default function Home() {
                     }
                   }
                 }}
-                className="text-rose-500 font-bold hover:underline"
+                className="text-rose-500 font-bold hover:underline cursor-pointer"
               >
-                Réinitialiser tout
+                Réinitialisation complète
               </button>
             )}
           </div>
@@ -1588,14 +1614,16 @@ export default function Home() {
 
         {/* Blacklist section */}
         <section className={`p-5 rounded-[28px] border transition-colors ${
-          theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-white border-stone-300'
+          theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
         }`}>
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="size-5 text-rose-500" />
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+                <ShieldAlert className="size-5" />
+              </div>
               <div>
                 <h3 className="text-sm font-bold uppercase font-serif">Blacklist Communautaire</h3>
-                <p className="text-[9px] text-stone-500">Numéros suspects recensés localement</p>
+                <p className="text-[9px] text-stone-500">Numéros suspects bloqués ou surveillés</p>
               </div>
             </div>
             {role === 'proprio' ? (
@@ -1603,43 +1631,44 @@ export default function Home() {
                 variant="outline" 
                 size="xs" 
                 onClick={() => setShowBlacklistModal(true)}
+                className="cursor-pointer rounded-lg font-bold"
               >
                 Gérer ({blacklist.length})
               </Button>
             ) : (
-              <span className="text-[10px] font-bold text-stone-500 bg-stone-500/10 px-2.5 py-1 rounded-lg border border-stone-500/10">
-                🔒 Lecture Seule ({blacklist.length})
+              <span className="text-[9px] font-bold text-stone-500 bg-stone-500/10 px-2.5 py-1 rounded-lg border border-stone-500/10">
+                Lecture Seule ({blacklist.length})
               </span>
             )}
           </div>
         </section>
 
         {/* Survival bulletin Red Alert Card */}
-        <section className="p-5 rounded-[28px] bg-red-950/20 border border-red-900/40 text-red-200">
+        <section className="p-5 rounded-[32px] bg-rose-950/15 border border-rose-900/30 text-rose-200">
           <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="size-5 text-red-500" />
-            <h3 className="text-sm font-bold uppercase font-serif tracking-wider">Bulletin de survie des gérants (Cotonou)</h3>
+            <AlertTriangle className="size-5 text-rose-500" />
+            <h3 className="text-sm font-bold uppercase font-serif tracking-wider">Sécurité active (Cotonou)</h3>
           </div>
-          <ul className="text-[11px] list-disc pl-4 flex flex-col gap-2 leading-relaxed">
+          <ul className="text-[11px] list-disc pl-4 flex flex-col gap-2.5 leading-relaxed text-stone-400">
             <li>
-              Exige que le client éteigne son téléphone s'il insiste pour te le donner pour "t'aider à recopier son nom".
+              N'acceptez jamais d'aide extérieure pour copier un numéro ou manipuler votre téléphone de caisse.
             </li>
             <li>
-              Ne t'éloigne jamais de ton tiroir ouvert pour "donner de la monnaie" à un démarcheur. Appelle ton voisin.
+              Sécurisez toujours les fonds physiques en tiroir à clé avant de réaliser une opération à distance.
             </li>
             <li>
-              En cas de doute, compose le **136** (Numéro d'urgence au Bénin) pour signaler les arnaqueurs.
+              Pour tout signalement direct d'arnaque en cours, composez le **136** (Numéro d'urgence au Bénin).
             </li>
           </ul>
         </section>
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-stone-900/10 dark:border-stone-900/60 py-8 mt-12 text-center text-xs text-stone-500">
-        <p className="max-w-md mx-auto px-4 leading-relaxed">
+      <footer className="border-t border-stone-900/10 dark:border-[#1C2C22] py-10 mt-16 text-center text-xs text-stone-500">
+        <p className="max-w-md mx-auto px-4 leading-relaxed font-bold">
           « Momo Premium » — Outil d'assistance numérique pour les points de vente agréés MTN MoMo, Moov Money et Celtiis au Bénin.
         </p>
-        <p className="mt-2 text-[10px] text-stone-600">
+        <p className="mt-2 text-[9px] text-stone-600">
           Propulsé localement · Cotonou, Bénin · v1.1.2
         </p>
       </footer>
@@ -1650,17 +1679,17 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
               onClick={() => setActiveReceipt(null)}
-              className="absolute inset-0 bg-black"
+              className="absolute inset-0 bg-black/60"
             />
             
             <motion.div 
               initial={{ opacity: 0, y: 30, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 30, scale: 0.95 }}
-              className="relative w-full max-w-xs bg-white text-stone-900 p-6 shadow-2xl rounded-2xl font-mono flex flex-col gap-4 border border-stone-250 z-50 select-none overflow-hidden"
+              className="relative w-full max-w-xs bg-white text-stone-900 p-6 shadow-2xl rounded-[24px] font-mono flex flex-col gap-4 border border-stone-200 z-50 select-none overflow-hidden"
             >
               {/* Serrated roll paper top decoration */}
               <div className="absolute -top-1 left-0 right-0 h-2 bg-gradient-to-r from-transparent to-stone-200/55 flex justify-between">
@@ -1671,14 +1700,14 @@ export default function Home() {
 
               {/* Receipt Content */}
               <div className="text-center mt-3">
-                <h4 className="text-sm font-black tracking-widest uppercase">*** RECEPISSE DE DEPOT ***</h4>
+                <h4 className="text-xs font-black tracking-widest uppercase">*** REÇU DE PAIEMENT ***</h4>
                 <p className="text-[10px] text-stone-500 uppercase mt-0.5">Momo Premium - Cabine Bénin</p>
                 <p className="text-[8px] text-stone-400 font-mono mt-1">ID: {activeReceipt.id}</p>
               </div>
 
               <div className="border-t border-dashed border-stone-300 my-1" />
 
-              <div className="flex flex-col gap-1.5 text-[10.5px]">
+              <div className="flex flex-col gap-1.5 text-[10px]">
                 <div className="flex justify-between">
                   <span>DATE & HEURE :</span>
                   <span>{activeReceipt.date} à {activeReceipt.time}</span>
@@ -1711,12 +1740,12 @@ export default function Home() {
               <div className="border-t border-dashed border-stone-300 my-1" />
 
               <div className="text-center text-[10px]">
-                <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold uppercase rounded-lg">
-                  TRANSACTION REUSSIE
+                <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-905 border border-emerald-300 font-bold uppercase rounded-lg">
+                  RÉUSSI
                 </span>
                 
                 {/* Simulated barcode */}
-                <div className="flex justify-center gap-0.5 h-7 mt-4 bg-stone-100/50 p-1 rounded">
+                <div className="flex justify-center gap-0.5 h-7 mt-4 bg-stone-100/55 p-1 rounded">
                   {Array.from({ length: 28 }).map((_, i) => (
                     <div 
                       key={i} 
@@ -1735,13 +1764,13 @@ export default function Home() {
                   onClick={() => shareOnWhatsApp(activeReceipt)}
                   variant="premium" 
                   size="sm"
-                  className="w-full text-xs flex items-center justify-center gap-1.5"
+                  className="w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Share2 className="size-3.5" /> Envoi WhatsApp
                 </Button>
                 <button 
                   onClick={() => setActiveReceipt(null)}
-                  className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-center rounded-xl text-xs font-bold transition-all"
+                  className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-750 text-center rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
                   Fermer
                 </button>
@@ -1757,10 +1786,10 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
               onClick={() => setActionType(null)}
-              className="absolute inset-0 bg-black"
+              className="absolute inset-0 bg-black/60"
             />
             
             <motion.div 
@@ -1768,21 +1797,21 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
-                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-serif font-bold">
+                  <h3 className="text-lg font-serif font-bold text-natural-accent">
                     {actionType === 'deposit' ? 'Nouvel Envoi (Dépôt)' : 
-                     actionType === 'withdrawal' ? 'Nouveau Retrait (Sortie)' : 
+                     actionType === 'withdrawal' ? 'Nouveau Retrait' : 
                      actionType === 'credit' ? 'Nouvelle Vente Crédit' : 'Nouvelle Vente Forfait'}
                   </h3>
-                  <p className="text-[10px] text-stone-505">
-                    {actionType === 'withdrawal' ? 'FLOAT REÇU → CASH DONNÉ' : 'CASH REÇU → VALEUR SIM DÉBITÉE'}
+                  <p className="text-[9px] text-stone-500">
+                    {actionType === 'withdrawal' ? 'FLOAT REÇU → CASH PHYSIQUE RETIRÉ' : 'CASH PHYSIQUE REÇU → FLOAT SIM DÉBITÉ'}
                   </p>
                 </div>
-                <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600">
+                <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600 cursor-pointer">
                   <X className="size-5" />
                 </button>
               </div>
@@ -1790,7 +1819,7 @@ export default function Home() {
               <form onSubmit={handleAddTransaction} className="flex flex-col gap-4">
                 {/* Operator select */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-550 uppercase">Opérateur</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Opérateur</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['mtn', 'moov', 'celtiis'] as const).map(op => (
                       <button
@@ -1802,12 +1831,12 @@ export default function Home() {
                             setSelectedForfait(BENIN_FORFAITS[op][0].name)
                           }
                         }}
-                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
+                        className={`py-2.5 px-1 rounded-xl text-xs font-bold border transition-all uppercase cursor-pointer ${
                           opInput === op 
-                            ? op === 'mtn' ? 'border-amber-550 bg-amber-500/10 text-amber-500'
+                            ? op === 'mtn' ? 'border-amber-500 bg-amber-500/10 text-amber-500'
                               : op === 'moov' ? 'border-blue-500 bg-blue-500/10 text-blue-500'
-                              : 'border-emerald-500 bg-emerald-500/10 text-emerald-555'
-                            : 'border-stone-850 text-stone-400 hover:bg-stone-900/30'
+                              : 'border-emerald-500 bg-emerald-500/10 text-emerald-500'
+                            : 'border-stone-500/20 text-stone-400 hover:bg-stone-500/5'
                         }`}
                       >
                         {op}
@@ -1819,12 +1848,12 @@ export default function Home() {
                 {/* Forfait Select (Only if type is forfait) */}
                 {actionType === 'forfait' && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-550 uppercase">Choisir le Forfait</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Choisir le Forfait</label>
                     <select
                       value={selectedForfait}
                       onChange={e => setSelectedForfait(e.target.value)}
-                      className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
-                        theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                      className={`w-full p-3.5 border rounded-xl focus:outline-none text-sm ${
+                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                       }`}
                     >
                       {BENIN_FORFAITS[opInput].map(f => (
@@ -1836,41 +1865,41 @@ export default function Home() {
 
                 {/* Amount */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-550 uppercase">Montant (FCFA)</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Montant (FCFA)</label>
                   <input 
                     type="number"
                     required
                     disabled={actionType === 'forfait'}
-                    placeholder="Ex: 1000"
+                    placeholder="Ex: 5000"
                     value={amountInput}
                     onChange={e => setAmountInput(e.target.value)}
-                    className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                    className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
 
                 {/* Phone */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-555 uppercase">Numéro Client</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Numéro de Téléphone Client</label>
                   <input 
                     type="tel"
                     required
                     placeholder="Ex: 0196887722"
                     value={phoneInput}
                     onChange={e => setPhoneInput(e.target.value)}
-                    className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                    className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                   {phoneInput && blacklist.includes(phoneInput.trim()) && (
-                    <span className="text-[10px] text-red-550 font-bold flex items-center gap-1 mt-1">
-                      <AlertTriangle className="size-3 text-red-500" /> ATTENTION : Numéro répertorié comme arnaqueur !
+                    <span className="text-[9px] text-rose-500 font-bold flex items-center gap-1.5 mt-1 animate-pulse">
+                      <AlertTriangle className="size-3.5" /> ATTENTION : Ce numéro est signalé dans la blacklist !
                     </span>
                   )}
                 </div>
 
-                <Button variant="premium" type="submit" loading={loading} className="w-full mt-2">
+                <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 cursor-pointer font-bold py-3.5">
                   Valider l'Opération
                 </Button>
               </form>
@@ -1885,10 +1914,10 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
               onClick={() => setActionType(null)}
-              className="absolute inset-0 bg-black"
+              className="absolute inset-0 bg-black/60"
             />
             
             <motion.div 
@@ -1896,15 +1925,15 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
-                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-serif font-bold">Ajustement Externe</h3>
-                  <p className="text-[10px] text-stone-505">Mouvements de fonds sans swap interne</p>
+                  <h3 className="text-lg font-serif font-bold text-natural-accent">Ajustement Externe</h3>
+                  <p className="text-[10px] text-stone-500">Mouvements de caisse virtuels ou réapprovisionnements</p>
                 </div>
-                <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600">
+                <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600 cursor-pointer">
                   <X className="size-5" />
                 </button>
               </div>
@@ -1912,15 +1941,15 @@ export default function Home() {
               <form onSubmit={handleAddTransaction} className="flex flex-col gap-4">
                 {/* Adjustment Type selector */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-550 uppercase">Cible de l'ajustement</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Cible de l'ajustement</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setAdjType('appro_sim')}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         adjType === 'appro_sim' 
-                          ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                          : 'border-stone-850 text-stone-400'
+                          ? 'border-natural-accent bg-natural-accent/10 text-natural-accent' 
+                          : 'border-stone-500/25 text-stone-400 hover:bg-stone-500/5'
                       }`}
                     >
                       Flotte SIM (Virtuel)
@@ -1928,10 +1957,10 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setAdjType('ajust_cash')}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                      className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         adjType === 'ajust_cash' 
-                          ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                          : 'border-stone-850 text-stone-400'
+                          ? 'border-natural-accent bg-natural-accent/10 text-natural-accent' 
+                          : 'border-stone-500/25 text-stone-400 hover:bg-stone-500/5'
                       }`}
                     >
                       Tiroir Cash (Physique)
@@ -1942,17 +1971,17 @@ export default function Home() {
                 {/* Sub-form based on selection */}
                 {adjType === 'appro_sim' ? (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-550 uppercase">SIM à approvisionner</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">SIM à approvisionner</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['mtn', 'moov', 'celtiis'] as const).map(op => (
                         <button
                           key={op}
                           type="button"
                           onClick={() => setAdjOperator(op)}
-                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
+                          className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase cursor-pointer ${
                             adjOperator === op 
-                              ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                              : 'border-[#1f1f2e] text-stone-400'
+                              ? 'border-natural-accent bg-natural-accent/10 text-natural-accent' 
+                              : 'border-stone-500/25 text-stone-400 hover:bg-stone-500/5'
                           }`}
                         >
                           {op}
@@ -1962,15 +1991,15 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-555 uppercase">Sens de l'ajustement</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Sens du mouvement</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setAdjCashDirection('inject')}
-                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                           adjCashDirection === 'inject' 
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-450' 
-                            : 'border-stone-850 text-stone-400'
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' 
+                            : 'border-stone-500/25 text-stone-400 hover:bg-stone-500/5'
                         }`}
                       >
                         + Injecter Cash
@@ -1978,10 +2007,10 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => setAdjCashDirection('withdraw')}
-                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                           adjCashDirection === 'withdraw' 
-                            ? 'border-rose-500 bg-rose-500/10 text-rose-450' 
-                            : 'border-stone-850 text-stone-400'
+                            ? 'border-rose-500 bg-rose-500/10 text-rose-400' 
+                            : 'border-stone-500/25 text-stone-400 hover:bg-stone-500/5'
                         }`}
                       >
                         - Retirer Cash
@@ -1992,21 +2021,21 @@ export default function Home() {
 
                 {/* Amount */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-550 uppercase">Montant (FCFA)</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Montant (FCFA)</label>
                   <input 
                     type="number"
                     required
                     placeholder="Ex: 50000"
                     value={amountInput}
                     onChange={e => setAmountInput(e.target.value)}
-                    className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-850'
+                    className={`w-full p-3.5 border rounded-xl focus:outline-none text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
 
-                <Button variant="premium" type="submit" loading={loading} className="w-full mt-2">
-                  Enregistrer l'Ajustement
+                <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 cursor-pointer font-bold py-3.5">
+                  Enregistrer
                 </Button>
               </form>
             </motion.div>
@@ -2020,10 +2049,10 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCoffreModal(false)}
-              className="absolute inset-0 bg-black"
+              className="absolute inset-0 bg-black/60"
             />
             
             <motion.div 
@@ -2031,97 +2060,97 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-5 overflow-hidden border ${
-                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-serif font-bold">Ajuster les Coffres</h3>
-                  <p className="text-[10px] text-stone-500">Configure tes soldes de départ (Flotte initiale)</p>
+                  <h3 className="text-lg font-serif font-bold text-natural-accent">Ajuster les Coffres</h3>
+                  <p className="text-[10px] text-stone-500">Configurez les fonds de départ initiaux (Start Float)</p>
                 </div>
-                <button onClick={() => setShowCoffreModal(false)} className="text-stone-400 hover:text-stone-600">
+                <button onClick={() => setShowCoffreModal(false)} className="text-stone-400 hover:text-stone-600 cursor-pointer">
                   <X className="size-5" />
                 </button>
               </div>
 
               <form onSubmit={handleSaveCoffres} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-amber-500 uppercase">MTN MoMo Initial</label>
+                  <label className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Fonds MTN Initial</label>
                   <input 
                     type="number"
                     value={coffreMtn}
                     onChange={e => setCoffreMtn(e.target.value)}
-                    className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                    className={`w-full p-3 border rounded-xl text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-blue-500 uppercase">Moov Money Initial</label>
+                  <label className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Fonds Moov Initial</label>
                   <input 
                     type="number"
                     value={coffreMoov}
                     onChange={e => setCoffreMoov(e.target.value)}
-                    className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                    className={`w-full p-3 border rounded-xl text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-emerald-500 uppercase">Celtiis Cash Initial</label>
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Fonds Celtiis Initial</label>
                   <input 
                     type="number"
                     value={coffreCeltiis}
                     onChange={e => setCoffreCeltiis(e.target.value)}
-                    className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                    className={`w-full p-3 border rounded-xl text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-purple-400 uppercase">Tiroir Cash Initial</label>
+                  <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wide">Fonds Cash Initial</label>
                   <input 
                     type="number"
                     value={coffreCash}
                     onChange={e => setCoffreCash(e.target.value)}
-                    className={`w-full p-2.5 border rounded-xl text-sm ${
-                      theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                    className={`w-full p-3 border rounded-xl text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
 
                 {/* Change PIN section */}
-                <div className="border-t border-stone-855 pt-3 mt-1">
+                <div className="border-t border-stone-500/10 pt-3.5 mt-1">
                   <button
                     type="button"
                     onClick={() => setShowNewPinSection(prev => !prev)}
-                    className="text-xs font-bold text-cyan-500 hover:underline uppercase tracking-wide flex items-center gap-1"
+                    className="text-xs font-bold text-natural-accent hover:underline uppercase tracking-wide flex items-center gap-1 cursor-pointer"
                   >
                     ⚙️ Modifier le Code PIN de sécurité
                   </button>
                   
                   {showNewPinSection && (
                     <div className="flex flex-col gap-1.5 mt-2">
-                      <label className="text-[10px] font-bold text-stone-550 uppercase">Nouveau Code PIN</label>
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Nouveau PIN</label>
                       <input 
                         type="password"
-                        placeholder="Ex: 5678"
+                        placeholder="Ex: 1234"
                         maxLength={6}
                         value={newPinInput}
                         onChange={e => setNewPinInput(e.target.value)}
-                        className={`w-full p-2.5 border rounded-xl text-sm ${
-                          theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-850'
+                        className={`w-full p-3 border rounded-xl text-sm ${
+                          theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                         }`}
                       />
                     </div>
                   )}
                 </div>
 
-                <Button variant="premium" type="submit" className="w-full mt-2">
-                  Enregistrer les configurations
+                <Button variant="premium" type="submit" className="w-full mt-2 cursor-pointer font-bold py-3.5">
+                  Enregistrer les modifications
                 </Button>
               </form>
             </motion.div>
@@ -2135,10 +2164,10 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowBlacklistModal(false)}
-              className="absolute inset-0 bg-black"
+              className="absolute inset-0 bg-black/60"
             />
             
             <motion.div 
@@ -2146,15 +2175,15 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 overflow-hidden border ${
-                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-serif font-bold">Gérer la Blacklist</h3>
+                  <h3 className="text-lg font-serif font-bold text-natural-accent">Gérer la Blacklist</h3>
                   <p className="text-[10px] text-stone-500">Numéros suspects bloqués</p>
                 </div>
-                <button onClick={() => setShowBlacklistModal(false)} className="text-stone-400 hover:text-stone-600">
+                <button onClick={() => setShowBlacklistModal(false)} className="text-stone-400 hover:text-stone-600 cursor-pointer">
                   <X className="size-5" />
                 </button>
               </div>
@@ -2163,26 +2192,28 @@ export default function Home() {
               <form onSubmit={handleAddBlacklist} className="flex gap-2">
                 <input 
                   type="tel"
-                  placeholder="Nouveau numéro suspect"
+                  placeholder="Ex: 0197451239"
                   value={newBlacklistPhone}
                   onChange={e => setNewBlacklistPhone(e.target.value)}
-                  className={`flex-1 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 ${
-                    theme === 'dark' ? 'bg-stone-900 border-stone-850 text-white' : 'bg-stone-50 border-stone-300'
+                  className={`flex-1 p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300'
                   }`}
                 />
-                <Button variant="premium" type="submit" size="sm" className="text-xs">
+                <Button variant="premium" type="submit" size="sm" className="text-xs cursor-pointer font-bold px-4 rounded-xl">
                   Ajouter
                 </Button>
               </form>
 
               {/* List */}
-              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto mt-2 pr-1">
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto mt-2 pr-1 scrollbar-thin">
                 {blacklist.map(phone => (
-                  <div key={phone} className="flex justify-between items-center p-2 rounded-lg bg-stone-900/30 border border-stone-855 text-xs">
+                  <div key={phone} className={`flex justify-between items-center p-3 rounded-xl border text-xs ${
+                    theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-[#DCD6CD]'
+                  }`}>
                     <span className="font-mono font-bold">{phone}</span>
                     <button 
                       onClick={() => syncRemoveBlacklist(phone)}
-                      className="text-rose-500 hover:text-rose-400 font-bold"
+                      className="text-rose-500 hover:text-rose-400 font-extrabold cursor-pointer"
                     >
                       Retirer
                     </button>
@@ -2200,10 +2231,10 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+              animate={{ opacity: 0.7 }}
               exit={{ opacity: 0 }}
               onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }}
-              className="absolute inset-0 bg-black"
+              className="absolute inset-0 bg-black/60"
             />
             
             <motion.div 
@@ -2211,44 +2242,42 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={`relative w-full max-w-xs rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 overflow-hidden border ${
-                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-[#121214]'
               }`}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-md font-serif font-bold flex items-center gap-1">
-                    <span>🔒 Accès Propriétaire</span>
-                  </h3>
-                  <p className="text-[10px] text-stone-500">Saisissez le code PIN de sécurité</p>
+                  <h3 className="text-md font-serif font-bold text-natural-accent">🔒 Accès Administrateur</h3>
+                  <p className="text-[10px] text-stone-500">Saisissez le code PIN propriétaire</p>
                 </div>
                 <button 
                   onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }} 
-                  className="text-stone-400 hover:text-stone-600"
+                  className="text-stone-400 hover:text-stone-600 cursor-pointer"
                 >
                   <X className="size-4.5" />
                 </button>
               </div>
 
-              <form onSubmit={handleVerifyPin} className="flex flex-col gap-3.5">
+              <form onSubmit={handleVerifyPin} className="flex flex-col gap-4">
                 <input 
                   type="password"
                   required
-                  placeholder="Code PIN"
+                  placeholder="••••"
                   maxLength={6}
                   value={pinInput}
                   onChange={e => setPinInput(e.target.value)}
-                  className={`w-full p-3 border rounded-xl text-center font-mono font-bold tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${
-                    theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                  className={`w-full p-3.5 border rounded-xl text-center font-mono font-bold tracking-widest text-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
                   }`}
                 />
                 
                 {pinError && (
-                  <span className="text-[10px] text-red-550 font-bold text-center">
+                  <span className="text-[10px] text-rose-500 font-bold text-center">
                     ❌ {pinError}
                   </span>
                 )}
 
-                <Button variant="premium" type="submit" className="w-full">
+                <Button variant="premium" type="submit" className="w-full cursor-pointer font-bold py-3">
                   Déverrouiller
                 </Button>
               </form>
