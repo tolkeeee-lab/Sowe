@@ -62,7 +62,20 @@ const getYesterdayDateString = () => {
   return getLocalDateString(d)
 }
 
-// Prepare initial transactions to fall on today and yesterday
+const getWeekRange = (dateStr: string) => {
+  const parts = dateStr.split('-')
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Adjust Monday to Sunday
+  
+  const monday = new Date(d.setDate(diff))
+  const sunday = new Date(d.setDate(diff + 6))
+  return {
+    start: getLocalDateString(monday),
+    end: getLocalDateString(sunday)
+  }
+}
+
 const TODAY_STR = getLocalDateString()
 const YESTERDAY_STR = getYesterdayDateString()
 
@@ -155,7 +168,10 @@ export default function Home() {
     cash: 200000,
   })
 
-  // Selected date for daily report
+  // Period type: 'day' | 'week' | 'month' | 'year'
+  const [periodType, setPeriodType] = useState<'day' | 'week' | 'month' | 'year'>('day')
+  
+  // Selected base date for report calculations
   const [selectedReportDate, setSelectedReportDate] = useState<string>(TODAY_STR)
 
   // Transactions list
@@ -211,10 +227,23 @@ export default function Home() {
     return coffres.mtn + coffres.moov + coffres.celtiis + coffres.cash
   }, [coffres])
 
-  // Group calculations for the selected date (Bilan Journalier 00H-24H)
-  const dailyReportStats = useMemo(() => {
-    const dayTxns = transactions.filter(t => t.date === selectedReportDate)
+  // Filter transactions according to selected period
+  const periodicReportStats = useMemo(() => {
+    let periodTxns: Transaction[] = []
     
+    if (periodType === 'day') {
+      periodTxns = transactions.filter(t => t.date === selectedReportDate)
+    } else if (periodType === 'week') {
+      const range = getWeekRange(selectedReportDate)
+      periodTxns = transactions.filter(t => t.date >= range.start && t.date <= range.end)
+    } else if (periodType === 'month') {
+      const targetPrefix = selectedReportDate.slice(0, 7) // YYYY-MM
+      periodTxns = transactions.filter(t => t.date.startsWith(targetPrefix))
+    } else if (periodType === 'year') {
+      const targetPrefix = selectedReportDate.slice(0, 4) // YYYY
+      periodTxns = transactions.filter(t => t.date.startsWith(targetPrefix))
+    }
+
     const stats = {
       deposit: { sum: 0, count: 0 },
       withdrawal: { sum: 0, count: 0 },
@@ -223,7 +252,7 @@ export default function Home() {
       total: { sum: 0, count: 0 }
     }
 
-    dayTxns.forEach(t => {
+    periodTxns.forEach(t => {
       if (t.type === 'deposit') {
         stats.deposit.sum += t.amount
         stats.deposit.count += 1
@@ -248,21 +277,42 @@ export default function Home() {
     })
 
     return stats
-  }, [transactions, selectedReportDate])
+  }, [transactions, periodType, selectedReportDate])
 
-  // Date formatting helper for French
-  const formattedReportDate = useMemo(() => {
-    if (selectedReportDate === TODAY_STR) return "Aujourd'hui"
-    if (selectedReportDate === YESTERDAY_STR) return "Hier"
+  // Custom range label for Bilan table header
+  const formattedReportPeriodLabel = useMemo(() => {
+    if (periodType === 'day') {
+      if (selectedReportDate === TODAY_STR) return "Aujourd'hui"
+      if (selectedReportDate === YESTERDAY_STR) return "Hier"
+      const parts = selectedReportDate.split('-')
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+        return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      }
+      return selectedReportDate
+    } 
     
-    // Parse date safely
-    const parts = selectedReportDate.split('-')
-    if (parts.length === 3) {
-      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
-      return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+    if (periodType === 'week') {
+      const range = getWeekRange(selectedReportDate)
+      const pStart = range.start.split('-')
+      const pEnd = range.end.split('-')
+      const dStart = new Date(parseInt(pStart[0]), parseInt(pStart[1]) - 1, parseInt(pStart[2]))
+      const dEnd = new Date(parseInt(pEnd[0]), parseInt(pEnd[1]) - 1, parseInt(pEnd[2]))
+      return `Sem. du ${dStart.getDate()} ${dStart.toLocaleDateString('fr-FR', { month: 'short' })} au ${dEnd.getDate()} ${dEnd.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}`
     }
+
+    if (periodType === 'month') {
+      const parts = selectedReportDate.split('-')
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1)
+      return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    }
+
+    if (periodType === 'year') {
+      return `Année ${selectedReportDate.slice(0, 4)}`
+    }
+
     return selectedReportDate
-  }, [selectedReportDate])
+  }, [selectedReportDate, periodType])
 
   // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
   const handleAddTransaction = (e: React.FormEvent) => {
@@ -571,7 +621,7 @@ export default function Home() {
               theme === 'dark' ? 'bg-[#08080c] border-[#151520]' : 'bg-stone-50 border-stone-350'
             }`}>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-400 mb-1">
-                <span className="size-1.5 rounded-full bg-purple-450 animate-pulse" />
+                <span className="size-1.5 rounded-full bg-purple-455 animate-pulse" />
                 CASH (DANS TIROIR)
               </span>
               <div className="font-mono font-bold text-sm">
@@ -586,7 +636,7 @@ export default function Home() {
           {/* DEPOSIT */}
           <button 
             onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
-            className="p-4 rounded-[22px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="p-4 rounded-[22px] bg-cyan-550 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
               <ArrowDownLeft className="size-4" />
@@ -603,7 +653,7 @@ export default function Home() {
             className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
                 ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
-                : 'border-stone-350 bg-white hover:bg-stone-100 text-[#121214]'
+                : 'border-stone-355 bg-white hover:bg-stone-100 text-[#121214]'
             }`}
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-500">
@@ -621,7 +671,7 @@ export default function Home() {
             className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
                 ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
-                : 'border-stone-350 bg-white hover:bg-stone-100 text-[#121214]'
+                : 'border-stone-355 bg-white hover:bg-stone-100 text-[#121214]'
             }`}
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-500">
@@ -643,7 +693,7 @@ export default function Home() {
             className={`p-4 rounded-[22px] text-left flex flex-col justify-between h-24 border transition-all active:scale-[0.98] cursor-pointer ${
               theme === 'dark' 
                 ? 'border-[#1e1e2d] bg-[#0c0c12] hover:bg-[#12121b] text-white' 
-                : 'border-stone-350 bg-white hover:bg-stone-100 text-[#121214]'
+                : 'border-stone-355 bg-white hover:bg-stone-100 text-[#121214]'
             }`}
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-500">
@@ -656,47 +706,122 @@ export default function Home() {
           </button>
         </section>
 
-        {/* Bilan Journalier (00H - 24H) Section */}
+        {/* Bilan Périodique Section */}
         <section className={`p-5 rounded-[28px] border transition-colors ${
           theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300 shadow-sm'
         }`}>
+          
+          {/* Period type selector segments */}
+          <div className="flex bg-[#050508]/60 dark:bg-stone-950/40 p-1 rounded-2xl border border-stone-300 dark:border-stone-850 text-xs font-bold mb-5">
+            {(['day', 'week', 'month', 'year'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriodType(p)}
+                className={`flex-1 py-2 rounded-xl transition-all capitalize ${
+                  periodType === p 
+                    ? 'bg-cyan-500 text-stone-950 shadow-md' 
+                    : 'text-stone-400 hover:text-white'
+                }`}
+              >
+                {p === 'day' ? 'Jour' : p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <div>
               <h3 className="text-sm font-bold uppercase font-serif tracking-wide flex items-center gap-2">
                 <Calendar className="size-4.5 text-cyan-500" />
-                Bilan de la Journée (00H - 24H)
+                Bilan Périodique ({formattedReportPeriodLabel})
               </h3>
               <p className="text-[9px] text-stone-500">
-                Cumul des flux financiers pour la journée sélectionnée
+                Cumul financier pour la période sélectionnée
               </p>
             </div>
             
-            {/* Quick Date toggles */}
-            <div className="flex gap-1.5 bg-[#050508]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-350 dark:border-stone-850 text-[10px] font-bold">
-              <button 
-                onClick={() => setSelectedReportDate(TODAY_STR)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  selectedReportDate === TODAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
-                }`}
-              >
-                Aujourd'hui
-              </button>
-              <button 
-                onClick={() => setSelectedReportDate(YESTERDAY_STR)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  selectedReportDate === YESTERDAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
-                }`}
-              >
-                Hier
-              </button>
-              <input 
-                type="date"
-                value={selectedReportDate}
-                onChange={e => e.target.value && setSelectedReportDate(e.target.value)}
-                className={`px-1.5 bg-transparent border-0 font-mono text-[9px] focus:outline-none ${
-                  theme === 'dark' ? 'text-white' : 'text-stone-800'
-                }`}
-              />
+            {/* Contextual Date Navigators */}
+            <div className="flex items-center gap-1.5 bg-[#050508]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-350 dark:border-stone-850 text-[10px] font-bold">
+              {periodType === 'day' && (
+                <>
+                  <button 
+                    onClick={() => setSelectedReportDate(TODAY_STR)}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      selectedReportDate === TODAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Aujourd'hui
+                  </button>
+                  <button 
+                    onClick={() => setSelectedReportDate(YESTERDAY_STR)}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      selectedReportDate === YESTERDAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Hier
+                  </button>
+                  <input 
+                    type="date"
+                    value={selectedReportDate}
+                    onChange={e => e.target.value && setSelectedReportDate(e.target.value)}
+                    className={`px-1 bg-transparent border-0 font-mono text-[9px] focus:outline-none ${
+                      theme === 'dark' ? 'text-white' : 'text-stone-850'
+                    }`}
+                  />
+                </>
+              )}
+
+              {periodType === 'week' && (
+                <>
+                  <button 
+                    onClick={() => setSelectedReportDate(TODAY_STR)}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      getWeekRange(selectedReportDate).start === getWeekRange(TODAY_STR).start ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Cette Semaine
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const d = new Date()
+                      d.setDate(d.getDate() - 7)
+                      setSelectedReportDate(getLocalDateString(d))
+                    }}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      getWeekRange(selectedReportDate).start === getWeekRange(getYesterdayDateString()).start && getWeekRange(selectedReportDate).start !== getWeekRange(TODAY_STR).start ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400'
+                    }`}
+                  >
+                    Précédente
+                  </button>
+                </>
+              )}
+
+              {periodType === 'month' && (
+                <select
+                  value={selectedReportDate.slice(0, 7)}
+                  onChange={e => setSelectedReportDate(`${e.target.value}-01`)}
+                  className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
+                    theme === 'dark' ? 'text-white bg-stone-900' : 'text-stone-850 bg-white'
+                  }`}
+                >
+                  <option value={TODAY_STR.slice(0, 7)}>Mois En Cours</option>
+                  <option value={YESTERDAY_STR.slice(0, 7)}>Mois Précédent</option>
+                  <option value="2026-05">Mai 2026</option>
+                  <option value="2026-04">Avril 2026</option>
+                </select>
+              )}
+
+              {periodType === 'year' && (
+                <select
+                  value={selectedReportDate.slice(0, 4)}
+                  onChange={e => setSelectedReportDate(`${e.target.value}-01-01`)}
+                  className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
+                    theme === 'dark' ? 'text-white bg-stone-900' : 'text-stone-850 bg-white'
+                  }`}
+                >
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                </select>
+              )}
             </div>
           </div>
 
@@ -717,10 +842,10 @@ export default function Home() {
                     Dépôts (Envois)
                   </td>
                   <td className="py-2.5 px-3.5 text-right font-bold">
-                    {dailyReportStats.deposit.sum.toLocaleString('fr-FR')}
+                    {periodicReportStats.deposit.sum.toLocaleString('fr-FR')}
                   </td>
                   <td className="py-2.5 px-3.5 text-center text-stone-500">
-                    {dailyReportStats.deposit.count} tx
+                    {periodicReportStats.deposit.count} tx
                   </td>
                 </tr>
                 <tr>
@@ -729,10 +854,10 @@ export default function Home() {
                     Retraits (Sorties)
                   </td>
                   <td className="py-2.5 px-3.5 text-right font-bold">
-                    {dailyReportStats.withdrawal.sum.toLocaleString('fr-FR')}
+                    {periodicReportStats.withdrawal.sum.toLocaleString('fr-FR')}
                   </td>
                   <td className="py-2.5 px-3.5 text-center text-stone-500">
-                    {dailyReportStats.withdrawal.count} tx
+                    {periodicReportStats.withdrawal.count} tx
                   </td>
                 </tr>
                 <tr>
@@ -741,10 +866,10 @@ export default function Home() {
                     Ventes de Crédits
                   </td>
                   <td className="py-2.5 px-3.5 text-right font-bold">
-                    {dailyReportStats.credit.sum.toLocaleString('fr-FR')}
+                    {periodicReportStats.credit.sum.toLocaleString('fr-FR')}
                   </td>
                   <td className="py-2.5 px-3.5 text-center text-stone-500">
-                    {dailyReportStats.credit.count} tx
+                    {periodicReportStats.credit.count} tx
                   </td>
                 </tr>
                 <tr>
@@ -753,10 +878,10 @@ export default function Home() {
                     Ventes de Forfaits
                   </td>
                   <td className="py-2.5 px-3.5 text-right font-bold">
-                    {dailyReportStats.forfait.sum.toLocaleString('fr-FR')}
+                    {periodicReportStats.forfait.sum.toLocaleString('fr-FR')}
                   </td>
                   <td className="py-2.5 px-3.5 text-center text-stone-500">
-                    {dailyReportStats.forfait.count} tx
+                    {periodicReportStats.forfait.count} tx
                   </td>
                 </tr>
                 {/* Total row */}
@@ -765,13 +890,13 @@ export default function Home() {
                 }`}>
                   <td className="py-3 px-3.5 font-sans font-black flex items-center gap-1.5">
                     <Coins className="size-3.5" />
-                    Total Général ({formattedReportDate})
+                    Total Période
                   </td>
                   <td className="py-3 px-3.5 text-right text-sm">
-                    {dailyReportStats.total.sum.toLocaleString('fr-FR')}
+                    {periodicReportStats.total.sum.toLocaleString('fr-FR')}
                   </td>
                   <td className="py-3 px-3.5 text-center text-sm">
-                    {dailyReportStats.total.count} tx
+                    {periodicReportStats.total.count} tx
                   </td>
                 </tr>
               </tbody>
@@ -789,7 +914,7 @@ export default function Home() {
                 <Sliders className="size-4 text-stone-400" />
                 Mouvements de Caisse & Config
               </h3>
-              <p className="text-[10px] text-stone-500 mt-0.5">
+              <p className="text-[10px] text-stone-505 mt-0.5">
                 Approvisionnements externes & Soldes de départ
               </p>
             </div>
@@ -863,7 +988,7 @@ export default function Home() {
               <p className="text-[9px] text-stone-500">Volume de vente de crédit & forfaits</p>
             </div>
             <div className="flex gap-1 bg-stone-950/20 p-0.5 border border-stone-850 rounded-lg text-[9px] font-bold">
-              <span className="px-2 py-1 rounded bg-cyan-550 text-stone-950">VOLUME (FCFA)</span>
+              <span className="px-2 py-1 rounded bg-cyan-555 text-stone-950">VOLUME (FCFA)</span>
               <span className="px-2 py-1 text-stone-400 cursor-pointer">OPÉRATIONS</span>
             </div>
           </div>
@@ -925,10 +1050,10 @@ export default function Home() {
                   className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
                     txn.isScamReported 
                       ? theme === 'dark' 
-                        ? 'border-rose-900 bg-rose-950/20 text-rose-300' 
+                        ? 'border-rose-900 bg-rose-955/20 text-rose-300' 
                         : 'border-rose-300 bg-rose-50 text-rose-900'
                       : txn.type === 'appro_sim' || txn.type === 'ajust_cash'
-                        ? theme === 'dark' ? 'border-purple-900 bg-purple-950/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
+                        ? theme === 'dark' ? 'border-purple-900 bg-purple-955/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
                         : theme === 'dark'
                           ? 'border-[#151520] bg-[#08080c] hover:bg-[#121217]'
                           : 'border-stone-300 bg-white hover:bg-stone-50'
@@ -940,7 +1065,7 @@ export default function Home() {
                         txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait'
                           ? 'bg-cyan-500/20 text-cyan-400' 
                           : txn.type === 'withdrawal'
-                            ? 'bg-rose-500/20 text-rose-500'
+                            ? 'bg-rose-500/20 text-rose-550'
                             : 'bg-purple-500/20 text-purple-400'
                       }`}>
                         {txn.type === 'deposit' ? 'DEP' : 
@@ -1008,7 +1133,7 @@ export default function Home() {
             <Download className="size-4 mr-2" /> TÉLÉCHARGER L'HISTORIQUE (FORMAT CSV)
           </Button>
 
-          <div className="flex justify-between items-center mt-2 text-[10px] text-stone-500 px-1">
+          <div className="flex justify-between items-center mt-2 text-[10px] text-stone-505 px-1">
             <span>Données hébergées en local sur ton téléphone.</span>
             <button 
               onClick={() => {
@@ -1049,7 +1174,7 @@ export default function Home() {
         {/* Survival bulletin Red Alert Card */}
         <section className="p-5 rounded-[28px] bg-red-950/20 border border-red-900/40 text-red-200">
           <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="size-5 text-red-500" />
+            <AlertTriangle className="size-5 text-red-550" />
             <h3 className="text-sm font-bold uppercase font-serif tracking-wider">Bulletin de survie des gérants (Cotonou)</h3>
           </div>
           <ul className="text-[11px] list-disc pl-4 flex flex-col gap-2 leading-relaxed">
@@ -1190,7 +1315,7 @@ export default function Home() {
                   />
                   {phoneInput && blacklist.includes(phoneInput.trim()) && (
                     <span className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1">
-                      <AlertTriangle className="size-3 text-red-500" /> ATTENTION : Numéro répertorié comme arnaqueur !
+                      <AlertTriangle className="size-3 text-red-550" /> ATTENTION : Numéro répertorié comme arnaqueur !
                     </span>
                   )}
                 </div>
@@ -1227,7 +1352,7 @@ export default function Home() {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-serif font-bold">Ajustement Externe</h3>
-                  <p className="text-[10px] text-stone-500">Mouvements de fonds sans swap interne</p>
+                  <p className="text-[10px] text-stone-505">Mouvements de fonds sans swap interne</p>
                 </div>
                 <button onClick={() => setActionType(null)} className="text-stone-400 hover:text-stone-600">
                   <X className="size-5" />
@@ -1371,7 +1496,7 @@ export default function Home() {
 
               <form onSubmit={handleSaveCoffres} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-amber-500 uppercase">MTN MoMo Initial</label>
+                  <label className="text-[10px] font-bold text-amber-505 uppercase">MTN MoMo Initial</label>
                   <input 
                     type="number"
                     value={coffreMtn}
@@ -1383,7 +1508,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-blue-500 uppercase">Moov Money Initial</label>
+                  <label className="text-[10px] font-bold text-blue-505 uppercase">Moov Money Initial</label>
                   <input 
                     type="number"
                     value={coffreMoov}
@@ -1395,7 +1520,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-emerald-500 uppercase">Celtiis Cash Initial</label>
+                  <label className="text-[10px] font-bold text-emerald-505 uppercase">Celtiis Cash Initial</label>
                   <input 
                     type="number"
                     value={coffreCeltiis}
@@ -1407,7 +1532,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-purple-400 uppercase">Tiroir Cash Initial</label>
+                  <label className="text-[10px] font-bold text-purple-405 uppercase">Tiroir Cash Initial</label>
                   <input 
                     type="number"
                     value={coffreCash}
