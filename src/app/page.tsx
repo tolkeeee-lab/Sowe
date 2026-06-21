@@ -631,6 +631,8 @@ export default function Home() {
         }
       } catch (e) {
         console.error("Supabase fetch VM clients error:", e)
+        const stored = localStorage.getItem('momo_vm_clients')
+        if (stored) setVmClients(JSON.parse(stored))
       }
     } else {
       const stored = localStorage.getItem('momo_vm_clients')
