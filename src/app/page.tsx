@@ -848,7 +848,7 @@ export default function Home() {
                 onClick={handleSwitchToEmployee}
                 className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   theme === 'dark' 
-                    ? 'bg-rose-950/20 border-rose-900/30 text-rose-455 hover:bg-rose-950/40' 
+                    ? 'bg-rose-950/20 border-rose-900/30 text-rose-500 hover:bg-rose-950/40' 
                     : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
                 }`}
                 title="Verrouiller la session Propriétaire"
@@ -970,7 +970,7 @@ export default function Home() {
                   theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
                 }`}>
                   <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-emerald-500 mb-1.5 uppercase tracking-wider">
-                    <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-450" />
+                    <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
                     SIM Celtiis
                   </span>
                   <div className="font-mono font-bold text-base text-emerald-500">
@@ -983,7 +983,7 @@ export default function Home() {
                   theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
                 }`}>
                   <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-purple-400 mb-1.5 uppercase tracking-wider">
-                    <span className="size-2 rounded-full bg-purple-500 shadow-sm shadow-purple-450" />
+                    <span className="size-2 rounded-full bg-purple-500 shadow-sm shadow-purple-500" />
                     Tiroir Cash (Physique)
                   </span>
                   <div className="font-mono font-bold text-base text-purple-400">
@@ -1098,7 +1098,7 @@ export default function Home() {
               theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
             }`}>
               {/* Period type selector segments */}
-              <div className="flex bg-[#050807]/60 dark:bg-stone-950/20 p-1 rounded-2xl border border-stone-300 dark:border-stone-850 text-xs font-bold mb-5">
+              <div className="flex bg-[#050807]/60 dark:bg-stone-950/20 p-1 rounded-2xl border border-stone-300 dark:border-stone-800 text-xs font-bold mb-5">
                 {(['day', 'week', 'month', 'year'] as const).map(p => (
                   <button
                     key={p}
@@ -1126,7 +1126,7 @@ export default function Home() {
                 </div>
                 
                 {/* Contextual Date Navigators */}
-                <div className="flex items-center gap-1.5 bg-[#050807]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-350 dark:border-stone-850 text-[10px] font-bold">
+                <div className="flex items-center gap-1.5 bg-[#050807]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-300 dark:border-stone-800 text-[10px] font-bold">
                   {periodType === 'day' && (
                     <>
                       <button 
@@ -1214,7 +1214,7 @@ export default function Home() {
               {/* Bilan Network Filter buttons */}
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-[10px] font-bold text-stone-500 uppercase">Filtre Réseau :</span>
-                <div className="flex bg-[#050807]/40 dark:bg-stone-950/20 p-0.5 rounded-lg border border-stone-300 dark:border-stone-850 text-[9px] font-bold">
+                <div className="flex bg-[#050807]/40 dark:bg-stone-950/20 p-0.5 rounded-lg border border-stone-300 dark:border-stone-800 text-[9px] font-bold">
                   {(['all', 'mtn', 'moov', 'celtiis'] as const).map(op => (
                     <button
                       key={op}
@@ -1232,16 +1232,16 @@ export default function Home() {
               </div>
 
               {/* Balance table sheet */}
-              <div className="overflow-hidden rounded-2xl border border-stone-300 dark:border-stone-850 shadow-inner">
+              <div className="overflow-hidden rounded-2xl border border-stone-300 dark:border-stone-800 shadow-inner">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-850' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-450`}>
+                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-800' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-400`}>
                       <th className="py-3 px-4">Activité</th>
                       <th className="py-3 px-4 text-right">Cumul (FCFA)</th>
                       <th className="py-3 px-4 text-center">Volume Ops</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-350/20 dark:divide-stone-850/40">
+                  <tbody className="divide-y divide-stone-300/20 dark:divide-stone-800/40">
                     <tr className="hover:bg-stone-500/5 transition-colors">
                       <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
                         <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
@@ -1283,7 +1283,7 @@ export default function Home() {
                         <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
                         Ventes de Forfaits
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-450">
+                      <td className="py-3 px-4 text-right font-bold text-emerald-500">
                         {periodicReportStats.forfait.sum.toLocaleString('fr-FR')}
                       </td>
                       <td className="py-3 px-4 text-center text-stone-500">
@@ -1319,7 +1319,7 @@ export default function Home() {
                   <h3 className="text-sm font-bold uppercase font-serif text-natural-accent">Activité Hebdomadaire</h3>
                   <p className="text-[9px] text-stone-500">Volume de vente de crédit & forfaits</p>
                 </div>
-                <div className="flex gap-1 bg-stone-900/10 p-0.5 border border-stone-800/10 dark:border-stone-850 rounded-lg text-[9px] font-bold">
+                <div className="flex gap-1 bg-stone-900/10 p-0.5 border border-stone-800/10 dark:border-stone-800 rounded-lg text-[9px] font-bold">
                   <span className="px-2.5 py-1 rounded bg-natural-accent text-[#0A0F0D]">VOLUME (FCFA)</span>
                   <span className="px-2.5 py-1 text-stone-400 cursor-not-allowed">OPS</span>
                 </div>
@@ -1350,9 +1350,9 @@ export default function Home() {
               </div>
 
               <div className="flex justify-center gap-4 text-[9px] font-bold uppercase mt-4">
-                <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-emerald-555" /> Celtiis</span>
-                <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-455" /> MTN</span>
-                <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-blue-555" /> Moov</span>
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-emerald-500" /> Celtiis</span>
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-500" /> MTN</span>
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-blue-600" /> Moov</span>
               </div>
             </section>
 
@@ -1576,7 +1576,7 @@ export default function Home() {
                 <Sliders className="size-4.5" />
                 Fonds de départ (Coffres)
               </h3>
-              <p className="text-[10px] text-stone-505 mb-4">
+              <p className="text-[10px] text-stone-500 mb-4">
                 Définissez la flotte virtuelle initiale chargée sur chaque carte SIM de caisse.
               </p>
 
@@ -1630,7 +1630,7 @@ export default function Home() {
                 <Coins className="size-4.5" />
                 Mouvements Externes
               </h3>
-              <p className="text-[10px] text-stone-505 mb-4">
+              <p className="text-[10px] text-stone-500 mb-4">
                 Injectez ou retirez des fonds sur les cartes SIM et dans le tiroir de caisse.
               </p>
               
@@ -1656,7 +1656,7 @@ export default function Home() {
                   {blacklist.length} Signalés
                 </span>
               </div>
-              <p className="text-[10px] text-stone-505 mb-4">
+              <p className="text-[10px] text-stone-500 mb-4">
                 Ajoutez ou supprimez des numéros suspects pour alerter automatiquement le gérant lors des saisies.
               </p>
 
@@ -2065,7 +2065,7 @@ export default function Home() {
                 {/* Sub-form based on selection */}
                 {adjType === 'appro_sim' ? (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-555 uppercase tracking-wide">SIM à approvisionner</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">SIM à approvisionner</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['mtn', 'moov', 'celtiis'] as const).map(op => (
                         <button
