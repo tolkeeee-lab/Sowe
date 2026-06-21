@@ -32,7 +32,8 @@ import {
   MapPin,
   ShieldAlert,
   Calendar,
-  Coins
+  Coins,
+  Share2
 } from 'lucide-react'
 import { getSupabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
@@ -174,6 +175,17 @@ export default function Home() {
   // Selected base date for report calculations
   const [selectedReportDate, setSelectedReportDate] = useState<string>(TODAY_STR)
 
+  // Bilan network filter
+  const [reportOperator, setReportOperator] = useState<'all' | 'mtn' | 'moov' | 'celtiis'>('all')
+
+  // History search and filters
+  const [historySearch, setHistorySearch] = useState('')
+  const [historyType, setHistoryType] = useState<'all' | 'deposit' | 'withdrawal' | 'credit' | 'forfait'>('all')
+  const [historyOperator, setHistoryOperator] = useState<'all' | 'mtn' | 'moov' | 'celtiis'>('all')
+
+  // Active receipt for thermal ticket (deposits only)
+  const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null)
+
   // Transactions list
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS)
   
@@ -227,7 +239,7 @@ export default function Home() {
     return coffres.mtn + coffres.moov + coffres.celtiis + coffres.cash
   }, [coffres])
 
-  // Filter transactions according to selected period
+  // Filter transactions according to selected period and selected network
   const periodicReportStats = useMemo(() => {
     let periodTxns: Transaction[] = []
     
@@ -242,6 +254,11 @@ export default function Home() {
     } else if (periodType === 'year') {
       const targetPrefix = selectedReportDate.slice(0, 4) // YYYY
       periodTxns = transactions.filter(t => t.date.startsWith(targetPrefix))
+    }
+
+    // Filter by network if selected
+    if (reportOperator !== 'all') {
+      periodTxns = periodTxns.filter(t => t.operator === reportOperator)
     }
 
     const stats = {
@@ -277,7 +294,17 @@ export default function Home() {
     })
 
     return stats
-  }, [transactions, periodType, selectedReportDate])
+  }, [transactions, periodType, selectedReportDate, reportOperator])
+
+  // Filtered recent history list
+  const filteredRecentHistory = useMemo(() => {
+    return transactions.filter(txn => {
+      const matchSearch = historySearch.trim() === '' || txn.phone.includes(historySearch.trim())
+      const matchType = historyType === 'all' || txn.type === historyType
+      const matchOperator = historyOperator === 'all' || txn.operator === historyOperator
+      return matchSearch && matchType && matchOperator
+    })
+  }, [transactions, historySearch, historyType, historyOperator])
 
   // Custom range label for Bilan table header
   const formattedReportPeriodLabel = useMemo(() => {
@@ -313,6 +340,12 @@ export default function Home() {
 
     return selectedReportDate
   }, [selectedReportDate, periodType])
+
+  // WhatsApp share link generator
+  const shareOnWhatsApp = (txn: Transaction) => {
+    const text = `*MOMO PREMIUM - REÇU DE DÉPÔT*%0A---------------------------%0A*Date* : ${txn.date} à ${txn.time}%0A*Réseau* : ${txn.operator.toUpperCase()}%0A*Numéro Client* : ${txn.phone}%0A*Montant* : ${txn.amount.toLocaleString('fr-FR')} FCFA%0A*Statut* : RÉUSSI%0A---------------------------%0AMerci de votre confiance !`
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
+  }
 
   // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
   const handleAddTransaction = (e: React.FormEvent) => {
@@ -416,6 +449,11 @@ export default function Home() {
       setLoading(false)
       setActionType(null)
 
+      // Open ticket automatically if it's a deposit
+      if (actionType === 'deposit') {
+        setActiveReceipt(newTxn)
+      }
+
       setPhoneInput('')
       setAmountInput('')
       setSelectedForfait('')
@@ -507,7 +545,7 @@ export default function Home() {
     }`}>
       
       {/* Top Banner / Security active */}
-      <div className="w-full bg-[#001830] text-cyan-400 py-2.5 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b border-cyan-950/80">
+      <div className="w-full bg-[#001830] text-cyan-400 py-2.5 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b border-cyan-955/80">
         <span className="inline-block size-2 rounded-full bg-cyan-400 animate-pulse" />
         CABINE DE SÉCURITÉ ACTIVE : BENIN (COTONOU / ABOMEY-CALAVI)
       </div>
@@ -636,7 +674,7 @@ export default function Home() {
           {/* DEPOSIT */}
           <button 
             onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
-            className="p-4 rounded-[22px] bg-cyan-550 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            className="p-4 rounded-[22px] bg-cyan-500 hover:bg-cyan-600 text-stone-950 text-left flex flex-col justify-between h-24 shadow-md transition-all active:scale-[0.98] cursor-pointer"
           >
             <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
               <ArrowDownLeft className="size-4" />
@@ -825,6 +863,26 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Bilan Network Filter buttons */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[10px] font-bold text-stone-500 uppercase">Filtre Réseau :</span>
+            <div className="flex bg-[#050508]/40 dark:bg-stone-950/20 p-0.5 rounded-lg border border-stone-300 dark:border-stone-850 text-[9px] font-bold">
+              {(['all', 'mtn', 'moov', 'celtiis'] as const).map(op => (
+                <button
+                  key={op}
+                  onClick={() => setReportOperator(op)}
+                  className={`px-2.5 py-1 rounded transition-all capitalize ${
+                    reportOperator === op 
+                      ? 'bg-cyan-500 text-stone-950' 
+                      : 'text-stone-400 hover:text-white'
+                  }`}
+                >
+                  {op === 'all' ? 'Tous' : op}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Balance table sheet */}
           <div className="overflow-hidden rounded-xl border border-stone-300 dark:border-stone-850">
             <table className="w-full text-left text-xs font-mono">
@@ -914,7 +972,7 @@ export default function Home() {
                 <Sliders className="size-4 text-stone-400" />
                 Mouvements de Caisse & Config
               </h3>
-              <p className="text-[10px] text-stone-505 mt-0.5">
+              <p className="text-[10px] text-stone-500 mt-0.5">
                 Approvisionnements externes & Soldes de départ
               </p>
             </div>
@@ -988,7 +1046,7 @@ export default function Home() {
               <p className="text-[9px] text-stone-500">Volume de vente de crédit & forfaits</p>
             </div>
             <div className="flex gap-1 bg-stone-950/20 p-0.5 border border-stone-850 rounded-lg text-[9px] font-bold">
-              <span className="px-2 py-1 rounded bg-cyan-555 text-stone-950">VOLUME (FCFA)</span>
+              <span className="px-2 py-1 rounded bg-cyan-500 text-stone-950">VOLUME (FCFA)</span>
               <span className="px-2 py-1 text-stone-400 cursor-pointer">OPÉRATIONS</span>
             </div>
           </div>
@@ -1024,108 +1082,187 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Recent history list */}
-        <section className="flex flex-col gap-3">
+        {/* Recent history list with filters */}
+        <section className="flex flex-col gap-3.5">
           <div className="flex justify-between items-end px-1">
             <div>
               <h3 className="text-sm font-bold uppercase font-serif">Historique Récent</h3>
-              <p className="text-[9px] text-stone-500">Journal d'activité de la cabine</p>
+              <p className="text-[9px] text-stone-505">Journal d'activité filtrable de la cabine</p>
             </div>
             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
               theme === 'dark' ? 'bg-[#0f0f15] text-stone-300 border border-[#1e1e2d]' : 'bg-stone-200 text-stone-850'
             }`}>
-              Total: {transactions.length} Tx
+              Affichés: {filteredRecentHistory.length} Tx
             </span>
+          </div>
+
+          {/* Interactive filter controls above the list */}
+          <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${
+            theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
+          }`}>
+            
+            {/* Phone search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 size-3.5" />
+              <input
+                type="text"
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                placeholder="Filtrer par N° client..."
+                className={`w-full pl-9 pr-4 py-2 border rounded-xl text-xs focus:outline-none ${
+                  theme === 'dark' ? 'bg-[#050508] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                }`}
+              />
+              {historySearch && (
+                <button onClick={() => setHistorySearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Type filter */}
+              <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                <label className="text-[8px] font-bold text-stone-500 uppercase">Activité</label>
+                <select
+                  value={historyType}
+                  onChange={e => setHistoryType(e.target.value as any)}
+                  className={`w-full p-2 border rounded-lg text-[10px] font-bold focus:outline-none ${
+                    theme === 'dark' ? 'bg-[#050508] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                  }`}
+                >
+                  <option value="all">Toutes Activités</option>
+                  <option value="deposit">Dépôt (Envoi)</option>
+                  <option value="withdrawal">Retrait (Sortie)</option>
+                  <option value="credit">Vente Crédit</option>
+                  <option value="forfait">Vente Forfait</option>
+                </select>
+              </div>
+
+              {/* Operator filter */}
+              <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                <label className="text-[8px] font-bold text-stone-500 uppercase">Réseau</label>
+                <select
+                  value={historyOperator}
+                  onChange={e => setHistoryOperator(e.target.value as any)}
+                  className={`w-full p-2 border rounded-lg text-[10px] font-bold focus:outline-none ${
+                    theme === 'dark' ? 'bg-[#050508] border-stone-800 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                  }`}
+                >
+                  <option value="all">Tous Réseaux</option>
+                  <option value="mtn">MTN</option>
+                  <option value="moov">Moov</option>
+                  <option value="celtiis">Celtiis</option>
+                </select>
+              </div>
+            </div>
+
           </div>
 
           {/* Cards for transactions */}
           <div className="flex flex-col gap-2.5">
             <AnimatePresence mode="popLayout">
-              {transactions.map(txn => (
-                <motion.div 
-                  key={txn.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
-                    txn.isScamReported 
-                      ? theme === 'dark' 
-                        ? 'border-rose-900 bg-rose-955/20 text-rose-300' 
-                        : 'border-rose-300 bg-rose-50 text-rose-900'
-                      : txn.type === 'appro_sim' || txn.type === 'ajust_cash'
-                        ? theme === 'dark' ? 'border-purple-900 bg-purple-955/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
-                        : theme === 'dark'
-                          ? 'border-[#151520] bg-[#08080c] hover:bg-[#121217]'
-                          : 'border-stone-300 bg-white hover:bg-stone-50'
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                        txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait'
-                          ? 'bg-cyan-500/20 text-cyan-400' 
-                          : txn.type === 'withdrawal'
-                            ? 'bg-rose-500/20 text-rose-550'
-                            : 'bg-purple-500/20 text-purple-400'
+              {filteredRecentHistory.length > 0 ? (
+                filteredRecentHistory.map(txn => (
+                  <motion.div 
+                    key={txn.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onClick={() => {
+                      if (txn.type === 'deposit') {
+                        setActiveReceipt(txn)
+                      }
+                    }}
+                    className={`p-4 rounded-2xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
+                      txn.type === 'deposit' ? 'cursor-pointer' : ''
+                    } ${
+                      txn.isScamReported 
+                        ? theme === 'dark' 
+                          ? 'border-rose-900 bg-rose-955/20 text-rose-300' 
+                          : 'border-rose-300 bg-rose-50 text-rose-900'
+                        : txn.type === 'appro_sim' || txn.type === 'ajust_cash'
+                          ? theme === 'dark' ? 'border-purple-900 bg-purple-955/10 text-purple-200' : 'border-purple-300 bg-purple-50 text-purple-900 font-medium'
+                          : theme === 'dark'
+                            ? 'border-[#151520] bg-[#08080c] hover:bg-[#121217]'
+                            : 'border-stone-300 bg-white hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                          txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait'
+                            ? 'bg-cyan-500/20 text-cyan-400' 
+                            : txn.type === 'withdrawal'
+                              ? 'bg-rose-500/20 text-rose-550'
+                              : 'bg-purple-500/20 text-purple-400'
+                        }`}>
+                          {txn.type === 'deposit' ? 'DEP' : 
+                           txn.type === 'withdrawal' ? 'RET' : 
+                           txn.type === 'credit' ? 'CREDIT' : 
+                           txn.type === 'forfait' ? 'FORFAIT' : 'AJUST'}
+                        </span>
+                        
+                        {/* Operator badge */}
+                        {txn.type !== 'ajust_cash' && renderOperatorBadge(txn.operator)}
+
+                        <span className="text-[10px] text-stone-500 font-mono">{txn.time}</span>
+                      </div>
+
+                      <div className="font-mono font-bold text-sm">
+                        {txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : '-'} {txn.amount.toLocaleString('fr-FR')} <span className="text-[10px] font-normal">FCFA</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <div>
+                        <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'N° client : '}</span>
+                        <span className="font-mono font-bold">{txn.phone}</span>
+                        {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
+                          <span className="ml-1 text-[9px] bg-red-655 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
+                        )}
+                        {txn.type === 'deposit' && (
+                          <span className="ml-2 text-[9px] font-black text-cyan-500 underline uppercase tracking-wider">📄 Reçu</span>
+                        )}
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${
+                        theme === 'dark' ? 'bg-[#0f0f15] text-stone-300' : 'bg-stone-100 text-stone-850 border border-stone-300/40'
                       }`}>
-                        {txn.type === 'deposit' ? 'DEP' : 
-                         txn.type === 'withdrawal' ? 'RET' : 
-                         txn.type === 'credit' ? 'CREDIT' : 
-                         txn.type === 'forfait' ? 'FORFAIT' : 'AJUST'}
+                        {txn.category}
                       </span>
-                      
-                      {/* Operator badge */}
-                      {txn.type !== 'ajust_cash' && renderOperatorBadge(txn.operator)}
-
-                      <span className="text-[10px] text-stone-500 font-mono">{txn.time}</span>
                     </div>
 
-                    <div className="font-mono font-bold text-sm">
-                      {txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : '-'} {txn.amount.toLocaleString('fr-FR')} <span className="text-[10px] font-normal">FCFA</span>
-                    </div>
-                  </div>
+                    {/* Actions for this transaction */}
+                    {txn.phone !== 'SYSTEM' && (
+                      <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-850/40 pt-2.5 mt-1 text-[10px] font-bold">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleScamReport(txn.id); }}
+                          className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
+                            txn.isScamReported 
+                              ? 'bg-rose-600 border-rose-500 text-white'
+                              : 'border-rose-900/40 hover:bg-[#1a0a0d] text-rose-500'
+                          }`}
+                        >
+                          <ShieldAlert className="size-3" />
+                          {txn.isScamReported ? 'Arnaque Signalée !' : 'Signaler Arnaque'}
+                        </button>
 
-                  <div className="flex justify-between items-center text-xs">
-                    <div>
-                      <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'N° client : '}</span>
-                      <span className="font-mono font-bold">{txn.phone}</span>
-                      {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
-                        <span className="ml-1 text-[9px] bg-red-655 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
-                      )}
-                    </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${
-                      theme === 'dark' ? 'bg-[#0f0f15] text-stone-300' : 'bg-stone-100 text-stone-850 border border-stone-300/40'
-                    }`}>
-                      {txn.category}
-                    </span>
-                  </div>
-
-                  {/* Actions for this transaction */}
-                  {txn.phone !== 'SYSTEM' && (
-                    <div className="flex justify-between items-center border-t border-stone-900/10 dark:border-stone-850/40 pt-2.5 mt-1 text-[10px] font-bold">
-                      <button 
-                        onClick={() => toggleScamReport(txn.id)}
-                        className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${
-                          txn.isScamReported 
-                            ? 'bg-rose-600 border-rose-500 text-white'
-                            : 'border-rose-900/40 hover:bg-[#1a0a0d] text-rose-500'
-                        }`}
-                      >
-                        <ShieldAlert className="size-3" />
-                        {txn.isScamReported ? 'Arnaque Signalée !' : 'Signaler Arnaque'}
-                      </button>
-
-                      <button 
-                        onClick={() => deleteTransaction(txn.id)}
-                        className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
-                      >
-                        <Trash2 className="size-3" />
-                        Supprimer
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); deleteTransaction(txn.id); }}
+                          className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
+                        >
+                          <Trash2 className="size-3" />
+                          Supprimer
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-stone-500 text-xs">
+                  Aucune transaction enregistrée avec ces filtres.
+                </div>
+              )}
             </AnimatePresence>
           </div>
 
@@ -1133,7 +1270,7 @@ export default function Home() {
             <Download className="size-4 mr-2" /> TÉLÉCHARGER L'HISTORIQUE (FORMAT CSV)
           </Button>
 
-          <div className="flex justify-between items-center mt-2 text-[10px] text-stone-505 px-1">
+          <div className="flex justify-between items-center mt-2 text-[10px] text-stone-500 px-1">
             <span>Données hébergées en local sur ton téléphone.</span>
             <button 
               onClick={() => {
@@ -1174,7 +1311,7 @@ export default function Home() {
         {/* Survival bulletin Red Alert Card */}
         <section className="p-5 rounded-[28px] bg-red-950/20 border border-red-900/40 text-red-200">
           <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="size-5 text-red-550" />
+            <AlertTriangle className="size-5 text-red-500" />
             <h3 className="text-sm font-bold uppercase font-serif tracking-wider">Bulletin de survie des gérants (Cotonou)</h3>
           </div>
           <ul className="text-[11px] list-disc pl-4 flex flex-col gap-2 leading-relaxed">
@@ -1200,6 +1337,113 @@ export default function Home() {
           Propulsé localement · Cotonou, Bénin · v1.1.2
         </p>
       </footer>
+
+      {/* THERMAL TICKET DE CAISSE DIALOG (DEPOSITS ONLY) */}
+      <AnimatePresence>
+        {activeReceipt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveReceipt(null)}
+              className="absolute inset-0 bg-black"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              className="relative w-full max-w-xs bg-white text-stone-900 p-6 shadow-2xl rounded-2xl font-mono flex flex-col gap-4 border border-stone-250 z-50 select-none overflow-hidden"
+            >
+              {/* Serrated roll paper top decoration */}
+              <div className="absolute -top-1 left-0 right-0 h-2 bg-gradient-to-r from-transparent to-stone-200/55 flex justify-between">
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <div key={i} className="size-2 bg-stone-300 rotate-45 transform -translate-y-1.5" />
+                ))}
+              </div>
+
+              {/* Receipt Content */}
+              <div className="text-center mt-3">
+                <h4 className="text-sm font-black tracking-widest uppercase">*** RECEPISSE DE DEPOT ***</h4>
+                <p className="text-[10px] text-stone-500 uppercase mt-0.5">Momo Premium - Cabine Bénin</p>
+                <p className="text-[8px] text-stone-400 font-mono mt-1">ID: {activeReceipt.id}</p>
+              </div>
+
+              <div className="border-t border-dashed border-stone-300 my-1" />
+
+              <div className="flex flex-col gap-1.5 text-[10.5px]">
+                <div className="flex justify-between">
+                  <span>DATE & HEURE :</span>
+                  <span>{activeReceipt.date} à {activeReceipt.time}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>OPERATEUR :</span>
+                  <span className="font-bold uppercase">{activeReceipt.operator}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>NUMERO CLIENT :</span>
+                  <span className="font-bold">{activeReceipt.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>TYPE FLUX :</span>
+                  <span>ENVOI (DEPOT)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>FRAIS CABINE :</span>
+                  <span>0 FCFA</span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-stone-300 my-1" />
+
+              <div className="flex justify-between items-center text-sm font-black">
+                <span>MONTANT NET :</span>
+                <span>{activeReceipt.amount.toLocaleString('fr-FR')} FCFA</span>
+              </div>
+
+              <div className="border-t border-dashed border-stone-300 my-1" />
+
+              <div className="text-center text-[10px]">
+                <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold uppercase rounded-lg">
+                  TRANSACTION REUSSIE
+                </span>
+                
+                {/* Simulated barcode */}
+                <div className="flex justify-center gap-0.5 h-7 mt-4 bg-stone-100/50 p-1 rounded">
+                  {Array.from({ length: 28 }).map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={`h-full bg-stone-700 ${
+                        (i % 3 === 0) ? 'w-[1px]' : (i % 5 === 0) ? 'w-[3px]' : 'w-[2px]'
+                      }`} 
+                    />
+                  ))}
+                </div>
+                <p className="text-[7px] text-stone-400 mt-1 uppercase tracking-widest font-mono">Merci pour votre confiance !</p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-dashed border-stone-300">
+                <Button 
+                  onClick={() => shareOnWhatsApp(activeReceipt)}
+                  variant="premium" 
+                  size="sm"
+                  className="w-full text-xs flex items-center justify-center gap-1.5"
+                >
+                  <Share2 className="size-3.5" /> Envoi WhatsApp
+                </Button>
+                <button 
+                  onClick={() => setActiveReceipt(null)}
+                  className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-center rounded-xl text-xs font-bold transition-all"
+                >
+                  Fermer
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL TRANSACTION FORM (DEPOT / RETRAIT / CREDIT / FORFAIT) */}
       <AnimatePresence>
@@ -1228,7 +1472,7 @@ export default function Home() {
                      actionType === 'withdrawal' ? 'Nouveau Retrait (Sortie)' : 
                      actionType === 'credit' ? 'Nouvelle Vente Crédit' : 'Nouvelle Vente Forfait'}
                   </h3>
-                  <p className="text-[10px] text-stone-500">
+                  <p className="text-[10px] text-stone-505">
                     {actionType === 'withdrawal' ? 'FLOAT REÇU → CASH DONNÉ' : 'CASH REÇU → VALEUR SIM DÉBITÉE'}
                   </p>
                 </div>
@@ -1240,7 +1484,7 @@ export default function Home() {
               <form onSubmit={handleAddTransaction} className="flex flex-col gap-4">
                 {/* Operator select */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-500 uppercase">Opérateur</label>
+                  <label className="text-[10px] font-bold text-stone-550 uppercase">Opérateur</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['mtn', 'moov', 'celtiis'] as const).map(op => (
                       <button
@@ -1269,7 +1513,7 @@ export default function Home() {
                 {/* Forfait Select (Only if type is forfait) */}
                 {actionType === 'forfait' && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase">Choisir le Forfait</label>
+                    <label className="text-[10px] font-bold text-stone-550 uppercase">Choisir le Forfait</label>
                     <select
                       value={selectedForfait}
                       onChange={e => setSelectedForfait(e.target.value)}
@@ -1286,7 +1530,7 @@ export default function Home() {
 
                 {/* Amount */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-500 uppercase">Montant (FCFA)</label>
+                  <label className="text-[10px] font-bold text-stone-550 uppercase">Montant (FCFA)</label>
                   <input 
                     type="number"
                     required
@@ -1302,7 +1546,7 @@ export default function Home() {
 
                 {/* Phone */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-500 uppercase">Numéro Client</label>
+                  <label className="text-[10px] font-bold text-stone-555 uppercase">Numéro Client</label>
                   <input 
                     type="tel"
                     required
@@ -1314,8 +1558,8 @@ export default function Home() {
                     }`}
                   />
                   {phoneInput && blacklist.includes(phoneInput.trim()) && (
-                    <span className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1">
-                      <AlertTriangle className="size-3 text-red-550" /> ATTENTION : Numéro répertorié comme arnaqueur !
+                    <span className="text-[10px] text-red-550 font-bold flex items-center gap-1 mt-1">
+                      <AlertTriangle className="size-3 text-red-500" /> ATTENTION : Numéro répertorié comme arnaqueur !
                     </span>
                   )}
                 </div>
@@ -1362,7 +1606,7 @@ export default function Home() {
               <form onSubmit={handleAddTransaction} className="flex flex-col gap-4">
                 {/* Adjustment Type selector */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-500 uppercase">Cible de l'ajustement</label>
+                  <label className="text-[10px] font-bold text-stone-550 uppercase">Cible de l'ajustement</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -1370,7 +1614,7 @@ export default function Home() {
                       className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
                         adjType === 'appro_sim' 
                           ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                          : 'border-stone-800 text-stone-400'
+                          : 'border-stone-850 text-stone-400'
                       }`}
                     >
                       Flotte SIM (Virtuel)
@@ -1381,7 +1625,7 @@ export default function Home() {
                       className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
                         adjType === 'ajust_cash' 
                           ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                          : 'border-stone-800 text-stone-400'
+                          : 'border-stone-850 text-stone-400'
                       }`}
                     >
                       Tiroir Cash (Physique)
@@ -1392,7 +1636,7 @@ export default function Home() {
                 {/* Sub-form based on selection */}
                 {adjType === 'appro_sim' ? (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase">SIM à approvisionner</label>
+                    <label className="text-[10px] font-bold text-stone-550 uppercase">SIM à approvisionner</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['mtn', 'moov', 'celtiis'] as const).map(op => (
                         <button
@@ -1402,7 +1646,7 @@ export default function Home() {
                           className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all uppercase ${
                             adjOperator === op 
                               ? 'border-purple-500 bg-purple-500/10 text-purple-400' 
-                              : 'border-stone-850 text-stone-400'
+                              : 'border-[#1f1f2e] text-stone-400'
                           }`}
                         >
                           {op}
@@ -1412,7 +1656,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase">Sens de l'ajustement</label>
+                    <label className="text-[10px] font-bold text-stone-555 uppercase">Sens de l'ajustement</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
@@ -1420,7 +1664,7 @@ export default function Home() {
                         className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
                           adjCashDirection === 'inject' 
                             ? 'border-emerald-500 bg-emerald-500/10 text-emerald-450' 
-                            : 'border-stone-800 text-stone-400'
+                            : 'border-stone-850 text-stone-400'
                         }`}
                       >
                         + Injecter Cash
@@ -1431,7 +1675,7 @@ export default function Home() {
                         className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all ${
                           adjCashDirection === 'withdraw' 
                             ? 'border-rose-500 bg-rose-500/10 text-rose-450' 
-                            : 'border-stone-800 text-stone-400'
+                            : 'border-stone-850 text-stone-400'
                         }`}
                       >
                         - Retirer Cash
@@ -1442,7 +1686,7 @@ export default function Home() {
 
                 {/* Amount */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-stone-500 uppercase">Montant (FCFA)</label>
+                  <label className="text-[10px] font-bold text-stone-550 uppercase">Montant (FCFA)</label>
                   <input 
                     type="number"
                     required
@@ -1496,7 +1740,7 @@ export default function Home() {
 
               <form onSubmit={handleSaveCoffres} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-amber-505 uppercase">MTN MoMo Initial</label>
+                  <label className="text-[10px] font-bold text-amber-500 uppercase">MTN MoMo Initial</label>
                   <input 
                     type="number"
                     value={coffreMtn}
@@ -1508,7 +1752,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-blue-505 uppercase">Moov Money Initial</label>
+                  <label className="text-[10px] font-bold text-blue-500 uppercase">Moov Money Initial</label>
                   <input 
                     type="number"
                     value={coffreMoov}
@@ -1520,7 +1764,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-emerald-505 uppercase">Celtiis Cash Initial</label>
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase">Celtiis Cash Initial</label>
                   <input 
                     type="number"
                     value={coffreCeltiis}
@@ -1532,7 +1776,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-purple-405 uppercase">Tiroir Cash Initial</label>
+                  <label className="text-[10px] font-bold text-purple-400 uppercase">Tiroir Cash Initial</label>
                   <input 
                     type="number"
                     value={coffreCash}
@@ -1601,7 +1845,7 @@ export default function Home() {
               {/* List */}
               <div className="flex flex-col gap-2 max-h-48 overflow-y-auto mt-2 pr-1">
                 {blacklist.map(phone => (
-                  <div key={phone} className="flex justify-between items-center p-2 rounded-lg bg-stone-900/30 border border-stone-850 text-xs">
+                  <div key={phone} className="flex justify-between items-center p-2 rounded-lg bg-stone-900/30 border border-stone-855 text-xs">
                     <span className="font-mono font-bold">{phone}</span>
                     <button 
                       onClick={() => setBlacklist(prev => prev.filter(p => p !== phone))}
