@@ -19,8 +19,15 @@ export const getSupabase = (): SupabaseClient | null => {
 
   if (!supabaseInstance) {
     let sanitizedUrl = supabaseUrl.trim();
-    if (sanitizedUrl.endsWith('/')) {
-      sanitizedUrl = sanitizedUrl.slice(0, -1);
+    try {
+      // Nettoie l'URL pour ne garder que l'origine (ex: https://xxx.supabase.co)
+      // même si l'utilisateur a collé un sous-chemin comme /rest/v1 ou autre dans Vercel
+      const parsed = new URL(sanitizedUrl);
+      sanitizedUrl = parsed.origin;
+    } catch (e) {
+      if (sanitizedUrl.endsWith('/')) {
+        sanitizedUrl = sanitizedUrl.slice(0, -1);
+      }
     }
     const sanitizedKey = supabaseAnonKey.trim();
 
