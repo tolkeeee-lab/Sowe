@@ -53,6 +53,14 @@ interface Transaction {
   date: string; // YYYY-MM-DD
   category: string;
   isScamReported?: boolean;
+  clientName?: string;
+}
+
+interface VmClient {
+  id: string;
+  cabin_id: string;
+  name: string;
+  phone: string;
 }
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -180,7 +188,13 @@ export default function Home() {
   const [vmActionType, setVmActionType] = useState<'deposit' | 'withdrawal' | null>(null)
   const [vmOpInput, setVmOpInput] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
   const [vmAmountInput, setVmAmountInput] = useState('')
-  
+  const [vmClients, setVmClients] = useState<VmClient[]>([])
+  const [showClientManager, setShowClientManager] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState('')
+  const [clientNameInput, setClientNameInput] = useState('')
+  const [saveClientCheckbox, setSaveClientCheckbox] = useState(false)
+  const [newClientName, setNewClientName] = useState('')
+  const [newClientPhone, setNewClientPhone] = useState('')
   // Auth & Session States
   const [session, setSession] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -506,9 +520,13 @@ export default function Home() {
             time: t.time,
             date: typeof t.date === 'string' ? t.date : getLocalDateString(new Date(t.date)),
             category: t.category,
-            isScamReported: t.is_scam_reported
+            isScamReported: t.is_scam_reported,
+            clientName: t.client_name
           })))
         }
+
+        // Fetch VM Clients
+        fetchVmClients(activeCabinId)
       } catch (err) {
         console.error("Error loading cabin data:", err)
       }
@@ -562,6 +580,9 @@ export default function Home() {
     const storedVmBalances = localStorage.getItem('momo_vm_balances')
     if (storedVmBalances) setVmBalances(JSON.parse(storedVmBalances))
 
+    const storedVmClients = localStorage.getItem('momo_vm_clients')
+    if (storedVmClients) setVmClients(JSON.parse(storedVmClients))
+
     const storedVmOperator = localStorage.getItem('momo_vm_operator') as 'mtn' | 'moov' | 'celtiis' | null
     if (storedVmOperator) {
       setVmOperator(storedVmOperator)
@@ -594,6 +615,100 @@ export default function Home() {
       setVmOpInput(runner.operator)
     }
   }, [selectedVmRunner, vmRunners])
+
+  const fetchVmClients = async (cabinId: string) => {
+    const client = getSupabase()
+    if (client && cabinId) {
+      try {
+        const { data, error } = await client
+          .from('momo_vm_clients')
+          .select('*')
+          .eq('cabin_id', cabinId)
+        if (error) throw error
+        if (data) {
+          setVmClients(data)
+          localStorage.setItem('momo_vm_clients', JSON.stringify(data))
+        }
+      } catch (e) {
+        console.error("Supabase fetch VM clients error:", e)
+      }
+    } else {
+      const stored = localStorage.getItem('momo_vm_clients')
+      if (stored) setVmClients(JSON.parse(stored))
+    }
+  }
+
+  const syncAddVmClient = async (name: string, phone: string) => {
+    if (!activeCabinId) return
+    const cleanedPhone = phone.trim()
+    const cleanedName = name.trim()
+    
+    // Check if phone already exists locally
+    if (vmClients.some(c => c.phone === cleanedPhone)) {
+      return // Don't add duplicate
+    }
+
+    const newClientLocal: VmClient = {
+      id: `client-${Math.floor(1000 + Math.random() * 9000)}`,
+      cabin_id: activeCabinId,
+      name: cleanedName,
+      phone: cleanedPhone
+    }
+
+    setVmClients(prev => {
+      const updated = [...prev, newClientLocal]
+      localStorage.setItem('momo_vm_clients', JSON.stringify(updated))
+      return updated
+    })
+
+    const client = getSupabase()
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('momo_vm_clients')
+          .insert([{
+            cabin_id: activeCabinId,
+            name: cleanedName,
+            phone: cleanedPhone
+          }])
+          .select()
+          .single()
+        
+        if (error) throw error
+        if (data) {
+          setVmClients(prev => {
+            const filtered = prev.filter(c => c.phone !== cleanedPhone)
+            const updated = [...filtered, data]
+            localStorage.setItem('momo_vm_clients', JSON.stringify(updated))
+            return updated
+          })
+        }
+      } catch (e) {
+        console.error("Supabase sync add VM client error:", e)
+      }
+    }
+  }
+
+  const syncDeleteVmClient = async (clientId: string) => {
+    setVmClients(prev => {
+      const updated = prev.filter(c => c.id !== clientId)
+      localStorage.setItem('momo_vm_clients', JSON.stringify(updated))
+      return updated
+    })
+
+    const client = getSupabase()
+    if (client && !clientId.startsWith('client-')) {
+      try {
+        const { error } = await client
+          .from('momo_vm_clients')
+          .delete()
+          .eq('id', clientId)
+        if (error) throw error
+      } catch (e) {
+        console.error("Supabase sync delete VM client error:", e)
+      }
+    }
+  }
 
   // Sync state helpers
   const syncBalances = async (newBalances: typeof balances) => {
@@ -641,7 +756,8 @@ export default function Home() {
           time: txn.time,
           date: txn.date,
           category: txn.category,
-          is_scam_reported: !!txn.isScamReported
+          is_scam_reported: !!txn.isScamReported,
+          client_name: txn.clientName
         }])
       } catch (e) {
         console.error("Supabase sync add transaction error:", e)
@@ -871,6 +987,19 @@ export default function Home() {
       setBalances(demoBalances)
       localStorage.setItem('momo_balances', JSON.stringify(demoBalances))
     }
+
+    if (!localStorage.getItem('momo_vm_clients')) {
+      const demoClients: VmClient[] = [
+        { id: 'client-1', cabin_id: 'mock-cabin-id', name: 'SOGEMA SARL', phone: '0122334455' },
+        { id: 'client-2', cabin_id: 'mock-cabin-id', name: 'ETS TOUTA & CO', phone: '0198765432' },
+        { id: 'client-3', cabin_id: 'mock-cabin-id', name: 'BÉNIN CONSTRUCTION SA', phone: '0155667788' }
+      ]
+      setVmClients(demoClients)
+      localStorage.setItem('momo_vm_clients', JSON.stringify(demoClients))
+    } else {
+      const stored = localStorage.getItem('momo_vm_clients')
+      if (stored) setVmClients(JSON.parse(stored))
+    }
   }
 
   const handleCreateCabin = async (e: React.FormEvent) => {
@@ -986,6 +1115,8 @@ export default function Home() {
     setVmBalances(nextVmBalances)
     localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
 
+    const finalClientName = clientNameInput.trim() !== '' ? clientNameInput.trim() : undefined
+
     const newTxn: Transaction = {
       id: `VM-${Math.floor(1000 + Math.random() * 9000)}`,
       phone: phoneInput.trim(),
@@ -995,12 +1126,21 @@ export default function Home() {
       time: timeStr,
       date: getLocalDateString(),
       category: 'Vente Mobile VM',
-      isScamReported: false
+      isScamReported: false,
+      clientName: finalClientName
+    }
+
+    // Save client if requested
+    if (saveClientCheckbox && finalClientName) {
+      syncAddVmClient(finalClientName, phoneInput)
     }
 
     syncAddTransaction(newTxn)
     setVmAmountInput('')
     setPhoneInput('')
+    setSelectedClientId('')
+    setClientNameInput('')
+    setSaveClientCheckbox(false)
     setVmActionType(null)
   }
 
@@ -2854,6 +2994,92 @@ export default function Home() {
             ) : (
               <>
 
+            {/* Collapsible Client Manager Section */}
+            <section className={`p-5 rounded-[28px] border transition-all ${
+              theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+            }`}>
+              <button
+                type="button"
+                onClick={() => setShowClientManager(prev => !prev)}
+                className="w-full flex justify-between items-center font-serif text-sm font-bold text-natural-accent uppercase tracking-wide cursor-pointer text-left"
+              >
+                <span className="flex items-center gap-2">
+                  💼 Gérer mes Clients Entreprises ({vmClients.length})
+                </span>
+                <span>{showClientManager ? '▲ Masquer' : '▼ Afficher'}</span>
+              </button>
+
+              {showClientManager && (
+                <div className="flex flex-col gap-4 mt-4 pt-4 border-t border-stone-500/10">
+                  {/* Form to add a client */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (!newClientName.trim() || !newClientPhone.trim()) return
+                      syncAddVmClient(newClientName, newClientPhone)
+                      setNewClientName('')
+                      setNewClientPhone('')
+                    }}
+                    className="flex flex-col sm:flex-row gap-2"
+                  >
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nom de l'entreprise (ex: SOGEMA SARL)"
+                      value={newClientName}
+                      onChange={e => setNewClientName(e.target.value)}
+                      className={`flex-1 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      }`}
+                    />
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Numéro MoMo (ex: 0122334455)"
+                      value={newClientPhone}
+                      onChange={e => setNewClientPhone(e.target.value)}
+                      className={`w-full sm:w-44 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      }`}
+                    />
+                    <Button variant="premium" type="submit" className="text-xs px-4 py-2.5 rounded-xl font-bold cursor-pointer shrink-0">
+                      Enregistrer
+                    </Button>
+                  </form>
+
+                  {/* Clients List */}
+                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                    {vmClients.length > 0 ? (
+                      vmClients.map(client => (
+                        <div key={client.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs ${
+                          theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                        }`}>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-stone-200 dark:text-stone-300">{client.name}</span>
+                            <span className="font-mono text-[10px] text-stone-500">{client.phone}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Supprimer l'entreprise "${client.name}" de vos contacts ?`)) {
+                                syncDeleteVmClient(client.id)
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center py-6 text-[10px] text-stone-500 italic">Aucune entreprise enregistrée pour le moment.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+
             <section className={`p-6 rounded-[36px] border transition-all overflow-hidden relative ${
               theme === 'dark' 
                 ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22] shadow-2xl' 
@@ -2964,19 +3190,106 @@ export default function Home() {
                   theme === 'dark' ? 'bg-[#0E1B15]/60 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
                 }`}>
 
+                  {/* Select Enterprise (Registered Clients) */}
+                  {vmClients.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Sélectionner Entreprise Cliente</label>
+                      <select
+                        value={selectedClientId}
+                        onChange={(e) => {
+                          const cid = e.target.value
+                          setSelectedClientId(cid)
+                          if (cid === '') {
+                            setPhoneInput('')
+                            setClientNameInput('')
+                            setSaveClientCheckbox(false)
+                          } else {
+                            const found = vmClients.find(c => c.id === cid)
+                            if (found) {
+                              setPhoneInput(found.phone)
+                              setClientNameInput(found.name)
+                            }
+                          }
+                        }}
+                        className={`p-3 border rounded-xl focus:outline-none text-xs ${
+                          theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                        }`}
+                      >
+                        <option value="">-- Saisir manuellement (Aucune) --</option>
+                        {vmClients.map(c => (
+                          <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Tel Client</label>
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Tel Client</label>
+                      {/* Check if phone matches any registered client */}
+                      {(() => {
+                        const matched = vmClients.find(c => c.phone.trim() === phoneInput.trim())
+                        if (matched && selectedClientId === '') {
+                          return (
+                            <span className="text-[9px] font-bold text-natural-accent bg-natural-accent/10 px-2 py-0.5 rounded border border-natural-accent/20 animate-pulse">
+                              🏢 Reconnue : {matched.name}
+                            </span>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
                     <input
                       type="tel"
                       required
                       placeholder="Ex: 0196887722"
                       value={phoneInput}
-                      onChange={e => setPhoneInput(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value
+                        setPhoneInput(val)
+                        // If it matches a client, set the clientNameInput
+                        const found = vmClients.find(c => c.phone.trim() === val.trim())
+                        if (found) {
+                          setClientNameInput(found.name)
+                        } else if (selectedClientId === '') {
+                          setClientNameInput('')
+                        }
+                      }}
+                      disabled={selectedClientId !== ''}
                       className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                        selectedClientId !== '' ? 'opacity-60 cursor-not-allowed ' : ''
+                      }${
                         theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                       }`}
                     />
                   </div>
+
+                  {/* Client Name Input for unregistered clients */}
+                  {selectedClientId === '' && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom de l'Entreprise (Optionnel)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: SOGEMA SARL"
+                        value={clientNameInput}
+                        onChange={e => setClientNameInput(e.target.value)}
+                        className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                          theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                        }`}
+                      />
+                      {clientNameInput.trim() !== '' && !vmClients.some(c => c.phone.trim() === phoneInput.trim()) && (
+                        <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={saveClientCheckbox}
+                            onChange={e => setSaveClientCheckbox(e.target.checked)}
+                            className="rounded accent-natural-accent"
+                          />
+                          <span className="text-[9px] text-stone-400">Enregistrer cette entreprise dans mes contacts</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Montant (FCFA)</label>
@@ -3116,7 +3429,9 @@ export default function Home() {
                             {txn.type === 'deposit' ? 'ENVOI' : 'RETRAIT'}
                           </span>
                           {renderOperatorBadge(txn.operator)}
-                          <span className="text-[10px] font-mono text-stone-500">{txn.phone} - {txn.time}</span>
+                          <span className="text-[10px] font-mono text-stone-500">
+                            {txn.clientName ? `${txn.clientName} (${txn.phone})` : txn.phone} - {txn.time}
+                          </span>
                         </div>
                         <div className={`font-mono font-bold text-xs ${txn.type === 'deposit' ? 'text-natural-accent' : 'text-rose-400'}`}>
                           {txn.type === 'deposit' ? '+' : '-'}{txn.amount.toLocaleString('fr-FR')} FCFA

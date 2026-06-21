@@ -182,3 +182,37 @@ CREATE POLICY "Modify settings" ON public.momo_settings
     FOR ALL USING (
         cabin_id IN (SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid())
     );
+
+-- #################################################################
+-- 8. VM CLIENTS TABLE (for registering business clients)
+-- #################################################################
+CREATE TABLE IF NOT EXISTS public.momo_vm_clients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cabin_id UUID NOT NULL REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
+    name TEXT NOT NULL, -- Business/company name
+    phone TEXT NOT NULL, -- MoMo phone number
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (cabin_id, phone)
+);
+
+-- Add client_name to transactions table
+ALTER TABLE public.momo_transactions ADD COLUMN IF NOT EXISTS client_name TEXT;
+
+-- Enable RLS for momo_vm_clients
+ALTER TABLE public.momo_vm_clients ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy for momo_vm_clients
+CREATE POLICY "Access vm_clients" ON public.momo_vm_clients
+    FOR ALL USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    ) WITH CHECK (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );
