@@ -1126,13 +1126,17 @@ export default function Home() {
                 </div>
                 
                 {/* Contextual Date Navigators */}
-                <div className="flex items-center gap-1.5 bg-[#050807]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-300 dark:border-stone-800 text-[10px] font-bold">
+                <div className={`flex items-center gap-1.5 p-1 rounded-xl border text-[10px] font-bold transition-all ${
+                  theme === 'dark' ? 'bg-[#050807]/60 border-stone-800' : 'bg-stone-100 border-stone-200'
+                }`}>
                   {periodType === 'day' && (
                     <>
                       <button 
                         onClick={() => setSelectedReportDate(TODAY_STR)}
                         className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                          selectedReportDate === TODAY_STR ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
+                          selectedReportDate === TODAY_STR 
+                            ? 'bg-natural-accent text-[#0A0F0D] shadow' 
+                            : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
                         Auj.
@@ -1140,7 +1144,9 @@ export default function Home() {
                       <button 
                         onClick={() => setSelectedReportDate(YESTERDAY_STR)}
                         className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                          selectedReportDate === YESTERDAY_STR ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
+                          selectedReportDate === YESTERDAY_STR 
+                            ? 'bg-natural-accent text-[#0A0F0D] shadow' 
+                            : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
                         Hier
@@ -1161,7 +1167,9 @@ export default function Home() {
                       <button 
                         onClick={() => setSelectedReportDate(TODAY_STR)}
                         className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                          getWeekRange(selectedReportDate).start === getWeekRange(TODAY_STR).start ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
+                          getWeekRange(selectedReportDate).start === getWeekRange(TODAY_STR).start 
+                            ? 'bg-natural-accent text-[#0A0F0D] shadow' 
+                            : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
                         Cette Semaine
@@ -1173,7 +1181,9 @@ export default function Home() {
                           setSelectedReportDate(getLocalDateString(d))
                         }}
                         className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                          getWeekRange(selectedReportDate).start === getWeekRange(getYesterdayDateString()).start && getWeekRange(selectedReportDate).start !== getWeekRange(TODAY_STR).start ? 'bg-natural-accent text-[#0A0F0D] shadow' : 'text-stone-400 hover:text-white'
+                          getWeekRange(selectedReportDate).start === getWeekRange(getYesterdayDateString()).start && getWeekRange(selectedReportDate).start !== getWeekRange(TODAY_STR).start 
+                            ? 'bg-natural-accent text-[#0A0F0D] shadow' 
+                            : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
                         Précédente
@@ -1186,7 +1196,7 @@ export default function Home() {
                       value={selectedReportDate.slice(0, 7)}
                       onChange={e => setSelectedReportDate(`${e.target.value}-01`)}
                       className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
-                        theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-800 bg-white'
+                        theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-800 bg-[#EFECE6]'
                       }`}
                     >
                       <option value={TODAY_STR.slice(0, 7)}>Mois En Cours</option>
@@ -1201,7 +1211,7 @@ export default function Home() {
                       value={selectedReportDate.slice(0, 4)}
                       onChange={e => setSelectedReportDate(`${e.target.value}-01-01`)}
                       className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
-                        theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-800 bg-white'
+                        theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-800 bg-[#EFECE6]'
                       }`}
                     >
                       <option value="2026">2026</option>
@@ -1214,7 +1224,9 @@ export default function Home() {
               {/* Bilan Network Filter buttons */}
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-[10px] font-bold text-stone-500 uppercase">Filtre Réseau :</span>
-                <div className="flex bg-[#050807]/40 dark:bg-stone-950/20 p-0.5 rounded-lg border border-stone-300 dark:border-stone-800 text-[9px] font-bold">
+                <div className={`flex p-0.5 rounded-lg border text-[9px] font-bold transition-all ${
+                  theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-100 border-stone-200'
+                }`}>
                   {(['all', 'mtn', 'moov', 'celtiis'] as const).map(op => (
                     <button
                       key={op}
@@ -1222,7 +1234,7 @@ export default function Home() {
                       className={`px-3 py-1 rounded transition-all capitalize cursor-pointer ${
                         reportOperator === op 
                           ? 'bg-natural-accent text-[#0A0F0D]' 
-                          : 'text-stone-400 hover:text-white'
+                          : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
                       {op === 'all' ? 'Tous' : op}
