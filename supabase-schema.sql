@@ -99,6 +99,9 @@ CREATE POLICY "Access profiles" ON public.momo_profiles
         OR owner_id = auth.uid()
     );
 
+CREATE POLICY "Insert profiles" ON public.momo_profiles
+    FOR INSERT WITH CHECK (true);
+
 -- cabins: owners manage all their cabins, employees see their assigned one
 CREATE POLICY "Access cabins" ON public.momo_cabins
     FOR ALL USING (
