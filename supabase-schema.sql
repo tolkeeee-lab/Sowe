@@ -1,16 +1,39 @@
 -- #################################################################
--- MOMO PREMIUM - DATABASE SCHEMA
+-- MOMO PREMIUM - DATABASE SCHEMA (MULTI-CABIN & ROLES)
 -- #################################################################
 
+-- Clean up existing simple tables if needed
 DROP TABLE IF EXISTS public.momo_transactions CASCADE;
 DROP TABLE IF EXISTS public.momo_balances CASCADE;
 DROP TABLE IF EXISTS public.momo_coffres CASCADE;
 DROP TABLE IF EXISTS public.momo_blacklist CASCADE;
 DROP TABLE IF EXISTS public.momo_settings CASCADE;
+DROP TABLE IF EXISTS public.momo_profiles CASCADE;
+DROP TABLE IF EXISTS public.momo_cabins CASCADE;
 
--- 1. TRANSACTIONS TABLE
+-- 1. CABINS TABLE
+CREATE TABLE public.momo_cabins (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    owner_id UUID NOT NULL, -- References auth.users.id
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. USER PROFILES TABLE
+CREATE TABLE public.momo_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('proprio', 'employe')),
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    owner_id UUID REFERENCES auth.users(id), -- NULL for owners, refers to boss/owner for employees
+    assigned_cabin_id UUID REFERENCES public.momo_cabins(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. TRANSACTIONS TABLE
 CREATE TABLE public.momo_transactions (
     id TEXT PRIMARY KEY,
+    cabin_id UUID NOT NULL REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
     phone TEXT NOT NULL,
     operator TEXT NOT NULL, -- mtn, moov, celtiis
     type TEXT NOT NULL,     -- deposit, withdrawal, credit, forfait, appro_sim, ajust_cash
@@ -22,58 +45,140 @@ CREATE TABLE public.momo_transactions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. CURRENT OPERATIONAL BALANCES
+-- 4. CURRENT OPERATIONAL BALANCES (per Cabin)
 CREATE TABLE public.momo_balances (
-    id INT PRIMARY KEY DEFAULT 1,
+    cabin_id UUID PRIMARY KEY REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
     mtn NUMERIC NOT NULL DEFAULT 240000,
     moov NUMERIC NOT NULL DEFAULT 270000,
     celtiis NUMERIC NOT NULL DEFAULT 50000,
     cash NUMERIC NOT NULL DEFAULT 140000,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT singleton_row CHECK (id = 1)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. START/FLOAT RESERVES (COFFRES)
+-- 5. START/FLOAT RESERVES (COFFRES) (per Cabin)
 CREATE TABLE public.momo_coffres (
-    id INT PRIMARY KEY DEFAULT 1,
+    cabin_id UUID PRIMARY KEY REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
     mtn NUMERIC NOT NULL DEFAULT 250000,
     moov NUMERIC NOT NULL DEFAULT 150000,
     celtiis NUMERIC NOT NULL DEFAULT 100000,
     cash NUMERIC NOT NULL DEFAULT 200000,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT singleton_row CHECK (id = 1)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. COMMUNITY BLACKLIST
+-- 6. COMMUNITY BLACKLIST (Global sharing)
 CREATE TABLE public.momo_blacklist (
     phone TEXT PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. SETTINGS TABLE (PIN CODE & ROLE PARAMS)
+-- 7. SETTINGS TABLE (PIN CODE & ROLE PARAMS) (per Cabin)
 CREATE TABLE public.momo_settings (
-    id INT PRIMARY KEY DEFAULT 1,
+    cabin_id UUID PRIMARY KEY REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
     pin_code TEXT NOT NULL DEFAULT '1234',
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT singleton_row CHECK (id = 1)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- INSERT INITIAL DATA
-INSERT INTO public.momo_balances (id, mtn, moov, celtiis, cash) VALUES (1, 240000, 270000, 50000, 140000) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.momo_coffres (id, mtn, moov, celtiis, cash) VALUES (1, 250000, 150000, 100000, 200000) ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.momo_settings (id, pin_code) VALUES (1, '1234') ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.momo_blacklist (phone) VALUES ('0197451239'), ('0161485000') ON CONFLICT (phone) DO NOTHING;
-
 -- ENABLE RLS (Row Level Security)
+ALTER TABLE public.momo_cabins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.momo_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.momo_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.momo_balances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.momo_coffres ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.momo_blacklist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.momo_settings ENABLE ROW LEVEL SECURITY;
 
--- CREATE ALL-OPEN POLICIES FOR SIMPLE ACCESS (can be refined with user logins if auth is added)
-CREATE POLICY "Allow public access to transactions" ON public.momo_transactions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public access to balances" ON public.momo_balances FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public access to coffres" ON public.momo_coffres FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public access to blacklist" ON public.momo_blacklist FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public access to settings" ON public.momo_settings FOR ALL USING (true) WITH CHECK (true);
+-- CREATE RLS SECURITY POLICIES
+
+-- profiles: read/write owned/assigned
+CREATE POLICY "Access profiles" ON public.momo_profiles
+    FOR ALL USING (
+        id = auth.uid() 
+        OR owner_id = auth.uid() 
+        OR owner_id = (SELECT owner_id FROM public.momo_profiles WHERE id = auth.uid())
+    ) WITH CHECK (
+        id = auth.uid() 
+        OR owner_id = auth.uid()
+    );
+
+-- cabins: owners manage all their cabins, employees see their assigned one
+CREATE POLICY "Access cabins" ON public.momo_cabins
+    FOR ALL USING (
+        owner_id = auth.uid()
+        OR id = (SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid())
+    ) WITH CHECK (
+        owner_id = auth.uid()
+    );
+
+-- transactions: read allowed, insert allowed, delete only by owners
+CREATE POLICY "Select transactions" ON public.momo_transactions
+    FOR SELECT USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Insert transactions" ON public.momo_transactions
+    FOR INSERT WITH CHECK (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Delete transactions" ON public.momo_transactions
+    FOR DELETE USING (
+        cabin_id IN (SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid())
+    );
+
+-- balances: access
+CREATE POLICY "Access balances" ON public.momo_balances
+    FOR ALL USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    ) WITH CHECK (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );
+
+-- coffres: owners all access, employees select only
+CREATE POLICY "Select coffres" ON public.momo_coffres
+    FOR SELECT USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Modify coffres" ON public.momo_coffres
+    FOR ALL USING (
+        cabin_id IN (SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid())
+    );
+
+-- blacklist: public/authenticated read/insert, delete only by owners
+CREATE POLICY "Access blacklist" ON public.momo_blacklist
+    FOR ALL USING (true) WITH CHECK (true);
+
+-- settings: owners all access, employees select only
+CREATE POLICY "Select settings" ON public.momo_settings
+    FOR SELECT USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Modify settings" ON public.momo_settings
+    FOR ALL USING (
+        cabin_id IN (SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid())
+    );

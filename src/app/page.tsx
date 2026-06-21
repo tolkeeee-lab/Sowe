@@ -34,7 +34,11 @@ import {
   Calendar,
   Coins,
   Share2,
-  Lock
+  Lock,
+  LogOut,
+  Building,
+  UserPlus,
+  Users
 } from 'lucide-react'
 import { getSupabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
@@ -155,6 +159,28 @@ export default function Home() {
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   
+  // Auth & Session States
+  const [session, setSession] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [profile, setProfile] = useState<any>(null)
+  const [cabins, setCabins] = useState<any[]>([])
+  const [activeCabinId, setActiveCabinId] = useState<string | null>(null)
+  
+  // Login / Register Views
+  const [authView, setAuthView] = useState<'login' | 'register'>('login')
+  const [emailInput, setEmailInput] = useState('')
+  const [passwordInput, setPasswordInput] = useState('')
+  const [nameInput, setNameInput] = useState('')
+  const [roleInput, setRoleInput] = useState<'proprio' | 'employe'>('proprio')
+  const [bossEmailInput, setBossEmailInput] = useState('')
+  const [newCabinName, setNewCabinName] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authSuccess, setAuthSuccess] = useState('')
+
+  // Proprietor employee assignment states
+  const [allEmployees, setAllEmployees] = useState<any[]>([])
+  const [creatingCabin, setCreatingCabin] = useState(false)
+
   // Role & PIN states
   const [role, setRole] = useState<'proprio' | 'employe'>('employe')
   const [pinCode, setPinCode] = useState('1234')
@@ -239,107 +265,232 @@ export default function Home() {
     const client = getSupabase()
     setSupabaseConnected(!!client)
 
-    const loadInitialData = async () => {
-      if (client) {
-        try {
-          // Fetch settings (PIN)
-          const { data: settingsData } = await client.from('momo_settings').select('pin_code').eq('id', 1).maybeSingle()
-          if (settingsData) {
-            setPinCode(settingsData.pin_code)
-          }
+    if (!client) {
+      setAuthLoading(false)
+      loadFromLocalStorage()
+      return
+    }
 
-          // Fetch balances
-          const { data: balancesData } = await client.from('momo_balances').select('mtn, moov, celtiis, cash').eq('id', 1).maybeSingle()
-          if (balancesData) {
-            setBalances({
-              mtn: Number(balancesData.mtn),
-              moov: Number(balancesData.moov),
-              celtiis: Number(balancesData.celtiis),
-              cash: Number(balancesData.cash)
-            })
-          }
-
-          // Fetch coffres
-          const { data: coffresData } = await client.from('momo_coffres').select('mtn, moov, celtiis, cash').eq('id', 1).maybeSingle()
-          if (coffresData) {
-            setCoffres({
-              mtn: Number(coffresData.mtn),
-              moov: Number(coffresData.moov),
-              celtiis: Number(coffresData.celtiis),
-              cash: Number(coffresData.cash)
-            })
-          }
-
-          // Fetch blacklist
-          const { data: blacklistData } = await client.from('momo_blacklist').select('phone')
-          if (blacklistData && blacklistData.length > 0) {
-            setBlacklist(blacklistData.map((b: any) => b.phone))
-          }
-
-          // Fetch transactions
-          const { data: transactionsData } = await client
-            .from('momo_transactions')
-            .select('*')
-            .order('date', { ascending: false })
-            .order('time', { ascending: false })
-          if (transactionsData && transactionsData.length > 0) {
-            setTransactions(transactionsData.map((t: any) => ({
-              id: t.id,
-              phone: t.phone,
-              operator: t.operator,
-              type: t.type,
-              amount: Number(t.amount),
-              time: t.time,
-              date: typeof t.date === 'string' ? t.date : getLocalDateString(new Date(t.date)),
-              category: t.category,
-              isScamReported: t.is_scam_reported
-            })))
-          }
-        } catch (err) {
-          console.error("Error loading data from Supabase, falling back to localStorage:", err)
-          loadFromLocalStorage()
-        }
+    // Get initial session
+    client.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) {
+        loadUserProfile(session.user.id)
       } else {
+        setAuthLoading(false)
         loadFromLocalStorage()
       }
-    }
+    })
 
-    const loadFromLocalStorage = () => {
-      const storedRole = localStorage.getItem('momo_role')
-      if (storedRole) {
-        setRole(storedRole as any)
-        if (storedRole === 'proprio') {
-          setActiveTab('proprietaire')
+    // Listen for auth changes
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) {
+        loadUserProfile(session.user.id)
+      } else {
+        setProfile(null)
+        setCabins([])
+        setActiveCabinId(null)
+        setAuthLoading(false)
+        loadFromLocalStorage()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const loadUserProfile = async (userId: string) => {
+    const client = getSupabase()
+    if (!client) return
+
+    try {
+      const { data: profileData, error: profileErr } = await client
+        .from('momo_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (profileErr) throw profileErr
+
+      if (profileData) {
+        setProfile(profileData)
+        setRole(profileData.role)
+        localStorage.setItem('momo_role', profileData.role)
+
+        if (profileData.role === 'proprio') {
+          // Fetch owned cabins
+          const { data: cabinsData } = await client
+            .from('momo_cabins')
+            .select('*')
+            .eq('owner_id', userId)
+          
+          if (cabinsData) {
+            setCabins(cabinsData)
+            const savedCabinId = localStorage.getItem('momo_active_cabin_id')
+            const exists = cabinsData.find(c => c.id === savedCabinId)
+            const defaultCabinId = exists ? savedCabinId : (cabinsData[0]?.id || null)
+            setActiveCabinId(defaultCabinId)
+            if (defaultCabinId) {
+              localStorage.setItem('momo_active_cabin_id', defaultCabinId)
+            }
+          }
+          fetchProprioEmployees(userId)
+        } else {
+          // Employee
+          if (profileData.assigned_cabin_id) {
+            const { data: cabinData } = await client
+              .from('momo_cabins')
+              .select('*')
+              .eq('id', profileData.assigned_cabin_id)
+              .maybeSingle()
+            if (cabinData) {
+              setCabins([cabinData])
+              setActiveCabinId(cabinData.id)
+            }
+          }
         }
       }
-      
-      const storedPin = localStorage.getItem('momo_pin')
-      if (storedPin) setPinCode(storedPin)
+    } catch (e) {
+      console.error("Error loading profile:", e)
+    } finally {
+      setAuthLoading(false)
+    }
+  }
 
-      const storedBalances = localStorage.getItem('momo_balances')
-      if (storedBalances) setBalances(JSON.parse(storedBalances))
+  const fetchProprioEmployees = async (ownerId: string) => {
+    const client = getSupabase()
+    if (!client) return
+    const { data } = await client
+      .from('momo_profiles')
+      .select('*')
+      .eq('owner_id', ownerId)
+    if (data) setAllEmployees(data)
+  }
 
-      const storedCoffres = localStorage.getItem('momo_coffres')
-      if (storedCoffres) setCoffres(JSON.parse(storedCoffres))
+  // Load Cabin Specific Data
+  useEffect(() => {
+    if (!activeCabinId) return
+    const client = getSupabase()
+    if (!client) return
 
-      const storedBlacklist = localStorage.getItem('momo_blacklist')
-      if (storedBlacklist) setBlacklist(JSON.parse(storedBlacklist))
+    const loadCabinData = async () => {
+      try {
+        // Fetch Settings
+        const { data: settingsData } = await client
+          .from('momo_settings')
+          .select('pin_code')
+          .eq('cabin_id', activeCabinId)
+          .maybeSingle()
+        if (settingsData) {
+          setPinCode(settingsData.pin_code)
+        } else {
+          await client.from('momo_settings').insert({ cabin_id: activeCabinId, pin_code: '1234' })
+          setPinCode('1234')
+        }
 
-      const storedTransactions = localStorage.getItem('momo_transactions')
-      if (storedTransactions) setTransactions(JSON.parse(storedTransactions))
+        // Fetch Balances
+        const { data: balancesData } = await client
+          .from('momo_balances')
+          .select('mtn, moov, celtiis, cash')
+          .eq('cabin_id', activeCabinId)
+          .maybeSingle()
+        if (balancesData) {
+          setBalances({
+            mtn: Number(balancesData.mtn),
+            moov: Number(balancesData.moov),
+            celtiis: Number(balancesData.celtiis),
+            cash: Number(balancesData.cash)
+          })
+        } else {
+          await client.from('momo_balances').insert({ cabin_id: activeCabinId })
+        }
+
+        // Fetch Coffres
+        const { data: coffresData } = await client
+          .from('momo_coffres')
+          .select('mtn, moov, celtiis, cash')
+          .eq('cabin_id', activeCabinId)
+          .maybeSingle()
+        if (coffresData) {
+          setCoffres({
+            mtn: Number(coffresData.mtn),
+            moov: Number(coffresData.moov),
+            celtiis: Number(coffresData.celtiis),
+            cash: Number(coffresData.cash)
+          })
+        } else {
+          await client.from('momo_coffres').insert({ cabin_id: activeCabinId })
+        }
+
+        // Fetch Blacklist
+        const { data: blacklistData } = await client.from('momo_blacklist').select('phone')
+        if (blacklistData) {
+          setBlacklist(blacklistData.map(b => b.phone))
+        }
+
+        // Fetch Transactions
+        const { data: transactionsData } = await client
+          .from('momo_transactions')
+          .select('*')
+          .eq('cabin_id', activeCabinId)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false })
+        if (transactionsData) {
+          setTransactions(transactionsData.map(t => ({
+            id: t.id,
+            phone: t.phone,
+            operator: t.operator,
+            type: t.type,
+            amount: Number(t.amount),
+            time: t.time,
+            date: typeof t.date === 'string' ? t.date : getLocalDateString(new Date(t.date)),
+            category: t.category,
+            isScamReported: t.is_scam_reported
+          })))
+        }
+      } catch (err) {
+        console.error("Error loading cabin data:", err)
+      }
     }
 
-    loadInitialData()
-  }, [])
+    loadCabinData()
+  }, [activeCabinId])
+
+  const loadFromLocalStorage = () => {
+    const storedRole = localStorage.getItem('momo_role')
+    if (storedRole) {
+      setRole(storedRole as any)
+      if (storedRole === 'proprio') {
+        setActiveTab('proprietaire')
+      }
+    }
+    
+    const storedPin = localStorage.getItem('momo_pin')
+    if (storedPin) setPinCode(storedPin)
+
+    const storedBalances = localStorage.getItem('momo_balances')
+    if (storedBalances) setBalances(JSON.parse(storedBalances))
+
+    const storedCoffres = localStorage.getItem('momo_coffres')
+    if (storedCoffres) setCoffres(JSON.parse(storedCoffres))
+
+    const storedBlacklist = localStorage.getItem('momo_blacklist')
+    if (storedBlacklist) setBlacklist(JSON.parse(storedBlacklist))
+
+    const storedTransactions = localStorage.getItem('momo_transactions')
+    if (storedTransactions) setTransactions(JSON.parse(storedTransactions))
+  }
 
   // Sync state helpers
   const syncBalances = async (newBalances: typeof balances) => {
     setBalances(newBalances)
     localStorage.setItem('momo_balances', JSON.stringify(newBalances))
     const client = getSupabase()
-    if (client) {
+    if (client && activeCabinId) {
       try {
-        await client.from('momo_balances').upsert({ id: 1, ...newBalances, updated_at: new Date().toISOString() })
+        await client.from('momo_balances').upsert({ cabin_id: activeCabinId, ...newBalances, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync balances error:", e)
       }
@@ -350,9 +501,9 @@ export default function Home() {
     setCoffres(newCoffres)
     localStorage.setItem('momo_coffres', JSON.stringify(newCoffres))
     const client = getSupabase()
-    if (client) {
+    if (client && activeCabinId) {
       try {
-        await client.from('momo_coffres').upsert({ id: 1, ...newCoffres, updated_at: new Date().toISOString() })
+        await client.from('momo_coffres').upsert({ cabin_id: activeCabinId, ...newCoffres, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync coffres error:", e)
       }
@@ -366,10 +517,11 @@ export default function Home() {
       return updated
     })
     const client = getSupabase()
-    if (client) {
+    if (client && activeCabinId) {
       try {
         await client.from('momo_transactions').insert([{
           id: txn.id,
+          cabin_id: activeCabinId,
           phone: txn.phone,
           operator: txn.operator,
           type: txn.type,
@@ -402,6 +554,10 @@ export default function Home() {
   }
 
   const syncDeleteTransaction = async (id: string) => {
+    if (role !== 'proprio') {
+      alert("Action non autorisée : Seul le propriétaire peut supprimer des transactions.")
+      return
+    }
     setTransactions(prev => {
       const updated = prev.filter(t => t.id !== id)
       localStorage.setItem('momo_transactions', JSON.stringify(updated))
@@ -453,12 +609,180 @@ export default function Home() {
     setPinCode(newPin)
     localStorage.setItem('momo_pin', newPin)
     const client = getSupabase()
-    if (client) {
+    if (client && activeCabinId) {
       try {
-        await client.from('momo_settings').upsert({ id: 1, pin_code: newPin, updated_at: new Date().toISOString() })
+        await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: newPin, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync PIN error:", e)
       }
+    }
+  }
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setAuthError('')
+    setAuthSuccess('')
+    const client = getSupabase()
+    if (!client) {
+      setAuthError("Base de données Supabase non connectée.")
+      setLoading(false)
+      return
+    }
+    const { data, error } = await client.auth.signInWithPassword({
+      email: emailInput,
+      password: passwordInput
+    })
+    if (error) {
+      setAuthError(error.message)
+      setLoading(false)
+    } else {
+      setAuthSuccess("Connexion réussie !")
+      setEmailInput('')
+      setPasswordInput('')
+    }
+  }
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setAuthError('')
+    setAuthSuccess('')
+    const client = getSupabase()
+    if (!client) {
+      setAuthError("Base de données Supabase non connectée.")
+      setLoading(false)
+      return
+    }
+
+    try {
+      let bossId: string | null = null
+
+      if (roleInput === 'employe') {
+        if (!bossEmailInput) {
+          throw new Error("L'email de votre propriétaire (Boss) est requis pour lier le compte.")
+        }
+        const { data: bossProfile, error: bossErr } = await client
+          .from('momo_profiles')
+          .select('id')
+          .eq('role', 'proprio')
+          .eq('email', bossEmailInput.trim())
+          .maybeSingle()
+
+        if (bossErr || !bossProfile) {
+          throw new Error("Aucun compte propriétaire trouvé avec cet email. Veuillez vérifier l'email de votre Boss.")
+        }
+        bossId = bossProfile.id
+      }
+
+      const { data: authData, error: signUpErr } = await client.auth.signUp({
+        email: emailInput,
+        password: passwordInput
+      })
+
+      if (signUpErr) throw signUpErr
+      if (!authData.user) throw new Error("Échec de la création de l'utilisateur.")
+
+      const { error: profileErr } = await client.from('momo_profiles').insert({
+        id: authData.user.id,
+        role: roleInput,
+        name: nameInput,
+        email: emailInput,
+        owner_id: bossId
+      })
+
+      if (profileErr) throw profileErr
+
+      if (roleInput === 'proprio') {
+        const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
+          name: "Cabine Principale",
+          owner_id: authData.user.id
+        }).select().single()
+
+        if (cabinErr) throw cabinErr
+
+        await Promise.all([
+          client.from('momo_balances').insert({ cabin_id: cabinData.id }),
+          client.from('momo_coffres').insert({ cabin_id: cabinData.id }),
+          client.from('momo_settings').insert({ cabin_id: cabinData.id, pin_code: '1234' })
+        ])
+      }
+
+      setAuthSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.")
+      setAuthView('login')
+      setEmailInput('')
+      setPasswordInput('')
+      setNameInput('')
+      setBossEmailInput('')
+    } catch (err: any) {
+      setAuthError(err.message || "Erreur d'inscription.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    const client = getSupabase()
+    if (client) {
+      await client.auth.signOut()
+    }
+  }
+
+  const handleCreateCabin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCabinName.trim() || !session) return
+    setCreatingCabin(true)
+    const client = getSupabase()
+    if (!client) return
+
+    try {
+      const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
+        name: newCabinName.trim(),
+        owner_id: session.user.id
+      }).select().single()
+
+      if (cabinErr) throw cabinErr
+
+      await Promise.all([
+        client.from('momo_balances').insert({ cabin_id: cabinData.id }),
+        client.from('momo_coffres').insert({ cabin_id: cabinData.id }),
+        client.from('momo_settings').insert({ cabin_id: cabinData.id, pin_code: '1234' })
+      ])
+
+      setCabins(prev => [...prev, cabinData])
+      setActiveCabinId(cabinData.id)
+      localStorage.setItem('momo_active_cabin_id', cabinData.id)
+      setNewCabinName('')
+      alert(`Cabine "${cabinData.name}" créée et initialisée avec succès !`)
+    } catch (err) {
+      console.error(err)
+      alert("Erreur lors de la création de la cabine.")
+    } finally {
+      setCreatingCabin(false)
+    }
+  }
+
+  const handleAssignCabin = async (employeeId: string, cabinId: string) => {
+    const client = getSupabase()
+    if (!client || !session) return
+
+    try {
+      const { error } = await client
+        .from('momo_profiles')
+        .update({ assigned_cabin_id: cabinId === 'none' ? null : cabinId })
+        .eq('id', employeeId)
+
+      if (error) throw error
+
+      setAllEmployees(prev => prev.map(emp => 
+        emp.id === employeeId 
+          ? { ...emp, assigned_cabin_id: cabinId === 'none' ? null : cabinId } 
+          : emp
+      ))
+      alert("Affectation de cabine mise à jour !")
+    } catch (err) {
+      console.error(err)
+      alert("Erreur lors de l'affectation.")
     }
   }
 
@@ -813,6 +1137,233 @@ export default function Home() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center font-sans ${
+        theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
+      }`}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <RefreshCw className="size-10 animate-spin text-natural-accent" />
+            <Wallet className="size-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-natural-accent" />
+          </div>
+          <span className="text-xs font-serif font-bold tracking-widest uppercase text-natural-accent">Chargement Sécurisé...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center font-sans px-4 relative overflow-hidden ${
+        theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
+      }`}>
+        {/* Glow decorative spheres */}
+        <div className="absolute -left-32 -bottom-32 size-96 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+        <div className="absolute -right-32 -top-32 size-96 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+
+        <div className={`w-full max-w-md p-8 rounded-[40px] border shadow-2xl transition-all relative z-10 ${
+          theme === 'dark' 
+            ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22]' 
+            : 'bg-white border-[#DCD6CD]'
+        }`}>
+          <div className="flex flex-col items-center mb-6">
+            <div className={`size-16 rounded-2xl flex items-center justify-center mb-4 ${
+              theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-natural-accent' : 'bg-stone-50 border border-stone-200 text-natural-accent'
+            }`}>
+              <Wallet className="size-8" />
+            </div>
+            <h1 className="font-serif text-3xl font-black text-center tracking-tight">MOMO PREMIUM</h1>
+            <p className="text-[10px] uppercase tracking-widest text-natural-accent font-extrabold -mt-1">Luxury Cabin Suite</p>
+          </div>
+
+          <div className={`flex p-1 rounded-2xl border text-xs font-bold mb-6 ${
+            theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-100 border-stone-200'
+          }`}>
+            <button
+              onClick={() => { setAuthView('login'); setAuthError(''); setAuthSuccess(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer font-bold ${
+                authView === 'login'
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow'
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Connexion
+            </button>
+            <button
+              onClick={() => { setAuthView('register'); setAuthError(''); setAuthSuccess(''); }}
+              className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer font-bold ${
+                authView === 'register'
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow'
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Créer un Compte
+            </button>
+          </div>
+
+          {authError && (
+            <div className="p-3 mb-4 rounded-xl text-xs bg-rose-500/10 border border-rose-500/20 text-rose-500 font-bold flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              {authError}
+            </div>
+          )}
+
+          {authSuccess && (
+            <div className="p-3 mb-4 rounded-xl text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold flex items-center gap-2">
+              <CheckCircle2 className="size-4 shrink-0" />
+              {authSuccess}
+            </div>
+          )}
+
+          {authView === 'login' ? (
+            <form onSubmit={handleSignIn} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Adresse Email</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="proprio@example.com ou gerant@example.com"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Mot de Passe</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={passwordInput}
+                  onChange={e => setPasswordInput(e.target.value)}
+                  className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+              </div>
+
+              <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 py-3.5 rounded-xl font-bold cursor-pointer">
+                Se Connecter
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleSignUp} className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Type de Compte</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRoleInput('proprio')}
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      roleInput === 'proprio'
+                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    👑 Propriétaire (Boss)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleInput('employe')}
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      roleInput === 'employe'
+                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    👤 Employé (Gérant)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom Complet</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Jean Gnonlonfoun"
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Adresse Email</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="votreemail@example.com"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Mot de Passe</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Minimum 6 caractères"
+                  value={passwordInput}
+                  onChange={e => setPasswordInput(e.target.value)}
+                  className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+              </div>
+
+              {roleInput === 'employe' && (
+                <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-natural-accent/20 bg-natural-accent/5">
+                  <label className="text-[10px] font-bold text-natural-accent uppercase tracking-wide flex items-center gap-1">
+                    <Lock className="size-3" /> Email de votre Propriétaire (Boss)
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="boss@example.com"
+                    value={bossEmailInput}
+                    onChange={e => setBossEmailInput(e.target.value)}
+                    className={`w-full p-2.5 border rounded-lg focus:outline-none text-xs ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-stone-900'
+                    }`}
+                  />
+                  <span className="text-[8px] text-stone-400">
+                    Saisissez l'email exact avec lequel votre patron s'est inscrit afin d'associer votre compte à sa flotte.
+                  </span>
+                </div>
+              )}
+
+              <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 py-3 rounded-xl font-bold cursor-pointer">
+                Créer mon Compte
+              </Button>
+            </form>
+          )}
+
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+              className={`px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                theme === 'dark' ? 'border-[#1C2C22] bg-[#0E1B15] text-[#D4AF37]' : 'border-[#DCD6CD] bg-white text-stone-700'
+              }`}
+            >
+              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />} Mode {theme === 'dark' ? 'Clair' : 'Sombre'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-550 font-sans ${
       theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
@@ -848,11 +1399,34 @@ export default function Home() {
             </div>
             <div>
               <span className="font-serif text-xl font-bold tracking-tight block">MOMO PREMIUM</span>
-              <span className="text-[9px] block font-bold tracking-widest uppercase text-natural-accent -mt-1">Luxury Cabin Suite</span>
+              <span className="text-[9px] block font-bold tracking-widest uppercase text-natural-accent -mt-1">
+                {profile?.role === 'proprio' ? 'Espace Propriétaire' : `Cabine: ${cabins.find(c => c.id === activeCabinId)?.name || 'Gérant'}`}
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Cabin selector for Owner */}
+            {profile?.role === 'proprio' && cabins.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Building className="size-3.5 text-natural-accent hidden sm:inline" />
+                <select
+                  value={activeCabinId || ''}
+                  onChange={(e) => {
+                    setActiveCabinId(e.target.value)
+                    localStorage.setItem('momo_active_cabin_id', e.target.value)
+                  }}
+                  className={`p-1.5 rounded-xl border text-[10px] font-bold focus:outline-none transition-all cursor-pointer ${
+                    theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-800'
+                  }`}
+                >
+                  {cabins.map(cab => (
+                    <option key={cab.id} value={cab.id}>{cab.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {role === 'proprio' && (
               <button
                 onClick={handleSwitchToEmployee}
@@ -867,10 +1441,10 @@ export default function Home() {
               </button>
             )}
 
-            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-colors hidden sm:inline-block ${
+            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-colors hidden md:inline-block ${
               theme === 'dark' ? 'bg-[#0E1B15] text-emerald-400 border-[#1C2C22]' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>
-              {supabaseConnected ? 'Supabase Sync 🟢' : 'Offline Safe 🌐'}
+              {supabaseConnected ? `${profile?.name} 🟢` : 'Offline Safe 🌐'}
             </span>
 
             <button 
@@ -882,6 +1456,18 @@ export default function Home() {
               }`}
             >
               {theme === 'dark' ? <Sun className="size-4.5" /> : <Moon className="size-4.5" />}
+            </button>
+
+            <button 
+              onClick={handleSignOut}
+              className={`size-10 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
+                theme === 'dark' 
+                  ? 'bg-[#0E1B15] border-[#1C2C22] text-rose-400 hover:bg-[#1C2C22]' 
+                  : 'bg-white border-[#DCD6CD] text-rose-600 hover:bg-stone-100'
+              }`}
+              title="Se Déconnecter"
+            >
+              <LogOut className="size-4.5" />
             </button>
           </div>
         </div>
@@ -1621,6 +2207,99 @@ export default function Home() {
         {/* TAB 2: PROPRIÉTAIRE / CONFIG */}
         {activeTab === 'proprietaire' && role === 'proprio' && (
           <div className="flex flex-col gap-6">
+
+            {/* Cabin Management for Owners */}
+            <section className={`p-6 rounded-[32px] border transition-colors ${
+              theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+            }`}>
+              <h3 className="text-sm font-bold font-serif uppercase text-natural-accent flex items-center gap-2 mb-2">
+                <Building className="size-4.5" />
+                Gestion de vos Cabines
+              </h3>
+              <p className="text-[10px] text-stone-500 mb-4">
+                Créez de nouvelles cabines physiques et suivez leurs performances individuelles.
+              </p>
+
+              <form onSubmit={handleCreateCabin} className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  required
+                  placeholder="Nom de la cabine (ex: Cabine Cotonou Nord)"
+                  value={newCabinName}
+                  onChange={(e) => setNewCabinName(e.target.value)}
+                  className={`flex-1 p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300 text-stone-900'
+                  }`}
+                />
+                <Button variant="premium" type="submit" loading={creatingCabin} className="text-xs cursor-pointer font-bold px-4 rounded-xl">
+                  Créer la cabine
+                </Button>
+              </form>
+
+              {/* List of existing cabins */}
+              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto mt-2 pr-1">
+                {cabins.map(cab => (
+                  <div key={cab.id} className={`flex justify-between items-center p-3 rounded-xl border text-xs ${
+                    theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-[#DCD6CD]'
+                  }`}>
+                    <span className="font-bold flex items-center gap-2">
+                      <Building className="size-3.5 text-natural-accent" />
+                      {cab.name}
+                    </span>
+                    <span className="text-[9px] text-stone-400 font-mono">
+                      ID: {cab.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Employee Management for Owners */}
+            <section className={`p-6 rounded-[32px] border transition-colors ${
+              theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+            }`}>
+              <h3 className="text-sm font-bold font-serif uppercase text-natural-accent flex items-center gap-2 mb-2">
+                <Users className="size-4.5" />
+                Affectation de vos Gérants (Employés)
+              </h3>
+              <p className="text-[10px] text-stone-500 mb-4">
+                Associez vos employés inscrits aux différentes cabines actives de votre réseau.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                {allEmployees.length > 0 ? (
+                  allEmployees.map(emp => (
+                    <div key={emp.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border text-xs ${
+                      theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-[#DCD6CD]'
+                    }`}>
+                      <div>
+                        <span className="font-bold block text-stone-200">{emp.name}</span>
+                        <span className="text-[9px] text-stone-500 font-mono block">{emp.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-stone-400 uppercase font-bold">Cabine :</span>
+                        <select
+                          value={emp.assigned_cabin_id || 'none'}
+                          onChange={(e) => handleAssignCabin(emp.id, e.target.value)}
+                          className={`p-1.5 rounded-lg border text-[10px] font-bold focus:outline-none transition-all cursor-pointer ${
+                            theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-stone-850'
+                          }`}
+                        >
+                          <option value="none">Aucune cabine affectée</option>
+                          {cabins.map(cab => (
+                            <option key={cab.id} value={cab.id}>{cab.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-stone-550 text-xs">
+                    Aucun gérant lié à votre compte propriétaire pour le moment.
+                  </div>
+                )}
+              </div>
+            </section>
             
             {/* Start reserves configurations (Coffres setup) */}
             <section className={`p-6 rounded-[32px] border transition-colors ${
