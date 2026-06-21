@@ -153,6 +153,15 @@ export default function Home() {
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   
+  // Role & PIN states
+  const [role, setRole] = useState<'proprio' | 'employe'>('employe')
+  const [pinCode, setPinCode] = useState('1234')
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [newPinInput, setNewPinInput] = useState('')
+  const [showNewPinSection, setShowNewPinSection] = useState(false)
+
   // Balances in each medium
   const [balances, setBalances] = useState({
     mtn: 240000,
@@ -213,10 +222,228 @@ export default function Home() {
   const [coffreCeltiis, setCoffreCeltiis] = useState('100000')
   const [coffreCash, setCoffreCash] = useState('200000')
 
+  // Synchronizers & Fetchers
   useEffect(() => {
     const client = getSupabase()
     setSupabaseConnected(!!client)
+
+    const loadInitialData = async () => {
+      if (client) {
+        try {
+          // Fetch settings (PIN)
+          const { data: settingsData } = await client.from('momo_settings').select('pin_code').eq('id', 1).maybeSingle()
+          if (settingsData) {
+            setPinCode(settingsData.pin_code)
+          }
+
+          // Fetch balances
+          const { data: balancesData } = await client.from('momo_balances').select('mtn, moov, celtiis, cash').eq('id', 1).maybeSingle()
+          if (balancesData) {
+            setBalances({
+              mtn: Number(balancesData.mtn),
+              moov: Number(balancesData.moov),
+              celtiis: Number(balancesData.celtiis),
+              cash: Number(balancesData.cash)
+            })
+          }
+
+          // Fetch coffres
+          const { data: coffresData } = await client.from('momo_coffres').select('mtn, moov, celtiis, cash').eq('id', 1).maybeSingle()
+          if (coffresData) {
+            setCoffres({
+              mtn: Number(coffresData.mtn),
+              moov: Number(coffresData.moov),
+              celtiis: Number(coffresData.celtiis),
+              cash: Number(coffresData.cash)
+            })
+          }
+
+          // Fetch blacklist
+          const { data: blacklistData } = await client.from('momo_blacklist').select('phone')
+          if (blacklistData && blacklistData.length > 0) {
+            setBlacklist(blacklistData.map((b: any) => b.phone))
+          }
+
+          // Fetch transactions
+          const { data: transactionsData } = await client
+            .from('momo_transactions')
+            .select('*')
+            .order('date', { ascending: false })
+            .order('time', { ascending: false })
+          if (transactionsData && transactionsData.length > 0) {
+            setTransactions(transactionsData.map((t: any) => ({
+              id: t.id,
+              phone: t.phone,
+              operator: t.operator,
+              type: t.type,
+              amount: Number(t.amount),
+              time: t.time,
+              date: typeof t.date === 'string' ? t.date : getLocalDateString(new Date(t.date)),
+              category: t.category,
+              isScamReported: t.is_scam_reported
+            })))
+          }
+        } catch (err) {
+          console.error("Error loading data from Supabase, falling back to localStorage:", err)
+          loadFromLocalStorage()
+        }
+      } else {
+        loadFromLocalStorage()
+      }
+    }
+
+    const loadFromLocalStorage = () => {
+      const storedRole = localStorage.getItem('momo_role')
+      if (storedRole) setRole(storedRole as any)
+      
+      const storedPin = localStorage.getItem('momo_pin')
+      if (storedPin) setPinCode(storedPin)
+
+      const storedBalances = localStorage.getItem('momo_balances')
+      if (storedBalances) setBalances(JSON.parse(storedBalances))
+
+      const storedCoffres = localStorage.getItem('momo_coffres')
+      if (storedCoffres) setCoffres(JSON.parse(storedCoffres))
+
+      const storedBlacklist = localStorage.getItem('momo_blacklist')
+      if (storedBlacklist) setBlacklist(JSON.parse(storedBlacklist))
+
+      const storedTransactions = localStorage.getItem('momo_transactions')
+      if (storedTransactions) setTransactions(JSON.parse(storedTransactions))
+    }
+
+    loadInitialData()
   }, [])
+
+  // Sync state helpers
+  const syncBalances = async (newBalances: typeof balances) => {
+    setBalances(newBalances)
+    localStorage.setItem('momo_balances', JSON.stringify(newBalances))
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_balances').upsert({ id: 1, ...newBalances, updated_at: new Date().toISOString() })
+      } catch (e) {
+        console.error("Supabase sync balances error:", e)
+      }
+    }
+  }
+
+  const syncCoffres = async (newCoffres: typeof coffres) => {
+    setCoffres(newCoffres)
+    localStorage.setItem('momo_coffres', JSON.stringify(newCoffres))
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_coffres').upsert({ id: 1, ...newCoffres, updated_at: new Date().toISOString() })
+      } catch (e) {
+        console.error("Supabase sync coffres error:", e)
+      }
+    }
+  }
+
+  const syncAddTransaction = async (txn: Transaction) => {
+    setTransactions(prev => {
+      const updated = [txn, ...prev]
+      localStorage.setItem('momo_transactions', JSON.stringify(updated))
+      return updated
+    })
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_transactions').insert([{
+          id: txn.id,
+          phone: txn.phone,
+          operator: txn.operator,
+          type: txn.type,
+          amount: txn.amount,
+          time: txn.time,
+          date: txn.date,
+          category: txn.category,
+          is_scam_reported: !!txn.isScamReported
+        }])
+      } catch (e) {
+        console.error("Supabase sync add transaction error:", e)
+      }
+    }
+  }
+
+  const syncToggleScamReport = async (id: string, isReported: boolean) => {
+    setTransactions(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, isScamReported: isReported } : t)
+      localStorage.setItem('momo_transactions', JSON.stringify(updated))
+      return updated
+    })
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_transactions').update({ is_scam_reported: isReported }).eq('id', id)
+      } catch (e) {
+        console.error("Supabase sync toggle scam error:", e)
+      }
+    }
+  }
+
+  const syncDeleteTransaction = async (id: string) => {
+    setTransactions(prev => {
+      const updated = prev.filter(t => t.id !== id)
+      localStorage.setItem('momo_transactions', JSON.stringify(updated))
+      return updated
+    })
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_transactions').delete().eq('id', id)
+      } catch (e) {
+        console.error("Supabase sync delete transaction error:", e)
+      }
+    }
+  }
+
+  const syncAddBlacklist = async (phone: string) => {
+    setBlacklist(prev => {
+      const updated = [...prev, phone]
+      localStorage.setItem('momo_blacklist', JSON.stringify(updated))
+      return updated
+    })
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_blacklist').upsert({ phone })
+      } catch (e) {
+        console.error("Supabase sync add blacklist error:", e)
+      }
+    }
+  }
+
+  const syncRemoveBlacklist = async (phone: string) => {
+    setBlacklist(prev => {
+      const updated = prev.filter(p => p !== phone)
+      localStorage.setItem('momo_blacklist', JSON.stringify(updated))
+      return updated
+    })
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_blacklist').delete().eq('phone', phone)
+      } catch (e) {
+        console.error("Supabase sync remove blacklist error:", e)
+      }
+    }
+  }
+
+  const syncPinCode = async (newPin: string) => {
+    setPinCode(newPin)
+    localStorage.setItem('momo_pin', newPin)
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_settings').upsert({ id: 1, pin_code: newPin, updated_at: new Date().toISOString() })
+      } catch (e) {
+        console.error("Supabase sync PIN error:", e)
+      }
+    }
+  }
 
   // Auto-fill forfait price when selected
   useEffect(() => {
@@ -347,8 +574,27 @@ export default function Home() {
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
 
+  // Handle role change / PIN verification
+  const handleVerifyPin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pinInput === pinCode) {
+      setRole('proprio')
+      localStorage.setItem('momo_role', 'proprio')
+      setShowPinModal(false)
+      setPinInput('')
+      setPinError('')
+    } else {
+      setPinError('Code PIN incorrect')
+    }
+  }
+
+  const handleSwitchToEmployee = () => {
+    setRole('employe')
+    localStorage.setItem('momo_role', 'employe')
+  }
+
   // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
-  const handleAddTransaction = (e: React.FormEvent) => {
+  const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const now = new Date()
@@ -357,143 +603,152 @@ export default function Home() {
 
     setLoading(true)
 
-    setTimeout(() => {
-      // 1. External Adjustments
-      if (actionType === 'adjust_ext') {
-        const amount = parseFloat(amountInput) || 0
-        if (adjType === 'appro_sim') {
-          setBalances(prev => ({
-            ...prev,
-            [adjOperator]: prev[adjOperator] + amount
-          }))
-
-          const newTxn: Transaction = {
-            id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
-            phone: 'SYSTEM',
-            operator: adjOperator,
-            type: 'appro_sim',
-            amount,
-            time: timeStr,
-            date: todayDateStr,
-            category: 'Approvisionnement SIM',
-          }
-          setTransactions(prev => [newTxn, ...prev])
-        } else {
-          const multiplier = adjCashDirection === 'inject' ? 1 : -1
-          setBalances(prev => ({
-            ...prev,
-            cash: prev.cash + (amount * multiplier)
-          }))
-
-          const newTxn: Transaction = {
-            id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
-            phone: 'SYSTEM',
-            operator: 'mtn',
-            type: 'ajust_cash',
-            amount,
-            time: timeStr,
-            date: todayDateStr,
-            category: adjCashDirection === 'inject' ? 'Injection Cash' : 'Retrait Cash (Dépense/Banque)',
-          }
-          setTransactions(prev => [newTxn, ...prev])
+    // 1. External Adjustments
+    if (actionType === 'adjust_ext') {
+      const amount = parseFloat(amountInput) || 0
+      if (adjType === 'appro_sim') {
+        const nextBalances = {
+          ...balances,
+          [adjOperator]: balances[adjOperator] + amount
         }
+        await syncBalances(nextBalances)
 
-        setLoading(false)
-        setActionType(null)
-        setAmountInput('')
-        return
-      }
-
-      // 2. Swapping transactions (Deposit, Withdrawal, Credit, Forfait)
-      if (!amountInput || !phoneInput) {
-        setLoading(false)
-        return
-      }
-
-      const amount = parseFloat(amountInput)
-      const isBlacklisted = blacklist.includes(phoneInput.trim())
-      if (isBlacklisted) {
-        alert("⚠️ Ce numéro est répertorié dans la BLACKLIST COMMUNAUTAIRE. Soyez vigilant !")
-      }
-
-      setBalances(prev => {
-        if (actionType === 'deposit' || actionType === 'credit' || actionType === 'forfait') {
-          return {
-            ...prev,
-            cash: prev.cash + amount,
-            [opInput]: prev[opInput] - amount
-          }
-        } else if (actionType === 'withdrawal') {
-          return {
-            ...prev,
-            cash: prev.cash - amount,
-            [opInput]: prev[opInput] + amount
-          }
+        const newTxn: Transaction = {
+          id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
+          phone: 'SYSTEM',
+          operator: adjOperator,
+          type: 'appro_sim',
+          amount,
+          time: timeStr,
+          date: todayDateStr,
+          category: 'Approvisionnement SIM',
         }
-        return prev
-      })
+        await syncAddTransaction(newTxn)
+      } else {
+        const multiplier = adjCashDirection === 'inject' ? 1 : -1
+        const nextBalances = {
+          ...balances,
+          cash: balances.cash + (amount * multiplier)
+        }
+        await syncBalances(nextBalances)
 
-      const newTxn: Transaction = {
-        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-        phone: phoneInput,
-        operator: opInput,
-        type: actionType!,
-        amount,
-        time: timeStr,
-        date: todayDateStr,
-        category: actionType === 'forfait' ? selectedForfait : (actionType === 'credit' ? 'Vente de Crédit' : (actionType === 'deposit' ? 'Dépôt client' : 'Retrait client')),
-        isScamReported: false
+        const newTxn: Transaction = {
+          id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
+          phone: 'SYSTEM',
+          operator: 'mtn',
+          type: 'ajust_cash',
+          amount,
+          time: timeStr,
+          date: todayDateStr,
+          category: adjCashDirection === 'inject' ? 'Injection Cash' : 'Retrait Cash (Dépense/Banque)',
+        }
+        await syncAddTransaction(newTxn)
       }
 
-      setTransactions(prev => [newTxn, ...prev])
       setLoading(false)
       setActionType(null)
-
-      // Open ticket automatically if it's a deposit
-      if (actionType === 'deposit') {
-        setActiveReceipt(newTxn)
-      }
-
-      setPhoneInput('')
       setAmountInput('')
-      setSelectedForfait('')
-    }, 600)
+      return
+    }
+
+    // 2. Swapping transactions (Deposit, Withdrawal, Credit, Forfait)
+    if (!amountInput || !phoneInput) {
+      setLoading(false)
+      return
+    }
+
+    const amount = parseFloat(amountInput)
+    const isBlacklisted = blacklist.includes(phoneInput.trim())
+    if (isBlacklisted) {
+      alert("⚠️ Ce numéro est répertorié dans la BLACKLIST COMMUNAUTAIRE. Soyez vigilant !")
+    }
+
+    let nextBalances = { ...balances }
+    if (actionType === 'deposit' || actionType === 'credit' || actionType === 'forfait') {
+      nextBalances = {
+        ...balances,
+        cash: balances.cash + amount,
+        [opInput]: balances[opInput] - amount
+      }
+    } else if (actionType === 'withdrawal') {
+      nextBalances = {
+        ...balances,
+        cash: balances.cash - amount,
+        [opInput]: balances[opInput] + amount
+      }
+    }
+    await syncBalances(nextBalances)
+
+    const newTxn: Transaction = {
+      id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+      phone: phoneInput,
+      operator: opInput,
+      type: actionType!,
+      amount,
+      time: timeStr,
+      date: todayDateStr,
+      category: actionType === 'forfait' ? selectedForfait : (actionType === 'credit' ? 'Vente de Crédit' : (actionType === 'deposit' ? 'Dépôt client' : 'Retrait client')),
+      isScamReported: false
+    }
+
+    await syncAddTransaction(newTxn)
+    setLoading(false)
+    setActionType(null)
+
+    // Open ticket automatically if it's a deposit
+    if (actionType === 'deposit') {
+      setActiveReceipt(newTxn)
+    }
+
+    setPhoneInput('')
+    setAmountInput('')
+    setSelectedForfait('')
   }
 
   // Adjust Start Float reserves
-  const handleSaveCoffres = (e: React.FormEvent) => {
+  const handleSaveCoffres = async (e: React.FormEvent) => {
     e.preventDefault()
-    setCoffres({
+    
+    // Save coffres
+    const nextCoffres = {
       mtn: parseFloat(coffreMtn) || 0,
       moov: parseFloat(coffreMoov) || 0,
       celtiis: parseFloat(coffreCeltiis) || 0,
       cash: parseFloat(coffreCash) || 0,
-    })
+    }
+    await syncCoffres(nextCoffres)
+
+    // Update PIN if requested
+    if (newPinInput.trim() !== '') {
+      await syncPinCode(newPinInput.trim())
+      setNewPinInput('')
+      setShowNewPinSection(false)
+      alert("Code PIN mis à jour avec succès !")
+    }
+
     setShowCoffreModal(false)
   }
 
   // Toggle scam flag
-  const toggleScamReport = (id: string) => {
-    setTransactions(prev => prev.map(t => {
-      if (t.id === id) {
-        return { ...t, isScamReported: !t.isScamReported }
-      }
-      return t
-    }))
+  const toggleScamReport = async (id: string) => {
+    const txn = transactions.find(t => t.id === id)
+    if (txn) {
+      await syncToggleScamReport(id, !txn.isScamReported)
+    }
   }
 
   // Delete transaction
-  const deleteTransaction = (id: string) => {
+  const deleteTransaction = async (id: string) => {
     if (confirm("Supprimer définitivement cet enregistrement ?")) {
-      setTransactions(prev => prev.filter(t => t.id !== id))
+      await syncDeleteTransaction(id)
     }
   }
 
   // Add to blacklist
-  const handleAddBlacklist = (e: React.FormEvent) => {
+  const handleAddBlacklist = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newBlacklistPhone) return
-    setBlacklist(prev => [...prev, newBlacklistPhone.trim()])
+    await syncAddBlacklist(newBlacklistPhone.trim())
     setNewBlacklistPhone('')
   }
 
@@ -567,11 +822,41 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
+          <div className="flex items-center gap-2.5">
+            {/* Role Selector Pill */}
+            <div className={`flex items-center p-0.5 rounded-xl border text-[10px] font-bold transition-all ${
+              theme === 'dark' ? 'bg-[#0f0f15] border-[#1f1f2e]' : 'bg-stone-100 border-stone-300'
+            }`}>
+              <button
+                onClick={handleSwitchToEmployee}
+                className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                  role === 'employe'
+                    ? theme === 'dark' ? 'bg-stone-800 text-white' : 'bg-white shadow text-stone-850'
+                    : 'text-stone-400 hover:text-stone-300'
+                }`}
+              >
+                Employé 👤
+              </button>
+              <button
+                onClick={() => {
+                  if (role === 'employe') {
+                    setShowPinModal(true)
+                  }
+                }}
+                className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                  role === 'proprio'
+                    ? 'bg-cyan-500 text-stone-950 font-black shadow-sm'
+                    : 'text-stone-400 hover:text-cyan-400'
+                }`}
+              >
+                {role === 'proprio' ? 'Proprio 👑' : 'Proprio 🔒'}
+              </button>
+            </div>
+
+            <span className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition-colors ${
               theme === 'dark' ? 'bg-stone-900 text-stone-300 border-[#1f1f2e]' : 'bg-stone-100 text-stone-700 border-stone-300'
             }`}>
-              Offline Safe 🌐
+              {supabaseConnected ? 'Supabase Sync 🟢' : 'Offline Safe 🌐'}
             </span>
 
             <button 
@@ -977,30 +1262,36 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="xs" 
-                onClick={() => setActionType('adjust_ext')}
-                className="text-xs shrink-0"
-              >
-                ⚙️ Ajustement Flotte
-              </Button>
-              <Button 
-                variant="outline" 
-                size="xs" 
-                onClick={() => {
-                  setCoffreMtn(String(coffres.mtn))
-                  setCoffreMoov(String(coffres.moov))
-                  setCoffreCeltiis(String(coffres.celtiis))
-                  setCoffreCash(String(coffres.cash))
-                  setShowCoffreModal(true)
-                }}
-                className="text-xs shrink-0"
-              >
-                Ajuster Coffres
-              </Button>
-            </div>
+            {role === 'proprio' ? (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="xs" 
+                  onClick={() => setActionType('adjust_ext')}
+                  className="text-xs shrink-0"
+                >
+                  ⚙️ Ajustement Flotte
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="xs" 
+                  onClick={() => {
+                    setCoffreMtn(String(coffres.mtn))
+                    setCoffreMoov(String(coffres.moov))
+                    setCoffreCeltiis(String(coffres.celtiis))
+                    setCoffreCash(String(coffres.cash))
+                    setShowCoffreModal(true)
+                  }}
+                  className="text-xs shrink-0"
+                >
+                  Ajuster Coffres
+                </Button>
+              </div>
+            ) : (
+              <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                🔒 Verrouillé
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-stone-500 text-center">
@@ -1247,13 +1538,15 @@ export default function Home() {
                           {txn.isScamReported ? 'Arnaque Signalée !' : 'Signaler Arnaque'}
                         </button>
 
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); deleteTransaction(txn.id); }}
-                          className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
-                        >
-                          <Trash2 className="size-3" />
-                          Supprimer
-                        </button>
+                        {role === 'proprio' && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); deleteTransaction(txn.id); }}
+                            className="text-stone-500 hover:text-stone-400 flex items-center gap-1"
+                          >
+                            <Trash2 className="size-3" />
+                            Supprimer
+                          </button>
+                        )}
                       </div>
                     )}
                   </motion.div>
@@ -1272,17 +1565,24 @@ export default function Home() {
 
           <div className="flex justify-between items-center mt-2 text-[10px] text-stone-500 px-1">
             <span>Données hébergées en local sur ton téléphone.</span>
-            <button 
-              onClick={() => {
-                if (confirm("Réinitialiser toutes les données de la cabine ?")) {
-                  setBalances({ mtn: 240000, moov: 270000, celtiis: 50000, cash: 140000 })
-                  setTransactions([])
-                }
-              }}
-              className="text-rose-500 font-bold hover:underline"
-            >
-              Réinitialiser tout
-            </button>
+            {role === 'proprio' && (
+              <button 
+                onClick={async () => {
+                  if (confirm("Réinitialiser toutes les données de la cabine ?")) {
+                    await syncBalances({ mtn: 240000, moov: 270000, celtiis: 50000, cash: 140000 })
+                    setTransactions([])
+                    localStorage.removeItem('momo_transactions')
+                    const client = getSupabase()
+                    if (client) {
+                      await client.from('momo_transactions').delete().neq('id', 'SYSTEM')
+                    }
+                  }
+                }}
+                className="text-rose-500 font-bold hover:underline"
+              >
+                Réinitialiser tout
+              </button>
+            )}
           </div>
         </section>
 
@@ -1298,13 +1598,19 @@ export default function Home() {
                 <p className="text-[9px] text-stone-500">Numéros suspects recensés localement</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="xs" 
-              onClick={() => setShowBlacklistModal(true)}
-            >
-              Gérer ({blacklist.length})
-            </Button>
+            {role === 'proprio' ? (
+              <Button 
+                variant="outline" 
+                size="xs" 
+                onClick={() => setShowBlacklistModal(true)}
+              >
+                Gérer ({blacklist.length})
+              </Button>
+            ) : (
+              <span className="text-[10px] font-bold text-stone-500 bg-stone-500/10 px-2.5 py-1 rounded-lg border border-stone-500/10">
+                🔒 Lecture Seule ({blacklist.length})
+              </span>
+            )}
           </div>
         </section>
 
@@ -1787,6 +2093,33 @@ export default function Home() {
                   />
                 </div>
 
+                {/* Change PIN section */}
+                <div className="border-t border-stone-855 pt-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPinSection(prev => !prev)}
+                    className="text-xs font-bold text-cyan-500 hover:underline uppercase tracking-wide flex items-center gap-1"
+                  >
+                    ⚙️ Modifier le Code PIN de sécurité
+                  </button>
+                  
+                  {showNewPinSection && (
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <label className="text-[10px] font-bold text-stone-550 uppercase">Nouveau Code PIN</label>
+                      <input 
+                        type="password"
+                        placeholder="Ex: 5678"
+                        maxLength={6}
+                        value={newPinInput}
+                        onChange={e => setNewPinInput(e.target.value)}
+                        className={`w-full p-2.5 border rounded-xl text-sm ${
+                          theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-850'
+                        }`}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <Button variant="premium" type="submit" className="w-full mt-2">
                   Enregistrer les configurations
                 </Button>
@@ -1848,7 +2181,7 @@ export default function Home() {
                   <div key={phone} className="flex justify-between items-center p-2 rounded-lg bg-stone-900/30 border border-stone-855 text-xs">
                     <span className="font-mono font-bold">{phone}</span>
                     <button 
-                      onClick={() => setBlacklist(prev => prev.filter(p => p !== phone))}
+                      onClick={() => syncRemoveBlacklist(phone)}
                       className="text-rose-500 hover:text-rose-400 font-bold"
                     >
                       Retirer
@@ -1856,6 +2189,69 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ENTER PIN CODE MODAL */}
+      <AnimatePresence>
+        {showPinModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }}
+              className="absolute inset-0 bg-black"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`relative w-full max-w-xs rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 overflow-hidden border ${
+                theme === 'dark' ? 'bg-[#08080c] border-[#151520] text-white' : 'bg-white border-stone-300 text-[#121214]'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-md font-serif font-bold flex items-center gap-1">
+                    <span>🔒 Accès Propriétaire</span>
+                  </h3>
+                  <p className="text-[10px] text-stone-500">Saisissez le code PIN de sécurité</p>
+                </div>
+                <button 
+                  onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }} 
+                  className="text-stone-400 hover:text-stone-600"
+                >
+                  <X className="size-4.5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleVerifyPin} className="flex flex-col gap-3.5">
+                <input 
+                  type="password"
+                  required
+                  placeholder="Code PIN"
+                  maxLength={6}
+                  value={pinInput}
+                  onChange={e => setPinInput(e.target.value)}
+                  className={`w-full p-3 border rounded-xl text-center font-mono font-bold tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${
+                    theme === 'dark' ? 'bg-[#151520] border-stone-850 text-white' : 'bg-stone-50 border-stone-300 text-stone-800'
+                  }`}
+                />
+                
+                {pinError && (
+                  <span className="text-[10px] text-red-550 font-bold text-center">
+                    ❌ {pinError}
+                  </span>
+                )}
+
+                <Button variant="premium" type="submit" className="w-full">
+                  Déverrouiller
+                </Button>
+              </form>
             </motion.div>
           </div>
         )}
