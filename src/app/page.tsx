@@ -31,6 +31,7 @@ import {
   Info,
   MapPin,
   ShieldAlert,
+  Calendar,
   Coins
 } from 'lucide-react'
 import { getSupabase } from '../lib/supabase'
@@ -43,9 +44,27 @@ interface Transaction {
   type: 'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'appro_sim' | 'ajust_cash';
   amount: number;
   time: string;
+  date: string; // YYYY-MM-DD
   category: string;
   isScamReported?: boolean;
 }
+
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getYesterdayDateString = () => {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return getLocalDateString(d)
+}
+
+// Prepare initial transactions to fall on today and yesterday
+const TODAY_STR = getLocalDateString()
+const YESTERDAY_STR = getYesterdayDateString()
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
   {
@@ -55,6 +74,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     type: 'withdrawal',
     amount: 5000,
     time: '16:45',
+    date: TODAY_STR,
     category: 'Frais de transaction',
     isScamReported: false,
   },
@@ -65,6 +85,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     type: 'deposit',
     amount: 50000,
     time: '16:10',
+    date: TODAY_STR,
     category: 'Business/Ventes',
     isScamReported: false,
   },
@@ -75,6 +96,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     type: 'withdrawal',
     amount: 120000,
     time: '15:32',
+    date: TODAY_STR,
     category: 'Frais de transaction',
     isScamReported: false,
   },
@@ -85,6 +107,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     type: 'deposit',
     amount: 15000,
     time: '14:15',
+    date: YESTERDAY_STR,
     category: 'Business/Ventes',
     isScamReported: false,
   }
@@ -131,6 +154,9 @@ export default function Home() {
     celtiis: 100000,
     cash: 200000,
   })
+
+  // Selected date for daily report
+  const [selectedReportDate, setSelectedReportDate] = useState<string>(TODAY_STR)
 
   // Transactions list
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS)
@@ -185,12 +211,66 @@ export default function Home() {
     return coffres.mtn + coffres.moov + coffres.celtiis + coffres.cash
   }, [coffres])
 
+  // Group calculations for the selected date (Bilan Journalier 00H-24H)
+  const dailyReportStats = useMemo(() => {
+    const dayTxns = transactions.filter(t => t.date === selectedReportDate)
+    
+    const stats = {
+      deposit: { sum: 0, count: 0 },
+      withdrawal: { sum: 0, count: 0 },
+      credit: { sum: 0, count: 0 },
+      forfait: { sum: 0, count: 0 },
+      total: { sum: 0, count: 0 }
+    }
+
+    dayTxns.forEach(t => {
+      if (t.type === 'deposit') {
+        stats.deposit.sum += t.amount
+        stats.deposit.count += 1
+        stats.total.sum += t.amount
+        stats.total.count += 1
+      } else if (t.type === 'withdrawal') {
+        stats.withdrawal.sum += t.amount
+        stats.withdrawal.count += 1
+        stats.total.sum += t.amount
+        stats.total.count += 1
+      } else if (t.type === 'credit') {
+        stats.credit.sum += t.amount
+        stats.credit.count += 1
+        stats.total.sum += t.amount
+        stats.total.count += 1
+      } else if (t.type === 'forfait') {
+        stats.forfait.sum += t.amount
+        stats.forfait.count += 1
+        stats.total.sum += t.amount
+        stats.total.count += 1
+      }
+    })
+
+    return stats
+  }, [transactions, selectedReportDate])
+
+  // Date formatting helper for French
+  const formattedReportDate = useMemo(() => {
+    if (selectedReportDate === TODAY_STR) return "Aujourd'hui"
+    if (selectedReportDate === YESTERDAY_STR) return "Hier"
+    
+    // Parse date safely
+    const parts = selectedReportDate.split('-')
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+      return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+    }
+    return selectedReportDate
+  }, [selectedReportDate])
+
   // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault()
 
     const now = new Date()
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const todayDateStr = getLocalDateString()
 
     setLoading(true)
 
@@ -211,6 +291,7 @@ export default function Home() {
             type: 'appro_sim',
             amount,
             time: timeStr,
+            date: todayDateStr,
             category: 'Approvisionnement SIM',
           }
           setTransactions(prev => [newTxn, ...prev])
@@ -228,6 +309,7 @@ export default function Home() {
             type: 'ajust_cash',
             amount,
             time: timeStr,
+            date: todayDateStr,
             category: adjCashDirection === 'inject' ? 'Injection Cash' : 'Retrait Cash (Dépense/Banque)',
           }
           setTransactions(prev => [newTxn, ...prev])
@@ -275,6 +357,7 @@ export default function Home() {
         type: actionType!,
         amount,
         time: timeStr,
+        date: todayDateStr,
         category: actionType === 'forfait' ? selectedForfait : (actionType === 'credit' ? 'Vente de Crédit' : (actionType === 'deposit' ? 'Dépôt client' : 'Retrait client')),
         isScamReported: false
       }
@@ -328,9 +411,9 @@ export default function Home() {
 
   // Export CSV
   const handleExportCSV = () => {
-    const headers = 'ID,Telephone,Operateur,Type,Montant,Heure,Details,Arnaque\n'
+    const headers = 'ID,Telephone,Operateur,Type,Montant,Heure,Date,Details,Arnaque\n'
     const rows = transactions.map(t => 
-      `${t.id},${t.phone},${t.operator},${t.type},${t.amount},${t.time},${t.category},${t.isScamReported ? 'OUI' : 'NON'}`
+      `${t.id},${t.phone},${t.operator},${t.type},${t.amount},${t.time},${t.date},${t.category},${t.isScamReported ? 'OUI' : 'NON'}`
     ).join('\n')
     
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })
@@ -573,6 +656,129 @@ export default function Home() {
           </button>
         </section>
 
+        {/* Bilan Journalier (00H - 24H) Section */}
+        <section className={`p-5 rounded-[28px] border transition-colors ${
+          theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300 shadow-sm'
+        }`}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <div>
+              <h3 className="text-sm font-bold uppercase font-serif tracking-wide flex items-center gap-2">
+                <Calendar className="size-4.5 text-cyan-500" />
+                Bilan de la Journée (00H - 24H)
+              </h3>
+              <p className="text-[9px] text-stone-500">
+                Cumul des flux financiers pour la journée sélectionnée
+              </p>
+            </div>
+            
+            {/* Quick Date toggles */}
+            <div className="flex gap-1.5 bg-[#050508]/40 dark:bg-stone-950/20 p-1 rounded-xl border border-stone-350 dark:border-stone-850 text-[10px] font-bold">
+              <button 
+                onClick={() => setSelectedReportDate(TODAY_STR)}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  selectedReportDate === TODAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                }`}
+              >
+                Aujourd'hui
+              </button>
+              <button 
+                onClick={() => setSelectedReportDate(YESTERDAY_STR)}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  selectedReportDate === YESTERDAY_STR ? 'bg-cyan-500 text-stone-950 shadow' : 'text-stone-400 hover:text-white'
+                }`}
+              >
+                Hier
+              </button>
+              <input 
+                type="date"
+                value={selectedReportDate}
+                onChange={e => e.target.value && setSelectedReportDate(e.target.value)}
+                className={`px-1.5 bg-transparent border-0 font-mono text-[9px] focus:outline-none ${
+                  theme === 'dark' ? 'text-white' : 'text-stone-800'
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Balance table sheet */}
+          <div className="overflow-hidden rounded-xl border border-stone-300 dark:border-stone-850">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className={`border-b ${theme === 'dark' ? 'bg-[#0f0f15] border-stone-850' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-bold`}>
+                  <th className="py-2.5 px-3.5">Activité</th>
+                  <th className="py-2.5 px-3.5 text-right">Cumul (FCFA)</th>
+                  <th className="py-2.5 px-3.5 text-center">Volume Ops</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-300/40 dark:divide-stone-850/40">
+                <tr>
+                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-cyan-500" />
+                    Dépôts (Envois)
+                  </td>
+                  <td className="py-2.5 px-3.5 text-right font-bold">
+                    {dailyReportStats.deposit.sum.toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                    {dailyReportStats.deposit.count} tx
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-rose-500" />
+                    Retraits (Sorties)
+                  </td>
+                  <td className="py-2.5 px-3.5 text-right font-bold">
+                    {dailyReportStats.withdrawal.sum.toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                    {dailyReportStats.withdrawal.count} tx
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-amber-500" />
+                    Ventes de Crédits
+                  </td>
+                  <td className="py-2.5 px-3.5 text-right font-bold">
+                    {dailyReportStats.credit.sum.toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                    {dailyReportStats.credit.count} tx
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3.5 font-sans font-bold flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    Ventes de Forfaits
+                  </td>
+                  <td className="py-2.5 px-3.5 text-right font-bold">
+                    {dailyReportStats.forfait.sum.toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-2.5 px-3.5 text-center text-stone-500">
+                    {dailyReportStats.forfait.count} tx
+                  </td>
+                </tr>
+                {/* Total row */}
+                <tr className={`border-t font-black ${
+                  theme === 'dark' ? 'bg-[#0f0f15]/80 text-cyan-400' : 'bg-stone-50 text-[#121214]'
+                }`}>
+                  <td className="py-3 px-3.5 font-sans font-black flex items-center gap-1.5">
+                    <Coins className="size-3.5" />
+                    Total Général ({formattedReportDate})
+                  </td>
+                  <td className="py-3 px-3.5 text-right text-sm">
+                    {dailyReportStats.total.sum.toLocaleString('fr-FR')}
+                  </td>
+                  <td className="py-3 px-3.5 text-center text-sm">
+                    {dailyReportStats.total.count} tx
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         {/* Adjustments & Config section */}
         <section className={`p-4.5 rounded-[24px] border transition-colors ${
           theme === 'dark' ? 'bg-[#0b0b10] border-[#151520]' : 'bg-white border-stone-300'
@@ -759,7 +965,7 @@ export default function Home() {
                       <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'N° client : '}</span>
                       <span className="font-mono font-bold">{txn.phone}</span>
                       {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
-                        <span className="ml-1 text-[9px] bg-red-650 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
+                        <span className="ml-1 text-[9px] bg-red-655 text-white font-bold px-1 rounded animate-pulse">BLACKLISTÉ</span>
                       )}
                     </div>
                     <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-semibold ${
@@ -925,7 +1131,7 @@ export default function Home() {
                           opInput === op 
                             ? op === 'mtn' ? 'border-amber-550 bg-amber-500/10 text-amber-500'
                               : op === 'moov' ? 'border-blue-500 bg-blue-500/10 text-blue-500'
-                              : 'border-emerald-500 bg-emerald-500/10 text-emerald-550'
+                              : 'border-emerald-500 bg-emerald-500/10 text-emerald-555'
                             : 'border-stone-850 text-stone-400 hover:bg-stone-900/30'
                         }`}
                       >
