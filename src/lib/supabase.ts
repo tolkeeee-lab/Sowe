@@ -18,7 +18,13 @@ export const getSupabase = (): SupabaseClient | null => {
   }
 
   if (!supabaseInstance) {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    let sanitizedUrl = supabaseUrl.trim();
+    if (sanitizedUrl.endsWith('/')) {
+      sanitizedUrl = sanitizedUrl.slice(0, -1);
+    }
+    const sanitizedKey = supabaseAnonKey.trim();
+
+    supabaseInstance = createClient(sanitizedUrl, sanitizedKey);
   }
 
   return supabaseInstance;
