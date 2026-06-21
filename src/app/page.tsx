@@ -155,9 +155,31 @@ const BENIN_FORFAITS = {
 
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const [activeTab, setActiveTab] = useState<'caissier' | 'proprietaire'>('caissier')
+  const [activeTab, setActiveTab] = useState<'caissier' | 'vm' | 'proprietaire'>('caissier')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // VM (Vente Mobile) States
+  const [vmBalances, setVmBalances] = useState({
+    mtn: 0,
+    moov: 0,
+    celtiis: 0,
+    cash: 0
+  })
+  const [vmOperator, setVmOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null) // Le reseau du VM (un seul)
+  const [selectedVmRunner, setSelectedVmRunner] = useState('Moussa')
+  const [vmRunners, setVmRunners] = useState<any[]>([
+    { name: 'Moussa', operator: 'mtn', zone: 'Cotonou Centre' },
+    { name: 'Kofi', operator: 'moov', zone: 'Fidjrossé' },
+    { name: 'Ablavi', operator: 'celtiis', zone: 'Abomey-Calavi' }
+  ])
+  const [newRunnerName, setNewRunnerName] = useState('')
+  const [newRunnerOperator, setNewRunnerOperator] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
+  const [newRunnerZone, setNewRunnerZone] = useState('')
+  const [showAddRunner, setShowAddRunner] = useState(false)
+  const [vmActionType, setVmActionType] = useState<'deposit' | 'withdrawal' | null>(null)
+  const [vmOpInput, setVmOpInput] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
+  const [vmAmountInput, setVmAmountInput] = useState('')
   
   // Auth & Session States
   const [session, setSession] = useState<any>(null)
@@ -167,11 +189,12 @@ export default function Home() {
   const [activeCabinId, setActiveCabinId] = useState<string | null>(null)
   
   // Login / Register Views
+  const [appView, setAppView] = useState<'landing' | 'login'>('landing')
   const [authView, setAuthView] = useState<'login' | 'register'>('login')
   const [emailInput, setEmailInput] = useState('')
   const [passwordInput, setPasswordInput] = useState('')
   const [nameInput, setNameInput] = useState('')
-  const [roleInput, setRoleInput] = useState<'proprio' | 'employe'>('proprio')
+  const [roleInput, setRoleInput] = useState<'proprio' | 'employe' | 'vm' | 'vm_hybrid'>('proprio')
   const [bossEmailInput, setBossEmailInput] = useState('')
   const [newCabinName, setNewCabinName] = useState('')
   const [authError, setAuthError] = useState('')
@@ -182,7 +205,8 @@ export default function Home() {
   const [creatingCabin, setCreatingCabin] = useState(false)
 
   // Role & PIN states
-  const [role, setRole] = useState<'proprio' | 'employe'>('employe')
+  const [role, setRole] = useState<'proprio' | 'employe' | 'vm' | 'vm_hybrid'>('employe')
+  const [showHub, setShowHub] = useState(true)
   const [pinCode, setPinCode] = useState('1234')
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinInput, setPinInput] = useState('')
@@ -337,8 +361,43 @@ export default function Home() {
             }
           }
           fetchProprioEmployees(userId)
+          setShowHub(true)
+        } else if (profileData.role === 'vm') {
+          setActiveTab('vm')
+          setSelectedVmRunner(profileData.name)
+          setShowHub(false)
+          const { data: cabinsData } = await client
+            .from('momo_cabins')
+            .select('*')
+            .eq('owner_id', userId)
+          
+          if (cabinsData) {
+            setCabins(cabinsData)
+            const savedCabinId = localStorage.getItem('momo_active_cabin_id')
+            const exists = cabinsData.find(c => c.id === savedCabinId)
+            const defaultCabinId = exists ? savedCabinId : (cabinsData[0]?.id || null)
+            setActiveCabinId(defaultCabinId)
+          }
+        } else if (profileData.role === 'vm_hybrid') {
+          setActiveTab('vm')
+          setSelectedVmRunner(profileData.name)
+          const { data: cabinsData } = await client
+            .from('momo_cabins')
+            .select('*')
+            .eq('owner_id', userId)
+          
+          if (cabinsData) {
+            setCabins(cabinsData)
+            const savedCabinId = localStorage.getItem('momo_active_cabin_id')
+            const exists = cabinsData.find(c => c.id === savedCabinId)
+            const defaultCabinId = exists ? savedCabinId : (cabinsData[0]?.id || null)
+            setActiveCabinId(defaultCabinId)
+          }
+          fetchProprioEmployees(userId)
+          setShowHub(true)
         } else {
           // Employee
+          setShowHub(false)
           if (profileData.assigned_cabin_id) {
             const { data: cabinData } = await client
               .from('momo_cabins')
@@ -462,8 +521,26 @@ export default function Home() {
     const storedRole = localStorage.getItem('momo_role')
     if (storedRole) {
       setRole(storedRole as any)
-      if (storedRole === 'proprio') {
-        setActiveTab('proprietaire')
+      if (storedRole === 'proprio' || storedRole === 'vm_hybrid') {
+        setShowHub(true)
+        // Restore bypass session if it was a mock session
+        const bypassName = localStorage.getItem('momo_bypass_name')
+        if (bypassName) {
+          const mockSession = { user: { id: 'mock-user-id', email: 'bypass@demo.com' } }
+          const mockProfile = { id: 'mock-user-id', role: storedRole, name: bypassName }
+          setSession(mockSession)
+          setProfile(mockProfile)
+        }
+      } else if (storedRole === 'vm') {
+        setActiveTab('vm')
+        setShowHub(false)
+        const bypassName = localStorage.getItem('momo_bypass_name')
+        if (bypassName) {
+          const mockSession = { user: { id: 'mock-user-id', email: 'bypass@demo.com' } }
+          const mockProfile = { id: 'mock-user-id', role: storedRole, name: bypassName }
+          setSession(mockSession)
+          setProfile(mockProfile)
+        }
       }
     }
     
@@ -481,7 +558,42 @@ export default function Home() {
 
     const storedTransactions = localStorage.getItem('momo_transactions')
     if (storedTransactions) setTransactions(JSON.parse(storedTransactions))
+
+    const storedVmBalances = localStorage.getItem('momo_vm_balances')
+    if (storedVmBalances) setVmBalances(JSON.parse(storedVmBalances))
+
+    const storedVmOperator = localStorage.getItem('momo_vm_operator') as 'mtn' | 'moov' | 'celtiis' | null
+    if (storedVmOperator) {
+      setVmOperator(storedVmOperator)
+      setVmOpInput(storedVmOperator)
+    }
+
+    const storedVmRunners = localStorage.getItem('momo_vm_runners')
+    if (storedVmRunners) {
+      try {
+        const parsed = JSON.parse(storedVmRunners)
+        if (parsed.length > 0 && typeof parsed[0] === 'string') {
+          setVmRunners(parsed.map((name: string, idx: number) => ({
+            name,
+            operator: idx % 3 === 0 ? 'mtn' : idx % 3 === 1 ? 'moov' : 'celtiis',
+            zone: 'Zone Benin'
+          })))
+        } else {
+          setVmRunners(parsed)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
   }
+
+  // Automatically select operator based on runner's assigned network
+  useEffect(() => {
+    const runner = vmRunners.find(r => r.name === selectedVmRunner)
+    if (runner) {
+      setVmOpInput(runner.operator)
+    }
+  }, [selectedVmRunner, vmRunners])
 
   // Sync state helpers
   const syncBalances = async (newBalances: typeof balances) => {
@@ -693,9 +805,10 @@ export default function Home() {
 
       if (profileErr) throw profileErr
 
-      if (roleInput === 'proprio') {
+      if (roleInput === 'proprio' || roleInput === 'vm' || roleInput === 'vm_hybrid') {
+        const cabinName = roleInput === 'vm' ? `Espace VM de ${nameInput}` : "Cabine Principale"
         const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
-          name: "Cabine Principale",
+          name: cabinName,
           owner_id: authData.user.id
         }).select().single()
 
@@ -728,10 +841,58 @@ export default function Home() {
     }
   }
 
+  const handleBypass = () => {
+    const mockSession = { user: { id: 'mock-user-id', email: 'bypass@demo.com' } }
+    const mockProfile = { id: 'mock-user-id', role: 'vm_hybrid', name: 'Propriétaire Démo' }
+    const mockCabins = [{ id: 'mock-cabin-id', name: 'Cabine Démo' }]
+    const mockRunners = [
+      { name: 'Moussa', operator: 'mtn', zone: 'Cotonou Centre' },
+      { name: 'Kofi', operator: 'moov', zone: 'Fidjrossè' },
+      { name: 'Ablavi', operator: 'celtiis', zone: 'Abomey-Calavi' }
+    ]
+    
+    setSession(mockSession)
+    setProfile(mockProfile)
+    setRole('vm_hybrid')
+    setCabins(mockCabins)
+    setVmRunners(mockRunners)
+    setActiveCabinId('mock-cabin-id')
+    setSupabaseConnected(false)
+    setShowHub(true)
+    setAuthLoading(false)
+    
+    localStorage.setItem('momo_role', 'vm_hybrid')
+    localStorage.setItem('momo_bypass_name', 'Propriétaire Démo')
+    localStorage.setItem('momo_active_cabin_id', 'mock-cabin-id')
+    localStorage.setItem('momo_vm_runners', JSON.stringify(mockRunners))
+    
+    if (!localStorage.getItem('momo_balances')) {
+      const demoBalances = { mtn: 250000, moov: 150000, celtiis: 100000, cash: 200000 }
+      setBalances(demoBalances)
+      localStorage.setItem('momo_balances', JSON.stringify(demoBalances))
+    }
+  }
+
   const handleCreateCabin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newCabinName.trim() || !session) return
     setCreatingCabin(true)
+
+    if (session?.user?.id === 'mock-user-id') {
+      const mockNewCabin = {
+        id: `mock-cabin-${Math.floor(1000 + Math.random() * 9000)}`,
+        name: newCabinName.trim(),
+        owner_id: 'mock-user-id'
+      }
+      setCabins(prev => [...prev, mockNewCabin])
+      setActiveCabinId(mockNewCabin.id)
+      localStorage.setItem('momo_active_cabin_id', mockNewCabin.id)
+      setNewCabinName('')
+      alert(`Cabine "${mockNewCabin.name}" créée (Local Bypass) avec succès !`)
+      setCreatingCabin(false)
+      return
+    }
+
     const client = getSupabase()
     if (!client) return
 
@@ -763,6 +924,16 @@ export default function Home() {
   }
 
   const handleAssignCabin = async (employeeId: string, cabinId: string) => {
+    if (session?.user?.id === 'mock-user-id') {
+      setAllEmployees(prev => prev.map(emp => 
+        emp.id === employeeId 
+          ? { ...emp, assigned_cabin_id: cabinId === 'none' ? null : cabinId } 
+          : emp
+      ))
+      alert("Affectation de cabine mise à jour (Local Bypass) !")
+      return
+    }
+
     const client = getSupabase()
     if (!client || !session) return
 
@@ -784,6 +955,71 @@ export default function Home() {
       console.error(err)
       alert("Erreur lors de l'affectation.")
     }
+  }
+
+  const handleVmTransaction = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!vmAmountInput || !phoneInput) return
+    const amount = parseFloat(vmAmountInput)
+    if (isNaN(amount) || amount <= 0) return
+    const op = vmOperator || 'mtn'
+    let nextVmBalances = { ...vmBalances }
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+    if (vmActionType === 'deposit') {
+      // Client donne cash → VM envoie virtuel. Cash monte, virtuel baisse.
+      nextVmBalances = {
+        ...vmBalances,
+        cash: vmBalances.cash + amount,
+        [op]: vmBalances[op] - amount
+      }
+    } else {
+      // Client veut cash → VM prend virtuel. Cash baisse, virtuel monte.
+      nextVmBalances = {
+        ...vmBalances,
+        cash: vmBalances.cash - amount,
+        [op]: vmBalances[op] + amount
+      }
+    }
+
+    setVmBalances(nextVmBalances)
+    localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
+
+    const newTxn: Transaction = {
+      id: `VM-${Math.floor(1000 + Math.random() * 9000)}`,
+      phone: phoneInput.trim(),
+      operator: op,
+      type: vmActionType === 'deposit' ? 'deposit' : 'withdrawal',
+      amount,
+      time: timeStr,
+      date: getLocalDateString(),
+      category: 'Vente Mobile VM',
+      isScamReported: false
+    }
+
+    syncAddTransaction(newTxn)
+    setVmAmountInput('')
+    setPhoneInput('')
+    setVmActionType(null)
+  }
+
+  const handleAddRunner = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newRunnerName.trim() || !newRunnerZone.trim()) return
+    const newRunner = {
+      name: newRunnerName.trim(),
+      operator: newRunnerOperator,
+      zone: newRunnerZone.trim()
+    }
+    setVmRunners(prev => {
+      const updated = [...prev, newRunner]
+      localStorage.setItem('momo_vm_runners', JSON.stringify(updated))
+      return updated
+    })
+    setNewRunnerName('')
+    setNewRunnerZone('')
+    setShowAddRunner(false)
   }
 
   // Auto-fill forfait price when selected
@@ -1154,6 +1390,213 @@ export default function Home() {
   }
 
   if (!session) {
+    // --- LANDING PAGE (PUBLIC) ---
+    if (appView === 'landing') {
+      return (
+        <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden ${
+          theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
+        }`}>
+          {/* Decorative background glows */}
+          <div className="absolute -left-40 top-20 size-[500px] rounded-full bg-[#D4AF37]/5 blur-[120px] pointer-events-none" />
+          <div className="absolute -right-40 bottom-20 size-[400px] rounded-full bg-[#D4AF37]/4 blur-[100px] pointer-events-none" />
+          <div className="absolute left-1/2 top-1/3 -translate-x-1/2 size-[300px] rounded-full bg-emerald-900/5 blur-[80px] pointer-events-none" />
+
+          {/* Top bar */}
+          <div className={`w-full py-3 px-6 flex items-center justify-between border-b transition-colors relative z-10 ${
+            theme === 'dark' ? 'border-[#1C2C22] bg-[#050807]/80 backdrop-blur-md' : 'border-[#DCD6CD] bg-white/80 backdrop-blur-md'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`size-9 rounded-xl flex items-center justify-center border ${
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border-stone-200 text-[#D4AF37]'
+              }`}>
+                <Wallet className="size-4.5" />
+              </div>
+              <span className="font-serif text-lg font-bold tracking-tight">MOMO PREMIUM</span>
+            </div>
+            <button
+              onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+              className={`size-9 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-yellow-400' : 'bg-white border-[#DCD6CD] text-stone-700'
+              }`}
+            >
+              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </button>
+          </div>
+
+          {/* Hero */}
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-16 relative z-10">
+            <div className="text-center mb-14 max-w-xl">
+              <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest mb-6 ${
+                theme === 'dark' ? 'border-[#D4AF37]/30 bg-[#D4AF37]/5 text-[#D4AF37]' : 'border-amber-300 bg-amber-50 text-amber-800'
+              }`}>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D4AF37] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#D4AF37]"></span>
+                </span>
+                Bénin · Cotonou · Abomey-Calavi
+              </div>
+              <h1 className="font-serif text-5xl font-black tracking-tight leading-tight mb-4">
+                La plateforme de gestion<br />
+                <span className="text-[#D4AF37]">Mobile Money</span> au Bénin
+              </h1>
+              <p className={`text-sm leading-relaxed max-w-md mx-auto ${
+                theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
+              }`}>
+                Gérez vos cabines physiques, coordonnez votre flotte de vendeurs motorisés, et suivez vos transactions en temps réel — depuis un seul espace sécurisé.
+              </p>
+            </div>
+
+            {/* Role selector cards */}
+            <div className="w-full max-w-4xl">
+              <p className={`text-center text-[11px] uppercase tracking-widest font-bold mb-6 ${
+                theme === 'dark' ? 'text-stone-500' : 'text-stone-400'
+              }`}>Je suis...</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Propriétaire */}
+                <button
+                  onClick={() => {
+                    setRoleInput('proprio')
+                    setAuthView('login')
+                    setAppView('login')
+                  }}
+                  className={`group p-6 rounded-[32px] border text-left flex flex-col gap-4 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer relative overflow-hidden ${
+                    theme === 'dark'
+                      ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] hover:border-[#D4AF37]/40'
+                      : 'border-[#DCD6CD] bg-white hover:border-amber-300 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <div className="absolute -right-6 -top-6 size-20 rounded-full bg-[#D4AF37]/5 group-hover:bg-[#D4AF37]/10 blur-xl transition-colors pointer-events-none" />
+                  <div className={`size-12 rounded-2xl flex items-center justify-center text-2xl border ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                  }`}>
+                    👑
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold mb-1">Propriétaire</h3>
+                    <p className={`text-[11px] leading-relaxed ${
+                      theme === 'dark' ? 'text-stone-500' : 'text-stone-550'
+                    }`}>
+                      Gérez vos cabines physiques, vos gérants et suivez vos performances.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest">Accéder →</span>
+                </button>
+
+                {/* Gérant */}
+                <button
+                  onClick={() => {
+                    setRoleInput('employe')
+                    setAuthView('login')
+                    setAppView('login')
+                  }}
+                  className={`group p-6 rounded-[32px] border text-left flex flex-col gap-4 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer relative overflow-hidden ${
+                    theme === 'dark'
+                      ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] hover:border-emerald-700/40'
+                      : 'border-[#DCD6CD] bg-white hover:border-emerald-400 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <div className="absolute -right-6 -top-6 size-20 rounded-full bg-emerald-500/5 group-hover:bg-emerald-500/10 blur-xl transition-colors pointer-events-none" />
+                  <div className={`size-12 rounded-2xl flex items-center justify-center text-2xl border ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                  }`}>
+                    👤
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold mb-1">Gérant</h3>
+                    <p className={`text-[11px] leading-relaxed ${
+                      theme === 'dark' ? 'text-stone-500' : 'text-stone-550'
+                    }`}>
+                      Accédez à votre cabine assignée et gérez les transactions quotidiennes.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Accéder →</span>
+                </button>
+
+                {/* VM Uniquement */}
+                <button
+                  onClick={() => {
+                    setRoleInput('vm')
+                    setAuthView('login')
+                    setAppView('login')
+                  }}
+                  className={`group p-6 rounded-[32px] border text-left flex flex-col gap-4 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer relative overflow-hidden ${
+                    theme === 'dark'
+                      ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] hover:border-blue-700/40'
+                      : 'border-[#DCD6CD] bg-white hover:border-blue-400 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <div className="absolute -right-6 -top-6 size-20 rounded-full bg-blue-500/5 group-hover:bg-blue-500/10 blur-xl transition-colors pointer-events-none" />
+                  <div className={`size-12 rounded-2xl flex items-center justify-center text-2xl border ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                  }`}>
+                    🛵
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold mb-1">VM Uniquement</h3>
+                    <p className={`text-[11px] leading-relaxed ${
+                      theme === 'dark' ? 'text-stone-500' : 'text-stone-550'
+                    }`}>
+                      Gérez vos opérations de vente mobile sur le terrain individuellement.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Accéder →</span>
+                </button>
+
+                {/* VM & Propriétaire */}
+                <button
+                  onClick={() => {
+                    setRoleInput('vm_hybrid')
+                    setAuthView('login')
+                    setAppView('login')
+                  }}
+                  className={`group p-6 rounded-[32px] border text-left flex flex-col gap-4 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer relative overflow-hidden ${
+                    theme === 'dark'
+                      ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] hover:border-amber-700/40'
+                      : 'border-[#DCD6CD] bg-white hover:border-amber-400 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  <div className="absolute -right-6 -top-6 size-20 rounded-full bg-amber-500/5 group-hover:bg-amber-500/10 blur-xl transition-colors pointer-events-none" />
+                  <div className={`size-12 rounded-2xl flex items-center justify-center text-2xl border ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                  }`}>
+                    🛵👑
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold mb-1">VM & Propriétaire</h3>
+                    <p className={`text-[11px] leading-relaxed ${
+                      theme === 'dark' ? 'text-stone-500' : 'text-stone-550'
+                    }`}>
+                      Combinez la gestion de vos cabines physiques et vos opérations de vente mobile terrain.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Accéder →</span>
+                </button>
+              </div>
+
+              {/* Dev bypass */}
+              <div className="mt-10 flex justify-center">
+                <button
+                  onClick={handleBypass}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-[#0A0F0D] rounded-xl font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                >
+                  🔑 Tester sans Connexion (Bypass)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className={`py-6 text-center text-[10px] font-bold border-t relative z-10 ${
+            theme === 'dark' ? 'border-[#1C2C22] text-stone-600' : 'border-[#DCD6CD] text-stone-400'
+          }`}>
+            MOMO PREMIUM · Cotonou, Bénin · Propulsé localement · v1.1.2
+          </div>
+        </div>
+      )
+    }
+
+    // --- LOGIN PAGE ---
     return (
       <div className={`min-h-screen flex items-center justify-center font-sans px-4 relative overflow-hidden ${
         theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
@@ -1167,6 +1610,16 @@ export default function Home() {
             ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22]' 
             : 'bg-white border-[#DCD6CD]'
         }`}>
+          {/* Back to landing */}
+          <button
+            onClick={() => { setAppView('landing'); setAuthError(''); setAuthSuccess(''); }}
+            className={`flex items-center gap-1.5 text-[10px] font-bold mb-4 cursor-pointer transition-opacity hover:opacity-70 ${
+              theme === 'dark' ? 'text-stone-400' : 'text-stone-500'
+            }`}
+          >
+            ← Retour à l'accueil
+          </button>
+
           <div className="flex flex-col items-center mb-6">
             <div className={`size-16 rounded-2xl flex items-center justify-center mb-4 ${
               theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-natural-accent' : 'bg-stone-50 border border-stone-200 text-natural-accent'
@@ -1174,7 +1627,9 @@ export default function Home() {
               <Wallet className="size-8" />
             </div>
             <h1 className="font-serif text-3xl font-black text-center tracking-tight">MOMO PREMIUM</h1>
-            <p className="text-[10px] uppercase tracking-widest text-natural-accent font-extrabold -mt-1">Luxury Cabin Suite</p>
+            <p className="text-[10px] uppercase tracking-widest text-natural-accent font-extrabold -mt-1">
+              {roleInput === 'proprio' ? '👑 Espace Propriétaire' : roleInput === 'employe' ? '👤 Espace Gérant' : roleInput === 'vm' ? '🛵 Espace VM Motorisé' : 'Luxury Cabin Suite'}
+            </p>
           </div>
 
           <div className={`flex p-1 rounded-2xl border text-xs font-bold mb-6 ${
@@ -1249,6 +1704,20 @@ export default function Home() {
               <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 py-3.5 rounded-xl font-bold cursor-pointer">
                 Se Connecter
               </Button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-[#1C2C22] dark:border-stone-850"></div>
+                <span className="flex-shrink mx-4 text-stone-500 text-[10px] font-bold uppercase">Ou</span>
+                <div className="flex-grow border-t border-[#1C2C22] dark:border-stone-850"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBypass}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-[#0A0F0D] rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                🔑 Tester sans Connexion (Bypass)
+              </button>
             </form>
           ) : (
             <form onSubmit={handleSignUp} className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-1">
@@ -1258,24 +1727,46 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setRoleInput('proprio')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
                       roleInput === 'proprio'
                         ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
                         : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
                     }`}
                   >
-                    👑 Propriétaire (Boss)
+                    👑 Proprio
                   </button>
                   <button
                     type="button"
                     onClick={() => setRoleInput('employe')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
                       roleInput === 'employe'
                         ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
                         : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
                     }`}
                   >
-                    👤 Employé (Gérant)
+                    👤 Gérant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleInput('vm')}
+                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                      roleInput === 'vm'
+                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    🛵 VM Uniquement
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleInput('vm_hybrid')}
+                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                      roleInput === 'vm_hybrid'
+                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                    }`}
+                  >
+                    🛵👑 VM & Proprio
                   </button>
                 </div>
               </div>
@@ -1365,12 +1856,12 @@ export default function Home() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-550 font-sans ${
+    <div className={`min-h-screen w-full overflow-x-hidden transition-colors duration-550 font-sans ${
       theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
     }`}>
       
       {/* Top Banner / Security active */}
-      <div className={`w-full py-3 px-6 text-center text-xs font-bold tracking-wider flex items-center justify-center gap-2 border-b transition-colors ${
+      <div className={`w-full py-3 px-4 text-center text-xs font-bold tracking-wider flex flex-wrap items-center justify-center gap-2 border-b transition-colors ${
         theme === 'dark' 
           ? 'bg-[#0E1B15] text-[#D4AF37] border-[#1C2C22]' 
           : 'bg-[#F2EFE9] text-[#7C651A] border-[#DCD6CD]'
@@ -1441,6 +1932,19 @@ export default function Home() {
               </button>
             )}
 
+            {(role === 'vm_hybrid' || role === 'proprio') && !showHub && (
+              <button
+                onClick={() => setShowHub(true)}
+                className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  theme === 'dark' 
+                    ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-400 hover:bg-emerald-950/40' 
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                🏠 Menu Hub
+              </button>
+            )}
+
             <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-colors hidden md:inline-block ${
               theme === 'dark' ? 'bg-[#0E1B15] text-emerald-400 border-[#1C2C22]' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
             }`}>
@@ -1474,40 +1978,130 @@ export default function Home() {
       </header>
 
       {/* Main Body */}
-      <main className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <main className="max-w-xl mx-auto px-4 pt-8 pb-24 md:pb-8 flex flex-col gap-6">
+        {showHub && (role === 'vm_hybrid' || role === 'proprio') ? (
+          <div className="flex flex-col gap-6 py-4">
+            <div className="text-center mb-4">
+              <h2 className="font-serif text-3xl font-black tracking-tight text-[#D4AF37]">Bienvenue dans votre Hub</h2>
+              <p className="text-xs text-stone-500 uppercase tracking-widest font-bold mt-1">Sélectionnez l'espace de travail souhaité</p>
+            </div>
 
-        {/* Espace Tabs Switcher */}
-        <div className={`flex p-1 rounded-2xl border text-xs font-bold transition-all ${
-          theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
-        }`}>
-          <button
-            onClick={() => setActiveTab('caissier')}
-            className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-              activeTab === 'caissier' 
-                ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <span>Espace Caissier 👤</span>
-          </button>
-          <button
-            onClick={() => {
-              if (role === 'proprio') {
-                setActiveTab('proprietaire')
-              } else {
-                setShowPinModal(true)
-              }
-            }}
-            className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-              activeTab === 'proprietaire' 
-                ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <span>Espace Propriétaire 👑</span>
-            {role !== 'proprio' && <Lock className="size-3" />}
-          </button>
-        </div>
+            <div className="grid grid-cols-1 gap-6">
+              {/* Option 1: Espace Propriétaire / Cabine Physique */}
+              <button
+                onClick={() => {
+                  if (role === 'proprio') {
+                    setActiveTab('proprietaire')
+                  } else {
+                    setActiveTab('caissier')
+                  }
+                  setShowHub(false)
+                }}
+                className={`p-6 rounded-[36px] border text-left flex flex-col justify-between h-44 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative overflow-hidden group ${
+                  theme === 'dark'
+                    ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] text-white hover:border-[#D4AF37]/50'
+                    : 'border-[#DCD6CD] bg-white text-[#111614] hover:border-[#D4AF37]/50'
+                }`}
+              >
+                <div className="absolute -right-8 -top-8 size-24 rounded-full bg-[#D4AF37]/5 group-hover:bg-[#D4AF37]/10 transition-colors blur-xl pointer-events-none" />
+                <div className="flex items-center gap-3">
+                  <div className={`size-12 rounded-2xl flex items-center justify-center shadow ${
+                    theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border border-stone-200 text-[#D4AF37]'
+                  }`}>
+                    <Building className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg font-bold">Espace Cabines & Administration</h3>
+                    <p className="text-[10px] uppercase font-bold text-stone-500">Propriétaire / Cabine Momo physique</p>
+                  </div>
+                </div>
+                <div>
+                  <p className={`text-[11px] leading-relaxed ${theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}`}>
+                    Gérez vos cabines physiques, visualisez le solde global, affectez vos gérants, configurez vos coffres et gérez la blacklist.
+                  </p>
+                  <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest mt-2 block font-sans">Accéder à l'espace →</span>
+                </div>
+              </button>
+
+              {/* Option 2: Espace Vendeur Motorisé (VM) */}
+              <button
+                onClick={() => {
+                  setActiveTab('vm')
+                  setShowHub(false)
+                }}
+                className={`p-6 rounded-[36px] border text-left flex flex-col justify-between h-44 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative overflow-hidden group ${
+                  theme === 'dark'
+                    ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] text-white hover:border-[#D4AF37]/50'
+                    : 'border-[#DCD6CD] bg-white text-[#111614] hover:border-[#D4AF37]/50'
+                }`}
+              >
+                <div className="absolute -right-8 -top-8 size-24 rounded-full bg-[#D4AF37]/5 group-hover:bg-[#D4AF37]/10 transition-colors blur-xl pointer-events-none" />
+                <div className="flex items-center gap-3">
+                  <div className={`size-12 rounded-2xl flex items-center justify-center shadow ${
+                    theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border border-stone-200 text-[#D4AF37]'
+                  }`}>
+                    <Send className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg font-bold">Espace Vendeur Motorisé (VM)</h3>
+                    <p className="text-[10px] uppercase font-bold text-[#D4AF37]">Mode Terrain / Vente Mobile</p>
+                  </div>
+                </div>
+                <div>
+                  <p className={`text-[11px] leading-relaxed ${theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}`}>
+                    Suivez la flotte de vente mobile, gérez les transferts de fonds sur le terrain, enregistrez les dépôts et retraits des VM.
+                  </p>
+                  <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest mt-2 block font-sans">Accéder à l'espace →</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Espace Tabs Switcher (Desktop only) */}
+        {role !== 'vm' && (
+          <div className={`hidden md:flex p-1 rounded-2xl border text-xs font-bold transition-all ${
+            theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
+          }`}>
+            <button
+              onClick={() => setActiveTab('caissier')}
+              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
+                activeTab === 'caissier' 
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>Espace Caissier 👤</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('vm')}
+              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
+                activeTab === 'vm' 
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>Espace VM (Vente Mobile) 🛵</span>
+            </button>
+            <button
+              onClick={() => {
+                if (role === 'proprio') {
+                  setActiveTab('proprietaire')
+                } else {
+                  setShowPinModal(true)
+                }
+              }}
+              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
+                activeTab === 'proprietaire' 
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>Espace Propriétaire 👑</span>
+              {role !== 'proprio' && <Lock className="size-3" />}
+            </button>
+          </div>
+        )}
 
         {/* TAB 1: CAISSIER / OPERATIONS */}
         {activeTab === 'caissier' && (
@@ -2204,6 +2798,348 @@ export default function Home() {
           </div>
         )}
 
+        {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
+        {activeTab === 'vm' && (
+          <div className="flex flex-col gap-6 mb-16 md:mb-0">
+
+            {/* SETUP: Choix du réseau si pas encore défini */}
+            {!vmOperator ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-8">
+                <div className="text-center">
+                  <p className="text-3xl mb-3">🛵</p>
+                  <h2 className="font-serif text-2xl font-black tracking-tight mb-2">
+                    Quel est ton réseau ?
+                  </h2>
+                  <p className={`text-xs leading-relaxed max-w-xs mx-auto ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+                    Choisis le réseau mobile sur lequel tu travailles. Ce choix est définitif et ne peut pas être changé plus tard.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 w-full max-w-xs">
+                  {([
+                    { op: 'mtn', label: 'MTN Mobile Money', color: 'amber', emoji: '🟡', desc: 'Je suis agent MTN MoMo' },
+                    { op: 'moov', label: 'Moov Money', color: 'blue', emoji: '🔵', desc: 'Je suis agent Moov Money' },
+                    { op: 'celtiis', label: 'Celtiis Cash', color: 'emerald', emoji: '🟢', desc: 'Je suis agent Celtiis Cash' },
+                  ] as const).map(item => (
+                    <button
+                      key={item.op}
+                      onClick={() => {
+                        const confirmed = confirm(`Confirmer : je suis VM ${item.label} ?`)
+                        if (!confirmed) return
+                        setVmOperator(item.op)
+                        setVmOpInput(item.op)
+                        localStorage.setItem('momo_vm_operator', item.op)
+                        // Init balances pour ce seul réseau
+                        const newVm = { mtn: 0, moov: 0, celtiis: 0, cash: 0 }
+                        setVmBalances(newVm)
+                        localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
+                      }}
+                      className={`p-5 rounded-[28px] border text-left flex items-center gap-4 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                        theme === 'dark'
+                          ? `border-[#1C2C22] bg-[#0E1B15] hover:border-${item.color}-700/50`
+                          : `border-[#DCD6CD] bg-white hover:border-${item.color}-400 shadow-sm`
+                      }`}
+                    >
+                      <span className="text-3xl">{item.emoji}</span>
+                      <div>
+                        <div className={`font-serif font-bold text-sm ${
+                          item.op === 'mtn' ? 'text-amber-500' : item.op === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                        }`}>{item.label}</div>
+                        <div className={`text-[10px] ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>{item.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+
+            <section className={`p-6 rounded-[36px] border transition-all overflow-hidden relative ${
+              theme === 'dark' 
+                ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22] shadow-2xl' 
+                : 'bg-gradient-to-b from-white to-[#F2EFE9] border-[#DCD6CD] shadow-md'
+            }`}>
+              <div className="absolute -right-16 -top-16 size-48 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+
+              <div className="flex justify-between items-center mb-4 relative z-10">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-500 font-sans">Mon Solde Terrain</span>
+                <span className={`text-[9px] font-bold px-2.5 py-1 rounded-lg border ${
+                  vmOperator === 'mtn' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                  : vmOperator === 'moov' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                }`}>
+                  {vmOperator?.toUpperCase()} — {profile?.name || 'VM'}
+                </span>
+              </div>
+
+              <div className="text-center py-4 mb-6 relative z-10">
+                <p className={`text-[10px] uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+                  Virtuel {vmOperator?.toUpperCase()} disponible
+                </p>
+                <h2 className={`text-4xl font-serif font-black tracking-tight ${
+                  vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                }`}>
+                  {vmOperator ? vmBalances[vmOperator].toLocaleString('fr-FR') : '0'} <span className="text-lg font-sans font-medium text-stone-500">FCFA</span>
+                </h2>
+                <p className={`text-[10px] mt-1 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+                  + <span className="font-bold text-purple-400">{vmBalances.cash.toLocaleString('fr-FR')} FCFA</span> en poche (especes)
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 relative z-10">
+                <div className={`p-4 rounded-[20px] border ${
+                  theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
+                }`}>
+                  <span className={`block text-[9px] font-bold mb-1.5 uppercase ${
+                    vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                  }`}>Virtuel {vmOperator?.toUpperCase()}</span>
+                  <div className={`font-mono font-bold text-base ${
+                    vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                  }`}>
+                    {vmOperator ? vmBalances[vmOperator].toLocaleString('fr-FR') : '0'} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                  </div>
+                </div>
+                <div className={`p-4 rounded-[20px] border ${
+                  theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
+                }`}>
+                  <span className="block text-[9px] font-bold text-purple-400 mb-1.5 uppercase">Cash en Poche</span>
+                  <div className="font-mono font-bold text-base text-purple-400">
+                    {vmBalances.cash.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Operations Terrain */}
+            <section className="flex flex-col gap-3">
+              <div className="px-1">
+                <h3 className="text-sm font-bold font-serif uppercase text-natural-accent">Mes Opérations Terrain</h3>
+                <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>Enregistre chaque transaction avec ton client</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setVmActionType('deposit')}
+                  className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-32 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                    vmActionType === 'deposit'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark'
+                        ? 'border border-[#1C2C22] bg-[#0E1B15] text-white hover:bg-[#12241C]'
+                        : 'border border-[#DCD6CD] bg-white text-[#111614] hover:bg-stone-50'
+                  }`}
+                >
+                  <div className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${vmActionType === 'deposit' ? 'text-[#0A0F0D]' : 'text-natural-accent'}`}>
+                    <ArrowDownLeft className="size-4.5 stroke-[3px]" />
+                    Client - Envoi
+                  </div>
+                  <div>
+                    <div className={`text-[9px] font-bold uppercase tracking-widest ${vmActionType === 'deposit' ? 'opacity-70' : 'text-stone-500'}`}>Client me donne du cash</div>
+                    <div className={`text-[8px] mt-0.5 ${vmActionType === 'deposit' ? 'opacity-60' : 'text-stone-400'}`}>Je lui envoie le virtuel via mobile</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setVmActionType('withdrawal')}
+                  className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-32 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                    vmActionType === 'withdrawal'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark'
+                        ? 'border border-[#1C2C22] bg-[#0E1B15] text-white hover:bg-[#12241C]'
+                        : 'border border-[#DCD6CD] bg-white text-[#111614] hover:bg-stone-50'
+                  }`}
+                >
+                  <div className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${vmActionType === 'withdrawal' ? 'text-[#0A0F0D]' : 'text-rose-500'}`}>
+                    <ArrowUpRight className="size-4.5 stroke-[3px]" />
+                    Retrait - Client
+                  </div>
+                  <div>
+                    <div className={`text-[9px] font-bold uppercase tracking-widest ${vmActionType === 'withdrawal' ? 'opacity-70' : 'text-stone-500'}`}>Client veut du cash</div>
+                    <div className={`text-[8px] mt-0.5 ${vmActionType === 'withdrawal' ? 'opacity-60' : 'text-stone-400'}`}>Je prends son virtuel, lui donne l'espèce</div>
+                  </div>
+                </button>
+              </div>
+
+              {vmActionType && (
+                <form onSubmit={handleVmTransaction} className={`p-5 rounded-[28px] border flex flex-col gap-4 mt-1 ${
+                  theme === 'dark' ? 'bg-[#0E1B15]/60 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+                }`}>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Tel Client</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Ex: 0196887722"
+                      value={phoneInput}
+                      onChange={e => setPhoneInput(e.target.value)}
+                      className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Montant (FCFA)</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="Ex: 25000"
+                      value={vmAmountInput}
+                      onChange={e => setVmAmountInput(e.target.value)}
+                      className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
+                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button variant="premium" type="submit" loading={loading} className="flex-1 cursor-pointer font-bold py-3.5">
+                      Confirmer
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setVmActionType(null)}
+                      className={`px-5 rounded-xl border font-bold text-xs cursor-pointer ${
+                        theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-500 hover:bg-stone-50'
+                      }`}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+
+            {/* Point Agence */}
+            <section className={`p-6 rounded-[32px] border transition-colors ${
+              theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+            }`}>
+              <h3 className="text-sm font-bold font-serif uppercase text-natural-accent flex items-center gap-2 mb-1">
+                <Building className="size-4.5" />
+                Point Agence
+              </h3>
+              <p className={`text-[10px] mb-5 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+                À l'agence : remets tes espèces collectées et recharge ton virtuel pour continuer à servir tes clients
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    const montant = prompt("Espèces à remettre à l'agence (FCFA) :")
+                    if (!montant || isNaN(Number(montant)) || Number(montant) <= 0) return
+                    const amt = Number(montant)
+                    if (amt > vmBalances.cash) { alert("Montant supérieur à ton cash disponible !"); return }
+                    const newVm = { ...vmBalances, cash: vmBalances.cash - amt }
+                    setVmBalances(newVm)
+                    localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
+                    alert(`OK: ${amt.toLocaleString('fr-FR')} FCFA remis à l'agence.`)
+                  }}
+                  className={`p-4 rounded-[24px] border text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                    theme === 'dark' ? 'border-[#1C2C22] bg-[#050807]/60 hover:border-rose-900/40' : 'border-[#DCD6CD] bg-stone-50 hover:border-rose-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-rose-500">
+                    <ArrowUpRight className="size-4 stroke-[2.5px]" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Remettre Espèces</span>
+                  </div>
+                  <p className={`text-[10px] leading-relaxed ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+                    Déposer le cash collecté sur le terrain
+                  </p>
+                  <span className="font-mono font-bold text-xs text-purple-400">{vmBalances.cash.toLocaleString('fr-FR')} FCFA dispo</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const op = vmOperator
+                    if (!op) { alert("Veuillez d'abord configurer votre réseau."); return }
+                    const montant = prompt(`Montant de virtuel ${op.toUpperCase()} reçu de l'agence (FCFA) :`)
+                    if (!montant || isNaN(Number(montant)) || Number(montant) <= 0) return
+                    const amt = Number(montant)
+                    const newVm = { ...vmBalances, [op]: (vmBalances as any)[op] + amt }
+                    setVmBalances(newVm)
+                    localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
+                    alert(`OK: +${amt.toLocaleString('fr-FR')} FCFA virtuel ${op.toUpperCase()} rechargé !`)
+                  }}
+                  className={`p-4 rounded-[24px] border text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
+                    theme === 'dark' ? 'border-[#1C2C22] bg-[#050807]/60 hover:border-emerald-900/40' : 'border-[#DCD6CD] bg-stone-50 hover:border-emerald-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-emerald-500">
+                    <ArrowDownLeft className="size-4 stroke-[2.5px]" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Recevoir Virtuel</span>
+                  </div>
+                  <p className={`text-[10px] leading-relaxed ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+                    Recharger mon solde virtuel auprès de l'agence
+                  </p>
+                  <span className="font-mono font-bold text-xs text-natural-accent">{(vmBalances.mtn + vmBalances.moov + vmBalances.celtiis).toLocaleString('fr-FR')} FCFA actuel</span>
+                </button>
+              </div>
+
+              {/* Bilan journee */}
+              <div className={`mt-4 p-4 rounded-2xl border flex flex-col gap-2 ${
+                theme === 'dark' ? 'bg-[#050807]/40 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+              }`}>
+                <p className="text-[10px] font-bold text-stone-500 uppercase mb-1">Bilan de ma journée</p>
+                <div className="flex justify-between text-xs">
+                  <span className={theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}>Cash reçu (envois clients)</span>
+                  <span className="font-mono font-bold text-natural-accent">
+                    +{transactions.filter(t => t.category.startsWith('Vente Mobile') && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className={theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}>Cash donné (retraits clients)</span>
+                  <span className="font-mono font-bold text-rose-400">
+                    -{transactions.filter(t => t.category.startsWith('Vente Mobile') && t.type === 'withdrawal' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            {/* Journal du Jour */}
+            <section className="flex flex-col gap-3">
+              <div className="px-1">
+                <h3 className="text-sm font-bold font-serif uppercase text-natural-accent">Mon Journal du Jour</h3>
+                <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>Toutes mes opérations enregistrées aujourd'hui</p>
+              </div>
+              <div className="flex flex-col gap-3">
+                {transactions.filter(t => t.category.startsWith('Vente Mobile') && t.date === TODAY_STR).length > 0 ? (
+                  transactions
+                    .filter(t => t.category.startsWith('Vente Mobile') && t.date === TODAY_STR)
+                    .map(txn => (
+                      <div key={txn.id} className={`p-4 rounded-2xl border flex justify-between items-center ${
+                        theme === 'dark' ? 'border-[#1C2C22] bg-[#0E1B15]/20' : 'border-[#DCD6CD] bg-white'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                            txn.type === 'deposit' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}>
+                            {txn.type === 'deposit' ? 'ENVOI' : 'RETRAIT'}
+                          </span>
+                          {renderOperatorBadge(txn.operator)}
+                          <span className="text-[10px] font-mono text-stone-500">{txn.phone} - {txn.time}</span>
+                        </div>
+                        <div className={`font-mono font-bold text-xs ${txn.type === 'deposit' ? 'text-natural-accent' : 'text-rose-400'}`}>
+                          {txn.type === 'deposit' ? '+' : '-'}{txn.amount.toLocaleString('fr-FR')} FCFA
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className={`text-center py-10 rounded-2xl border ${
+                    theme === 'dark' ? 'border-[#1C2C22] bg-[#0E1B15]/10 text-stone-500' : 'border-stone-200 bg-stone-50 text-stone-400'
+                  } text-xs`}>
+                    <p className="text-2xl mb-2">{'\u{1F6F5}'}</p>
+                    <p className="font-bold">Aucune opération enregistrée aujourd'hui</p>
+                    <p className="text-[10px] mt-1 opacity-60">Utilise les boutons ci-dessus pour enregistrer tes transactions</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    )}
+
+
         {/* TAB 2: PROPRIÉTAIRE / CONFIG */}
         {activeTab === 'proprietaire' && role === 'proprio' && (
           <div className="flex flex-col gap-6">
@@ -2487,6 +3423,8 @@ export default function Home() {
               </button>
             </section>
           </div>
+        )}
+          </>
         )}
       </main>
 
@@ -3116,6 +4054,85 @@ export default function Home() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Bottom Navigation Bar */}
+      {role !== 'vm' && (
+        <div className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-md transition-colors duration-550 ${
+          theme === 'dark' 
+            ? 'bg-[#050807]/90 border-[#1C2C22] text-[#E4EAD8]' 
+            : 'bg-[#FAF9F6]/90 border-[#DCD6CD] text-[#111614]'
+        }`}>
+          <div className="flex h-16 items-center gap-2 overflow-x-auto scrollbar-none flex-nowrap px-4 py-2">
+            <button
+              onClick={() => setActiveTab('caissier')}
+              className={`flex flex-col items-center justify-center flex-shrink-0 min-w-[110px] h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+                activeTab === 'caissier'
+                  ? 'text-natural-accent'
+                  : 'text-stone-500 hover:text-stone-400'
+              }`}
+            >
+              {activeTab === 'caissier' && (
+                <motion.div
+                  layoutId="activeTabMobileIndicator"
+                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <Wallet className="size-4.5 relative z-10" />
+              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Caisse</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('vm')}
+              className={`flex flex-col items-center justify-center flex-shrink-0 min-w-[110px] h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+                activeTab === 'vm'
+                  ? 'text-natural-accent'
+                  : 'text-stone-500 hover:text-stone-400'
+              }`}
+            >
+              {activeTab === 'vm' && (
+                <motion.div
+                  layoutId="activeTabMobileIndicator"
+                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <Send className="size-4.5 relative z-10" />
+              <span className="text-[9px] uppercase tracking-wider font-sans font-bold relative z-10">Flotte VM</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                if (role === 'proprio') {
+                  setActiveTab('proprietaire')
+                } else {
+                  setShowPinModal(true)
+                }
+              }}
+              className={`flex flex-col items-center justify-center flex-shrink-0 min-w-[110px] h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+                activeTab === 'proprietaire'
+                  ? 'text-natural-accent'
+                  : 'text-stone-500 hover:text-stone-400'
+              }`}
+            >
+              {activeTab === 'proprietaire' && (
+                <motion.div
+                  layoutId="activeTabMobileIndicator"
+                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <div className="relative z-10">
+                <Building className="size-4.5" />
+                {role !== 'proprio' && (
+                  <Lock className="size-2.5 absolute -top-1 -right-1 text-natural-accent" />
+                )}
+              </div>
+              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Proprio</span>
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )

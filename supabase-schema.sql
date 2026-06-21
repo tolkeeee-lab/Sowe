@@ -22,7 +22,7 @@ CREATE TABLE public.momo_cabins (
 -- 2. USER PROFILES TABLE
 CREATE TABLE public.momo_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    role TEXT NOT NULL CHECK (role IN ('proprio', 'employe')),
+    role TEXT NOT NULL CHECK (role IN ('proprio', 'employe', 'vm', 'vm_hybrid')),
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     owner_id UUID REFERENCES auth.users(id), -- NULL for owners, refers to boss/owner for employees
