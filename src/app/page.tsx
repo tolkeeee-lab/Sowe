@@ -1108,7 +1108,9 @@ export default function Home() {
               theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
             }`}>
               {/* Period type selector segments */}
-              <div className="flex bg-[#050807]/60 dark:bg-stone-950/20 p-1 rounded-2xl border border-stone-300 dark:border-stone-800 text-xs font-bold mb-5">
+              <div className={`flex p-1 rounded-2xl border text-xs font-bold mb-5 transition-all ${
+                theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
+              }`}>
                 {(['day', 'week', 'month', 'year'] as const).map(p => (
                   <button
                     key={p}
@@ -1116,7 +1118,7 @@ export default function Home() {
                     className={`flex-1 py-2.5 rounded-xl transition-all capitalize cursor-pointer font-bold ${
                       periodType === p 
                         ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                        : 'text-stone-400 hover:text-white'
+                        : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
                     {p === 'day' ? 'Jour' : p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
@@ -1254,61 +1256,91 @@ export default function Home() {
               </div>
 
               {/* Balance table sheet */}
-              <div className="overflow-hidden rounded-2xl border border-stone-250 dark:border-stone-800 shadow-inner bg-white dark:bg-[#0A0F0D]">
+              <div className={`overflow-hidden rounded-2xl border shadow-inner transition-colors ${
+                theme === 'dark' ? 'bg-[#0A0F0D] border-stone-800' : 'bg-white border-stone-200'
+              }`}>
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-800' : 'bg-stone-50 border-stone-200'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-300`}>
+                    <tr className={`border-b text-[10px] uppercase font-extrabold ${
+                      theme === 'dark' ? 'bg-[#050807] border-stone-800 text-stone-300' : 'bg-stone-50 border-stone-200 text-stone-700'
+                    }`}>
                       <th className="py-3 px-4">Activité</th>
                       <th className="py-3 px-4 text-right">Cumul (FCFA)</th>
                       <th className="py-3 px-4 text-center">Volume Ops</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800/60">
+                  <tbody className={`divide-y ${
+                    theme === 'dark' ? 'divide-stone-800/60' : 'divide-stone-200'
+                  }`}>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
+                      <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
+                        theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
+                      }`}>
                         <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
                         Dépôts (Envois)
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-stone-900 dark:text-[#E4EAD8]">
+                      <td className={`py-3 px-4 text-right font-bold ${
+                        theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
+                      }`}>
                         {periodicReportStats.deposit.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
+                      <td className={`py-3 px-4 text-center ${
+                        theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
+                      }`}>
                         {periodicReportStats.deposit.count} tx
                       </td>
                     </tr>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
+                      <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
+                        theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
+                      }`}>
                         <span className="size-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500" />
                         Retraits (Sorties)
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-rose-700 dark:text-rose-400">
+                      <td className={`py-3 px-4 text-right font-bold ${
+                        theme === 'dark' ? 'text-rose-400' : 'text-rose-700'
+                      }`}>
                         {periodicReportStats.withdrawal.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
+                      <td className={`py-3 px-4 text-center ${
+                        theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
+                      }`}>
                         {periodicReportStats.withdrawal.count} tx
                       </td>
                     </tr>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
+                      <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
+                        theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
+                      }`}>
                         <span className="size-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500" />
                         Ventes de Crédits
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-amber-800 dark:text-amber-400">
+                      <td className={`py-3 px-4 text-right font-bold ${
+                        theme === 'dark' ? 'text-amber-400' : 'text-amber-800'
+                      }`}>
                         {periodicReportStats.credit.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
+                      <td className={`py-3 px-4 text-center ${
+                        theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
+                      }`}>
                         {periodicReportStats.credit.count} tx
                       </td>
                     </tr>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
+                      <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
+                        theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
+                      }`}>
                         <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
                         Ventes de Forfaits
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-750 dark:text-emerald-450">
+                      <td className={`py-3 px-4 text-right font-bold ${
+                        theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'
+                      }`}>
                         {periodicReportStats.forfait.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
+                      <td className={`py-3 px-4 text-center ${
+                        theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
+                      }`}>
                         {periodicReportStats.forfait.count} tx
                       </td>
                     </tr>
