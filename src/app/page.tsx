@@ -1232,67 +1232,67 @@ export default function Home() {
               </div>
 
               {/* Balance table sheet */}
-              <div className="overflow-hidden rounded-2xl border border-stone-300 dark:border-stone-800 shadow-inner">
+              <div className="overflow-hidden rounded-2xl border border-stone-250 dark:border-stone-800 shadow-inner bg-white dark:bg-[#0E1B15]/30">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-800' : 'bg-stone-100 border-stone-250'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-400`}>
+                    <tr className={`border-b ${theme === 'dark' ? 'bg-[#050807] border-stone-800' : 'bg-stone-50 border-stone-200'} text-[10px] uppercase font-extrabold text-stone-700 dark:text-stone-300`}>
                       <th className="py-3 px-4">Activité</th>
                       <th className="py-3 px-4 text-right">Cumul (FCFA)</th>
                       <th className="py-3 px-4 text-center">Volume Ops</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-300/20 dark:divide-stone-800/40">
+                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800/60">
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
                         <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
                         Dépôts (Envois)
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#111614] dark:text-[#E4EAD8]">
+                      <td className="py-3 px-4 text-right font-bold text-stone-900 dark:text-[#E4EAD8]">
                         {periodicReportStats.deposit.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-500">
+                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
                         {periodicReportStats.deposit.count} tx
                       </td>
                     </tr>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
                         <span className="size-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500" />
                         Retraits (Sorties)
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-rose-500">
+                      <td className="py-3 px-4 text-right font-bold text-rose-700 dark:text-rose-400">
                         {periodicReportStats.withdrawal.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-500">
+                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
                         {periodicReportStats.withdrawal.count} tx
                       </td>
                     </tr>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
                         <span className="size-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500" />
                         Ventes de Crédits
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-amber-500">
+                      <td className="py-3 px-4 text-right font-bold text-amber-800 dark:text-amber-400">
                         {periodicReportStats.credit.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-500">
+                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
                         {periodicReportStats.credit.count} tx
                       </td>
                     </tr>
                     <tr className="hover:bg-stone-500/5 transition-colors">
-                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2">
+                      <td className="py-3 px-4 font-sans font-bold flex items-center gap-2 text-stone-900 dark:text-[#E4EAD8]">
                         <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
                         Ventes de Forfaits
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-500">
+                      <td className="py-3 px-4 text-right font-bold text-emerald-750 dark:text-emerald-450">
                         {periodicReportStats.forfait.sum.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3 px-4 text-center text-stone-500">
+                      <td className="py-3 px-4 text-center text-stone-600 dark:text-stone-400">
                         {periodicReportStats.forfait.count} tx
                       </td>
                     </tr>
                     {/* Total row */}
                     <tr className={`border-t font-black ${
-                      theme === 'dark' ? 'bg-[#0A0F0D] text-natural-accent border-[#1C2C22]' : 'bg-stone-50 text-[#111614] border-[#DCD6CD]'
+                      theme === 'dark' ? 'bg-[#0A0F0D] text-natural-accent border-[#1C2C22]' : 'bg-stone-50 text-stone-900 border-[#DCD6CD]'
                     }`}>
                       <td className="py-3.5 px-4 font-sans font-black flex items-center gap-2">
                         <Coins className="size-4" />
