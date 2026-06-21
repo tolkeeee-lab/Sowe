@@ -477,7 +477,9 @@ export default function Home() {
             cash: Number(balancesData.cash)
           })
         } else {
-          await client.from('momo_balances').insert({ cabin_id: activeCabinId })
+          const zeroBalances = { mtn: 0, moov: 0, celtiis: 0, cash: 0 }
+          await client.from('momo_balances').insert({ cabin_id: activeCabinId, ...zeroBalances })
+          setBalances(zeroBalances)
         }
 
         // Fetch Coffres
@@ -494,7 +496,9 @@ export default function Home() {
             cash: Number(coffresData.cash)
           })
         } else {
-          await client.from('momo_coffres').insert({ cabin_id: activeCabinId })
+          const zeroCoffres = { mtn: 0, moov: 0, celtiis: 0, cash: 0 }
+          await client.from('momo_coffres').insert({ cabin_id: activeCabinId, ...zeroCoffres })
+          setCoffres(zeroCoffres)
         }
 
         // Fetch Blacklist
@@ -523,6 +527,8 @@ export default function Home() {
             isScamReported: t.is_scam_reported,
             clientName: t.client_name
           })))
+        } else {
+          setTransactions([])
         }
 
         // Fetch VM Clients
@@ -957,6 +963,31 @@ export default function Home() {
     if (client) {
       await client.auth.signOut()
     }
+    // Nettoyage de localStorage
+    localStorage.removeItem('momo_role')
+    localStorage.removeItem('momo_bypass_name')
+    localStorage.removeItem('momo_active_cabin_id')
+    localStorage.removeItem('momo_balances')
+    localStorage.removeItem('momo_coffres')
+    localStorage.removeItem('momo_transactions')
+    localStorage.removeItem('momo_vm_balances')
+    localStorage.removeItem('momo_vm_clients')
+    localStorage.removeItem('momo_vm_runners')
+    localStorage.removeItem('momo_pin')
+    localStorage.removeItem('momo_blacklist')
+    localStorage.removeItem('momo_vm_operator')
+    
+    // Réinitialisation des états à zéro
+    setBalances({ mtn: 0, moov: 0, celtiis: 0, cash: 0 })
+    setCoffres({ mtn: 0, moov: 0, celtiis: 0, cash: 0 })
+    setTransactions([])
+    setVmBalances({ mtn: 0, moov: 0, celtiis: 0, cash: 0 })
+    setVmClients([])
+    setCabins([])
+    setActiveCabinId(null)
+    setProfile(null)
+    setSession(null)
+    setAppView('landing')
   }
 
   const handleBypass = () => {
@@ -988,6 +1019,35 @@ export default function Home() {
       const demoBalances = { mtn: 250000, moov: 150000, celtiis: 100000, cash: 200000 }
       setBalances(demoBalances)
       localStorage.setItem('momo_balances', JSON.stringify(demoBalances))
+    } else {
+      const stored = localStorage.getItem('momo_balances')
+      if (stored) setBalances(JSON.parse(stored))
+    }
+
+    if (!localStorage.getItem('momo_coffres')) {
+      const demoCoffres = { mtn: 250000, moov: 150000, celtiis: 100000, cash: 200000 }
+      setCoffres(demoCoffres)
+      localStorage.setItem('momo_coffres', JSON.stringify(demoCoffres))
+    } else {
+      const stored = localStorage.getItem('momo_coffres')
+      if (stored) setCoffres(JSON.parse(stored))
+    }
+
+    if (!localStorage.getItem('momo_vm_balances')) {
+      const demoVmBalances = { mtn: 120000, moov: 80000, celtiis: 45000, cash: 60000 }
+      setVmBalances(demoVmBalances)
+      localStorage.setItem('momo_vm_balances', JSON.stringify(demoVmBalances))
+    } else {
+      const stored = localStorage.getItem('momo_vm_balances')
+      if (stored) setVmBalances(JSON.parse(stored))
+    }
+
+    if (!localStorage.getItem('momo_transactions')) {
+      setTransactions(INITIAL_TRANSACTIONS)
+      localStorage.setItem('momo_transactions', JSON.stringify(INITIAL_TRANSACTIONS))
+    } else {
+      const stored = localStorage.getItem('momo_transactions')
+      if (stored) setTransactions(JSON.parse(stored))
     }
 
     if (!localStorage.getItem('momo_vm_clients')) {
