@@ -10,36 +10,45 @@ import { Transaction } from '../types'
 const AMOUNTS_DEPOT_RETRAIT = [500, 1000, 2000, 3000, 5000, 10000, 20000, 30000, 50000, 100000, 200000, 500000]
 const AMOUNTS_CREDIT         = [100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000]
 
-const FORFAITS: Record<'mtn' | 'moov' | 'celtiis', { label: string; price: number }[]> = {
+interface ForfaitItem {
+  label: string;
+  price: number;
+  type: 'internet' | 'appel' | 'mixte';
+}
+
+const FORFAITS: Record<'mtn' | 'moov' | 'celtiis', ForfaitItem[]> = {
   mtn: [
-    { label: 'Internet 500F — 1.2 Go',     price: 500  },
-    { label: 'Internet 1000F — 3 Go',      price: 1000 },
-    { label: 'Internet 1500F — 5 Go',      price: 1500 },
-    { label: 'Maxi 2000F — Appels + Net',  price: 2000 },
-    { label: 'Appels 500F — 60 min',       price: 500  },
-    { label: 'Appels 1000F — 130 min',     price: 1000 },
-    { label: 'Nuit 500F — 5 Go (23h-7h)',  price: 500  },
-    { label: 'Boost 3000F — 10 Go',        price: 3000 },
+    { label: 'Internet 500F — 1.2 Go',     price: 500,  type: 'internet' },
+    { label: 'Internet 1000F — 3 Go',      price: 1000, type: 'internet' },
+    { label: 'Internet 1500F — 5 Go',      price: 1500, type: 'internet' },
+    { label: 'Maxi 2000F — Appels + Net',  price: 2000, type: 'mixte'    },
+    { label: 'Maxi 5000F — Appels + Net',  price: 5000, type: 'mixte'    },
+    { label: 'Appels 500F — 60 min',       price: 500,  type: 'appel'    },
+    { label: 'Appels 1000F — 130 min',     price: 1000, type: 'appel'    },
+    { label: 'Nuit 500F — 5 Go (23h-7h)',  price: 500,  type: 'internet' },
+    { label: 'Boost 3000F — 10 Go',        price: 3000, type: 'internet' },
   ],
   moov: [
-    { label: 'Giga 500F — 1 Go',           price: 500  },
-    { label: 'Giga 1000F — 2.5 Go',        price: 1000 },
-    { label: 'Giga 2000F — 6 Go',          price: 2000 },
-    { label: 'Giga 3000F — 10 Go',         price: 3000 },
-    { label: 'Appels 500F — 60 min',       price: 500  },
-    { label: 'Appels 1000F — 120 min',     price: 1000 },
-    { label: 'Nuit 200F — 1 Go (22h-6h)',  price: 200  },
-    { label: 'Boost 5000F — 20 Go',        price: 5000 },
+    { label: 'Giga 500F — 1 Go',           price: 500,  type: 'internet' },
+    { label: 'Giga 1000F — 2.5 Go',        price: 1000, type: 'internet' },
+    { label: 'Giga 2000F — 6 Go',          price: 2000, type: 'internet' },
+    { label: 'Moov Mix 1000F — Appels+Net',price: 1000, type: 'mixte'    },
+    { label: 'Moov Mix 2000F — Appels+Net',price: 2000, type: 'mixte'    },
+    { label: 'Appels 500F — 60 min',       price: 500,  type: 'appel'    },
+    { label: 'Appels 1000F — 120 min',     price: 1000, type: 'appel'    },
+    { label: 'Nuit 200F — 1 Go (22h-6h)',  price: 200,  type: 'internet' },
+    { label: 'Boost 5000F — 20 Go',        price: 5000, type: 'internet' },
   ],
   celtiis: [
-    { label: 'Giga 500F — 2 Go',           price: 500  },
-    { label: 'Giga 1000F — 5 Go',          price: 1000 },
-    { label: 'Giga 2000F — 12 Go',         price: 2000 },
-    { label: 'Giga 3000F — 20 Go',         price: 3000 },
-    { label: 'Appels 500F — 70 min',       price: 500  },
-    { label: 'Appels 1000F — 150 min',     price: 1000 },
-    { label: 'Nuit 300F — 2 Go (22h-6h)',  price: 300  },
-    { label: 'Boost 5000F — 25 Go',        price: 5000 },
+    { label: 'Giga 500F — 2 Go',           price: 500,  type: 'internet' },
+    { label: 'Giga 1000F — 5 Go',          price: 1000, type: 'internet' },
+    { label: 'Giga 2000F — 12 Go',         price: 2000, type: 'internet' },
+    { label: 'Celtiis Mix 1000F — Appels+Net', price: 1000, type: 'mixte' },
+    { label: 'Celtiis Mix 2000F — Appels+Net', price: 2000, type: 'mixte' },
+    { label: 'Appels 500F — 70 min',       price: 500,  type: 'appel'    },
+    { label: 'Appels 1000F — 150 min',     price: 1000, type: 'appel'    },
+    { label: 'Nuit 300F — 2 Go (22h-6h)',  price: 300,  type: 'internet' },
+    { label: 'Boost 5000F — 25 Go',        price: 5000, type: 'internet' },
   ],
 }
 
@@ -85,6 +94,7 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
   const [opSig, setOpSig]     = useState<OpSig>('mtn')
   const [freeText, setFreeText] = useState('')
   const [phoneInput, setPhoneInput] = useState('')
+  const [forfaitType, setForfaitType] = useState<'all' | 'internet' | 'appel' | 'mixte'>('all')
   const [flash, setFlash]     = useState(false)
 
   const isDark = theme === 'dark'
@@ -287,21 +297,48 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
 
           {/* Forfaits */}
           {opType === 'forfait' && (
-            <div className="grid grid-cols-2 gap-2">
-              {FORFAITS[opSig].map(f => (
-                <button
-                  key={f.label}
-                  onClick={() => fire(`Forfait ${opSig.toUpperCase()} — ${f.label}`, f.price, opSig)}
-                  className={`${cardBase} hover:scale-[1.02] ${
-                    isDark
-                      ? 'hover:border-natural-accent/40 hover:bg-natural-accent/5'
-                      : 'hover:border-natural-accent/60 hover:bg-amber-50'
-                  }`}
-                >
-                  <div className={`font-black text-base font-mono ${isDark ? 'text-natural-accent' : 'text-stone-800'}`}>{f.price.toLocaleString('fr-FR')} F</div>
-                  <div className={`text-[9px] mt-0.5 leading-tight ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>{f.label}</div>
-                </button>
-              ))}
+            <div className="flex flex-col gap-3">
+              {/* Sub-tabs for forfait type */}
+              <div className="flex gap-1 p-1 rounded-2xl bg-stone-100 dark:bg-[#050807] border border-stone-200/60 dark:border-[#1C2C22]">
+                {(['all', 'internet', 'appel', 'mixte'] as const).map(subType => (
+                  <button
+                    key={subType}
+                    type="button"
+                    onClick={() => setForfaitType(subType)}
+                    className={`flex-1 py-1.5 rounded-xl text-[9px] font-black text-center transition-all cursor-pointer ${
+                      forfaitType === subType
+                        ? isDark
+                          ? 'bg-[#0E1B15] text-natural-accent border border-[#1C2C22]'
+                          : 'bg-white text-stone-900 border border-stone-200 shadow-sm'
+                        : isDark
+                          ? 'text-stone-500 hover:text-stone-300'
+                          : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    {subType === 'all' ? 'Tous' : subType === 'internet' ? '🌐 Internet' : subType === 'appel' ? '📞 Appel' : '🔄 Mixte'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Grid of filtered packages */}
+              <div className="grid grid-cols-2 gap-2">
+                {FORFAITS[opSig]
+                  .filter(f => forfaitType === 'all' || f.type === forfaitType)
+                  .map(f => (
+                    <button
+                      key={f.label}
+                      onClick={() => fire(`Forfait ${opSig.toUpperCase()} — ${f.label}`, f.price, opSig)}
+                      className={`${cardBase} hover:scale-[1.02] ${
+                        isDark
+                          ? 'hover:border-natural-accent/40 hover:bg-natural-accent/5'
+                          : 'hover:border-natural-accent/60 hover:bg-amber-50'
+                      }`}
+                    >
+                      <div className={`font-black text-base font-mono ${isDark ? 'text-natural-accent' : 'text-stone-800'}`}>{f.price.toLocaleString('fr-FR')} F</div>
+                      <div className={`text-[9px] mt-0.5 leading-tight ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>{f.label}</div>
+                    </button>
+                  ))}
+              </div>
             </div>
           )}
         </div>
