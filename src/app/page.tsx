@@ -411,6 +411,7 @@ export default function Home() {
           setShowHub(true)
         } else {
           // Employee
+          setActiveTab('caissier')
           setShowHub(false)
           if (profileData.assigned_cabin_id) {
             const { data: cabinData } = await client
@@ -2260,8 +2261,8 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {/* Espace Tabs Switcher (Desktop only) */}
-        {role !== 'vm' && (
+        {/* Espace Tabs Switcher (Desktop only) */}
+        {role !== 'vm' && role !== 'employe' && (
           <div className={`hidden md:flex p-1 rounded-2xl border text-xs font-bold transition-all ${
             theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
           }`}>
@@ -2301,6 +2302,34 @@ export default function Home() {
             >
               <span>Espace Propriétaire 👑</span>
               {role !== 'proprio' && <Lock className="size-3" />}
+            </button>
+          </div>
+        )}
+
+        {role === 'employe' && (
+          <div className={`hidden md:flex p-1 rounded-2xl border text-xs font-bold transition-all ${
+            theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
+          }`}>
+            <button
+              onClick={() => setActiveTab('caissier')}
+              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
+                activeTab === 'caissier' 
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>Espace Caissier 👤</span>
+            </button>
+            <button
+              onClick={() => setShowPinModal(true)}
+              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
+                activeTab === 'proprietaire' 
+                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
+                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>Espace Propriétaire 👑</span>
+              <Lock className="size-3" />
             </button>
           </div>
         )}
@@ -4433,7 +4462,7 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Mobile Bottom Navigation Bar */}
-      {role !== 'vm' && (
+      {role !== 'vm' && role !== 'employe' && (
         <div className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-md transition-colors duration-550 ${
           theme === 'dark' 
             ? 'bg-[#050807]/90 border-[#1C2C22] text-[#E4EAD8]' 
@@ -4504,6 +4533,57 @@ export default function Home() {
                 {role !== 'proprio' && (
                   <Lock className="size-2.5 absolute -top-1 -right-1 text-natural-accent" />
                 )}
+              </div>
+              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Proprio</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {role === 'employe' && (
+        <div className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-md transition-colors duration-550 ${
+          theme === 'dark' 
+            ? 'bg-[#050807]/90 border-[#1C2C22] text-[#E4EAD8]' 
+            : 'bg-[#FAF9F6]/90 border-[#DCD6CD] text-[#111614]'
+        }`}>
+          <div className="flex h-16 items-center gap-2 overflow-x-auto scrollbar-none flex-nowrap px-4 py-2 justify-around">
+            <button
+              onClick={() => setActiveTab('caissier')}
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+                activeTab === 'caissier'
+                  ? 'text-natural-accent'
+                  : 'text-stone-500 hover:text-stone-400'
+              }`}
+            >
+              {activeTab === 'caissier' && (
+                <motion.div
+                  layoutId="activeTabMobileIndicator"
+                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <Wallet className="size-4.5 relative z-10" />
+              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Caisse</span>
+            </button>
+            
+            <button
+              onClick={() => setShowPinModal(true)}
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+                activeTab === 'proprietaire'
+                  ? 'text-natural-accent'
+                  : 'text-stone-500 hover:text-stone-400'
+              }`}
+            >
+              {activeTab === 'proprietaire' && (
+                <motion.div
+                  layoutId="activeTabMobileIndicator"
+                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <div className="relative z-10">
+                <Building className="size-4.5" />
+                <Lock className="size-2.5 absolute -top-1 -right-1 text-natural-accent" />
               </div>
               <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Proprio</span>
             </button>
