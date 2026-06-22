@@ -2,7 +2,7 @@ export interface Transaction {
   id: string;
   phone: string;
   operator: 'mtn' | 'moov' | 'celtiis';
-  type: 'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'appro_sim' | 'ajust_cash';
+  type: 'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'appro_sim' | 'ajust_cash' | 'saisie_rapide';
   amount: number;
   time: string;
   date: string; // YYYY-MM-DD

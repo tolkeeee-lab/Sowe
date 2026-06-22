@@ -541,22 +541,24 @@ export function DashboardProprio({
                           ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                           : txn.type === 'withdrawal'
                             ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                            : txn.type === 'saisie_rapide'
+                              ? 'bg-natural-accent/10 text-natural-accent border border-natural-accent/20'
+                              : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                       }`}>
-                        {txn.type === 'deposit' ? 'DEP' : txn.type === 'withdrawal' ? 'RET' : txn.type === 'credit' ? 'CREDIT' : txn.type === 'forfait' ? 'FORFAIT' : 'AJUST'}
+                        {txn.type === 'deposit' ? 'DEP' : txn.type === 'withdrawal' ? 'RET' : txn.type === 'credit' ? 'CREDIT' : txn.type === 'forfait' ? 'FORFAIT' : txn.type === 'saisie_rapide' ? '⚡ RAPIDE' : 'AJUST'}
                       </span>
                       {txn.type !== 'ajust_cash' && renderOperatorBadge(txn.operator)}
                       <span className="text-[9px] text-stone-500 font-mono font-bold">{txn.time}</span>
                     </div>
                     <div className="font-mono font-bold text-sm">
-                      {txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : '-'} {txn.amount.toLocaleString('fr-FR')} <span className="text-[10px] font-normal">FCFA</span>
+                      {txn.type === 'saisie_rapide' && txn.amount > 0 ? '+ ' : txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : '-'} {txn.amount > 0 ? txn.amount.toLocaleString('fr-FR') : '—'} {txn.amount > 0 ? <span className="text-[10px] font-normal">FCFA</span> : null}
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
                     <div>
-                      <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : 'Client : '}</span>
-                      <span className="font-mono font-bold">{txn.phone}</span>
+                      <span className="text-stone-400">{txn.phone === 'SYSTEM' ? 'Ajustement' : txn.phone === 'RAPIDE' ? '' : 'Client : '}</span>
+                      <span className="font-mono font-bold">{txn.phone === 'RAPIDE' ? txn.category : txn.phone}</span>
                       {txn.phone !== 'SYSTEM' && blacklist.includes(txn.phone) && (
                         <span className="ml-1 text-[8px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse">ARNAQUEUR</span>
                       )}

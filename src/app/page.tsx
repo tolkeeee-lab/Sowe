@@ -48,6 +48,7 @@ import { DashboardCaissier } from '../components/dashboard-caissier'
 import { DashboardVm } from '../components/dashboard-vm'
 import { DashboardProprio } from '../components/dashboard-proprio'
 import { CarnetDeBord } from '../components/carnet-de-bord'
+import { SaisieRapide } from '../components/saisie-rapide'
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -2396,15 +2397,22 @@ export default function Home() {
           />
         )}
 
-        {/* Carnet de Bord — visible pour caissier et proprio */}
+        {/* Saisie Rapide + Carnet de Bord — espace caissier */}
         {activeTab === 'caissier' && (
-          <CarnetDeBord
-            theme={theme}
-            role={role}
-            notes={cabinNotes}
-            onAddNote={syncAddCabinNote}
-            onDeleteNote={syncDeleteCabinNote}
-          />
+          <>
+            <SaisieRapide
+              theme={theme}
+              getLocalDateString={getLocalDateString}
+              onAdd={syncAddTransaction}
+            />
+            <CarnetDeBord
+              theme={theme}
+              role={role}
+              notes={cabinNotes}
+              onAddNote={syncAddCabinNote}
+              onDeleteNote={syncDeleteCabinNote}
+            />
+          </>
         )}
 
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
@@ -2470,15 +2478,22 @@ export default function Home() {
           />
         )}
 
-        {/* Carnet de Bord — dans l'espace proprio aussi */}
+        {/* Saisie Rapide + Carnet de Bord — espace proprio */}
         {activeTab === 'proprietaire' && role === 'proprio' && (
-          <CarnetDeBord
-            theme={theme}
-            role={role}
-            notes={cabinNotes}
-            onAddNote={syncAddCabinNote}
-            onDeleteNote={syncDeleteCabinNote}
-          />
+          <>
+            <SaisieRapide
+              theme={theme}
+              getLocalDateString={getLocalDateString}
+              onAdd={syncAddTransaction}
+            />
+            <CarnetDeBord
+              theme={theme}
+              role={role}
+              notes={cabinNotes}
+              onAddNote={syncAddCabinNote}
+              onDeleteNote={syncDeleteCabinNote}
+            />
+          </>
         )}
           </>
         )}
