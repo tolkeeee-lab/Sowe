@@ -18,3 +18,11 @@ export interface VmClient {
   name: string;
   phone: string;
 }
+
+export interface CabinNote {
+  id: string;
+  text: string;       // Free text: "dépôt mtn 30000", "retrait moov 5000", etc.
+  date: string;       // YYYY-MM-DD
+  time: string;       // HH:MM
+  author: string;     // role: 'proprio', 'employe', 'vm', etc.
+}

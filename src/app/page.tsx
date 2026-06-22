@@ -43,10 +43,11 @@ import {
 import { getSupabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
 
-import { Transaction, VmClient } from '../types'
+import { Transaction, VmClient, CabinNote } from '../types'
 import { DashboardCaissier } from '../components/dashboard-caissier'
 import { DashboardVm } from '../components/dashboard-vm'
 import { DashboardProprio } from '../components/dashboard-proprio'
+import { CarnetDeBord } from '../components/carnet-de-bord'
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -254,6 +255,9 @@ export default function Home() {
   const [blacklist, setBlacklist] = useState<string[]>(['0197451239', '0161485000'])
   const [newBlacklistPhone, setNewBlacklistPhone] = useState('')
   const [showBlacklistModal, setShowBlacklistModal] = useState(false)
+
+  // Carnet de Bord (free-text journal)
+  const [cabinNotes, setCabinNotes] = useState<CabinNote[]>([])
 
   // Transaction Addition Modal State
   const [actionType, setActionType] = useState<'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'adjust_ext' | null>(null)
@@ -600,6 +604,9 @@ export default function Home() {
         console.error(e)
       }
     }
+
+    const storedCabinNotes = localStorage.getItem('momo_cabin_notes')
+    if (storedCabinNotes) setCabinNotes(JSON.parse(storedCabinNotes))
   }
 
   // Automatically select operator based on runner's assigned network
@@ -827,6 +834,52 @@ export default function Home() {
       } catch (e) {
         console.error("Supabase sync remove blacklist error:", e)
       }
+    }
+  }
+
+  // ─── Carnet de Bord ───────────────────────────────────────────────────────
+  const syncAddCabinNote = (text: string) => {
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const newNote: CabinNote = {
+      id: `NOTE-${Date.now()}`,
+      text,
+      date: getLocalDateString(),
+      time: timeStr,
+      author: role,
+    }
+    setCabinNotes(prev => {
+      const updated = [...prev, newNote]
+      localStorage.setItem('momo_cabin_notes', JSON.stringify(updated))
+      return updated
+    })
+    // Supabase (best-effort, no await to keep it instant)
+    const client = getSupabase()
+    if (client && activeCabinId) {
+      client.from('momo_cabin_notes').insert([{
+        id: newNote.id,
+        cabin_id: activeCabinId,
+        text: newNote.text,
+        date: newNote.date,
+        time: newNote.time,
+        author: newNote.author,
+      }]).then(({ error }) => {
+        if (error) console.error('Supabase cabin note insert error:', error)
+      })
+    }
+  }
+
+  const syncDeleteCabinNote = (id: string) => {
+    setCabinNotes(prev => {
+      const updated = prev.filter(n => n.id !== id)
+      localStorage.setItem('momo_cabin_notes', JSON.stringify(updated))
+      return updated
+    })
+    const client = getSupabase()
+    if (client) {
+      client.from('momo_cabin_notes').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Supabase cabin note delete error:', error)
+      })
     }
   }
 
@@ -2341,8 +2394,18 @@ export default function Home() {
             setActiveReceipt={setActiveReceipt}
             renderOperatorBadge={renderOperatorBadge}
           />
-        )
-}
+        )}
+
+        {/* Carnet de Bord — visible pour caissier et proprio */}
+        {activeTab === 'caissier' && (
+          <CarnetDeBord
+            theme={theme}
+            role={role}
+            notes={cabinNotes}
+            onAddNote={syncAddCabinNote}
+            onDeleteNote={syncDeleteCabinNote}
+          />
+        )}
 
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
         {activeTab === 'vm' && (
@@ -2404,6 +2467,17 @@ export default function Home() {
             getWeekRange={getWeekRange}
             getLocalDateString={getLocalDateString}
             getYesterdayDateString={getYesterdayDateString}
+          />
+        )}
+
+        {/* Carnet de Bord — dans l'espace proprio aussi */}
+        {activeTab === 'proprietaire' && role === 'proprio' && (
+          <CarnetDeBord
+            theme={theme}
+            role={role}
+            notes={cabinNotes}
+            onAddNote={syncAddCabinNote}
+            onDeleteNote={syncDeleteCabinNote}
           />
         )}
           </>
