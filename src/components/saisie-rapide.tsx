@@ -66,9 +66,17 @@ const OP_SIG_COLORS: Record<OpSig, { active: string; hover: string }> = {
   celtiis: { active: 'bg-emerald-500 text-white',    hover: 'dark:hover:border-emerald-400 dark:hover:text-emerald-400 hover:border-emerald-600 hover:text-emerald-600' },
 }
 
+const defaultGetLocalDateString = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 interface SaisieRapideProps {
   theme: 'dark' | 'light';
-  getLocalDateString: () => string;
+  getLocalDateString?: () => string;
   onAdd: (txn: Transaction) => void;
 }
 
@@ -76,11 +84,13 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
   const [opType, setOpType]   = useState<OpType>('depot')
   const [opSig, setOpSig]     = useState<OpSig>('mtn')
   const [freeText, setFreeText] = useState('')
+  const [phoneInput, setPhoneInput] = useState('')
   const [flash, setFlash]     = useState(false)
 
   const isDark = theme === 'dark'
+  const getLocalDate = getLocalDateString || defaultGetLocalDateString
 
-  const fire = (label: string, amount: number, operator: OpSig) => {
+  const fire = (label: string, amount: number, operator: OpSig, customPhone?: string) => {
     const now = new Date()
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
@@ -89,20 +99,23 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
       opType === 'retrait' ? 'withdrawal' :
       opType === 'credit'  ? 'credit'    : 'forfait'
 
+    const finalPhone = customPhone || phoneInput.trim() || 'RAPIDE'
+
     const txn: Transaction = {
       id:             `RAPIDE-${Date.now()}`,
-      phone:          'RAPIDE',
+      phone:          finalPhone,
       operator,
       type:           txnType,
       amount,
       time:           timeStr,
-      date:           getLocalDateString(),
+      date:           getLocalDate(),
       category:       label,
       isScamReported: false,
     }
     onAdd(txn)
     setFlash(true)
     setTimeout(() => setFlash(false), 1400)
+    setPhoneInput('')
   }
 
   const handleFreeSubmit = (e: React.FormEvent) => {
@@ -110,8 +123,25 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
     const t = freeText.trim()
     if (!t) return
     const op: OpSig = /moov/i.test(t) ? 'moov' : /celtiis/i.test(t) ? 'celtiis' : 'mtn'
-    const num = t.match(/\d[\d\s]*/)?.[0]?.replace(/\s/g, '')
-    fire(t, num ? parseInt(num) : 0, op)
+    
+    // Find all numbers in the text
+    const numbers = t.match(/\d+/g) || []
+    
+    let parsedAmount = 0
+    let parsedPhone = phoneInput.trim() || 'RAPIDE'
+    
+    for (const num of numbers) {
+      if (num.length >= 8) {
+        parsedPhone = num
+      } else {
+        const val = parseInt(num)
+        if (val > parsedAmount) {
+          parsedAmount = val
+        }
+      }
+    }
+    
+    fire(t, parsedAmount, op, parsedPhone)
     setFreeText('')
   }
 
@@ -150,6 +180,22 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
       <div className={`p-4 rounded-[28px] border flex flex-col gap-4 ${
         isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
       }`}>
+
+        {/* N° Bénéficiaire Input */}
+        <div className="flex flex-col gap-1 px-1">
+          <span className="text-[8px] font-extrabold text-stone-500 uppercase tracking-widest">📱 Numéro Bénéficiaire (Optionnel)</span>
+          <input
+            type="text"
+            value={phoneInput}
+            onChange={e => setPhoneInput(e.target.value)}
+            placeholder="Ex: 0196887722"
+            className={`w-full px-4 py-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+              isDark
+                ? 'bg-[#050807] border-[#1C2C22] text-white placeholder:text-stone-600'
+                : 'bg-stone-50 border-[#DCD6CD] text-[#111614] placeholder:text-stone-400'
+            }`}
+          />
+        </div>
 
         {/* STEP 1 — Type d'opération */}
         <div className="flex flex-col gap-2">

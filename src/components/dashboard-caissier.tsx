@@ -14,8 +14,9 @@ import {
   Download, 
   AlertTriangle 
 } from 'lucide-react'
-import { Button } from './ui/button'
+import { SaisieRapide } from './saisie-rapide'
 import { Transaction } from '../types'
+import { Button } from './ui/button'
 
 interface DashboardCaissierProps {
   theme: 'dark' | 'light';
@@ -193,92 +194,11 @@ export function DashboardCaissier({
         </div>
       </section>
 
-      {/* 4 Operations Quick Buttons Grid */}
-      <section className="grid grid-cols-2 gap-4">
-        {/* DEPOSIT */}
-        <button 
-          onClick={() => { setActionType('deposit'); setOpInput('mtn'); }}
-          className="p-5 rounded-[28px] bg-natural-accent hover:bg-[#c9a430] text-[#0A0F0D] text-left flex flex-col justify-between h-28 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
-            <ArrowDownLeft className="size-4.5 stroke-[3px]" />
-            ENVOI (DÉPÔT)
-          </div>
-          <div>
-            <div className="text-[9px] font-black uppercase tracking-widest opacity-80">
-              Cash Reçu → SIM Débitée
-            </div>
-            <div className="text-[8px] opacity-60 mt-0.5">MTN, Moov, Celtiis</div>
-          </div>
-        </button>
-
-        {/* WITHDRAWAL */}
-        <button 
-          onClick={() => { setActionType('withdrawal'); setOpInput('mtn'); }}
-          className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-28 border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-            theme === 'dark' 
-              ? 'border-[#1C2C22] bg-[#0E1B15] hover:bg-[#12241C] text-white shadow-lg' 
-              : 'border-[#DCD6CD] bg-white hover:bg-stone-50 text-[#111614] shadow-sm'
-          }`}
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-rose-500">
-            <ArrowUpRight className="size-4.5 stroke-[3px]" />
-            RETRAIT (RETRAIT)
-          </div>
-          <div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-stone-500">
-              SIM Créditée → Cash Donné
-            </div>
-            <div className="text-[8px] text-stone-400 mt-0.5">Distribution directe de cash</div>
-          </div>
-        </button>
-
-        {/* CREDIT SALES */}
-        <button 
-          onClick={() => { setActionType('credit'); setOpInput('mtn'); }}
-          className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-28 border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-            theme === 'dark' 
-              ? 'border-[#1C2C22] bg-[#0E1B15] hover:bg-[#12241C] text-white shadow-lg' 
-              : 'border-[#DCD6CD] bg-white hover:bg-stone-50 text-[#111614] shadow-sm'
-          }`}
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-500">
-            <Smartphone className="size-4.5" />
-            VENTE CRÉDIT
-          </div>
-          <div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-stone-500">
-              Cash Reçu → Airtime
-            </div>
-            <div className="text-[8px] text-stone-400 mt-0.5">Recharges ordinaires</div>
-          </div>
-        </button>
-
-        {/* FORFAIT SALES */}
-        <button 
-          onClick={() => { 
-            setActionType('forfait'); 
-            setOpInput('mtn');
-            setSelectedForfait(BENIN_FORFAITS.mtn[0].name); 
-          }}
-          className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-28 border transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-            theme === 'dark' 
-              ? 'border-[#1C2C22] bg-[#0E1B15] hover:bg-[#12241C] text-white shadow-lg' 
-              : 'border-[#DCD6CD] bg-white hover:bg-stone-50 text-[#111614] shadow-sm'
-          }`}
-        >
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-500">
-            <Zap className="size-4.5" />
-            VENTE FORFAIT
-          </div>
-          <div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-stone-500">
-              Cash Reçu → Forfait Internet
-            </div>
-            <div className="text-[8px] text-stone-400 mt-0.5">Activation rapide d'offres</div>
-          </div>
-        </button>
-      </section>
+      {/* Saisie Rapide - Placé juste sous le solde global */}
+      <SaisieRapide
+        theme={theme}
+        onAdd={syncAddTransaction}
+      />
 
       {/* Safety tip 1 (Terrain tip) */}
       <div className={`p-4 rounded-[24px] border flex gap-3 ${

@@ -2397,22 +2397,15 @@ export default function Home() {
           />
         )}
 
-        {/* Saisie Rapide + Carnet de Bord — espace caissier */}
+        {/* Carnet de Bord — espace caissier */}
         {activeTab === 'caissier' && (
-          <>
-            <SaisieRapide
-              theme={theme}
-              getLocalDateString={getLocalDateString}
-              onAdd={syncAddTransaction}
-            />
-            <CarnetDeBord
-              theme={theme}
-              role={role}
-              notes={cabinNotes}
-              onAddNote={syncAddCabinNote}
-              onDeleteNote={syncDeleteCabinNote}
-            />
-          </>
+          <CarnetDeBord
+            theme={theme}
+            role={role}
+            notes={cabinNotes}
+            onAddNote={syncAddCabinNote}
+            onDeleteNote={syncDeleteCabinNote}
+          />
         )}
 
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
