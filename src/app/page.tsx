@@ -2756,11 +2756,6 @@ export default function Home() {
         {/* Saisie Rapide + Carnet de Bord — espace proprio */}
         {activeTab === 'proprietaire' && role === 'proprio' && (
           <>
-            <SaisieRapide
-              theme={theme}
-              getLocalDateString={getLocalDateString}
-              onAdd={syncAddTransaction}
-            />
             <CarnetDeBord
               theme={theme}
               role={role}

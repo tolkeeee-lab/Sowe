@@ -23,6 +23,7 @@ import {
 import { Button } from './ui/button'
 import { Transaction } from '../types'
 import { getSupabase } from '../lib/supabase'
+import { SaisieRapide } from './saisie-rapide'
 
 const BENIN_FORFAITS = {
   mtn: [
@@ -352,6 +353,13 @@ export function DashboardProprio({
           </div>
         </div>
       </section>
+
+      {/* Saisie Rapide - Placé sous le solde global pour le propriétaire également */}
+      <SaisieRapide
+        theme={theme}
+        onAdd={syncAddTransaction}
+        getLocalDateString={getLocalDateString}
+      />
 
       {/* 4 Operations Quick Buttons Grid */}
       <section className="grid grid-cols-2 gap-4">
