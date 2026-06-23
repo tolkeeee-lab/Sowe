@@ -43,12 +43,13 @@ import {
 import { getSupabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
 
-import { Transaction, VmClient, CabinNote } from '../types'
+import { Transaction, VmClient, CabinNote, Debt } from '../types'
 import { DashboardCaissier } from '../components/dashboard-caissier'
 import { DashboardVm } from '../components/dashboard-vm'
 import { DashboardProprio } from '../components/dashboard-proprio'
 import { CarnetDeBord } from '../components/carnet-de-bord'
 import { SaisieRapide } from '../components/saisie-rapide'
+import { DettesRappels } from '../components/dettes-rappels'
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -82,6 +83,50 @@ const TODAY_STR = getLocalDateString()
 const YESTERDAY_STR = getYesterdayDateString()
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'VM-demo-1',
+    phone: '0199887766',
+    operator: 'mtn',
+    type: 'deposit',
+    amount: 150000,
+    time: '09:15',
+    date: TODAY_STR,
+    category: 'Vente Mobile VM (Cash)',
+    clientName: 'Cabine Agla'
+  },
+  {
+    id: 'VM-demo-2',
+    phone: '0177665544',
+    operator: 'mtn',
+    type: 'withdrawal',
+    amount: 100000,
+    time: '10:00',
+    date: TODAY_STR,
+    category: 'Vente Mobile VM (Retrait)',
+    clientName: 'Cabine Gbégamey'
+  },
+  {
+    id: 'VM-demo-3',
+    phone: '0199887766',
+    operator: 'mtn',
+    type: 'deposit',
+    amount: 50000,
+    time: '11:30',
+    date: TODAY_STR,
+    category: 'Vente Mobile VM (Crédit Dehors)',
+    clientName: 'SOGEMA SARL'
+  },
+  {
+    id: 'VM-demo-4',
+    phone: 'AGENCE',
+    operator: 'mtn',
+    type: 'withdrawal', // Cash leaving pocket
+    amount: 200000,
+    time: '14:20',
+    date: TODAY_STR,
+    category: 'Vente Mobile (Échange Cash ➔ Virtuel MTN)',
+    clientName: 'AGENCE ROTATION'
+  },
   {
     id: 'TXN-1004',
     phone: '0196887722',
@@ -157,12 +202,12 @@ export default function Home() {
 
   // VM (Vente Mobile) States
   const [vmBalances, setVmBalances] = useState({
-    mtn: 0,
+    mtn: 400000,
     moov: 0,
     celtiis: 0,
-    cash: 0
+    cash: 350000
   })
-  const [vmOperator, setVmOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null) // Le reseau du VM (un seul)
+  const [vmOperator, setVmOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>('mtn') // Le reseau du VM (un seul)
   const [selectedVmRunner, setSelectedVmRunner] = useState('Moussa')
   const [vmRunners, setVmRunners] = useState<any[]>([
     { name: 'Moussa', operator: 'mtn', zone: 'Cotonou Centre' },
@@ -260,6 +305,9 @@ export default function Home() {
   // Carnet de Bord (free-text journal)
   const [cabinNotes, setCabinNotes] = useState<CabinNote[]>([])
 
+  // Dettes & Rappels (debts and reminders)
+  const [debts, setDebts] = useState<Debt[]>([])
+
   // Transaction Addition Modal State
   const [actionType, setActionType] = useState<'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'adjust_ext' | null>(null)
   const [opInput, setOpInput] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
@@ -292,6 +340,37 @@ export default function Home() {
 
   // Synchronizers & Fetchers
   useEffect(() => {
+    // Register or unregister Service Worker depending on environment
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      if (process.env.NODE_ENV === 'production') {
+        navigator.serviceWorker.register('/sw.js').then(
+          (reg) => console.log('ServiceWorker registered:', reg.scope),
+          (err) => console.error('ServiceWorker registration failed:', err)
+        );
+      } else {
+        // Unregister existing service workers in development to prevent HMR reload loops
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (let registration of registrations) {
+            registration.unregister().then((success) => {
+              if (success) {
+                console.log('Unregistered active service worker in development mode.');
+              }
+            });
+          }
+        });
+        // Clear caches in development to prevent cache poisoning loops
+        if (typeof window !== 'undefined' && 'caches' in window) {
+          caches.keys().then((names) => {
+            for (let name of names) {
+              caches.delete(name).then(() => {
+                console.log('Cleared service worker cache:', name);
+              });
+            }
+          });
+        }
+      }
+    }
+
     const client = getSupabase()
     setSupabaseConnected(!!client)
 
@@ -301,16 +380,28 @@ export default function Home() {
       return
     }
 
-    // Get initial session
+    // Get initial session with a timeout fallback
+    let authTimeout = setTimeout(() => {
+      console.warn("Supabase auth session timeout. Falling back to local storage.");
+      setAuthLoading(false);
+      loadFromLocalStorage();
+    }, 2000);
+
     client.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+      clearTimeout(authTimeout);
+      setSession(session);
       if (session) {
-        loadUserProfile(session.user.id)
+        loadUserProfile(session.user.id);
       } else {
-        setAuthLoading(false)
-        loadFromLocalStorage()
+        setAuthLoading(false);
+        loadFromLocalStorage();
       }
-    })
+    }).catch((err) => {
+      clearTimeout(authTimeout);
+      console.error("Supabase getSession error:", err);
+      setAuthLoading(false);
+      loadFromLocalStorage();
+    });
 
     // Listen for auth changes
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
@@ -526,6 +617,29 @@ export default function Home() {
 
         // Fetch VM Clients
         fetchVmClients(activeCabinId)
+
+        // Fetch Debts
+        const { data: debtsData } = await client
+          .from('momo_debts')
+          .select('*')
+          .eq('cabin_id', activeCabinId)
+          .order('created_at', { ascending: false })
+        if (debtsData) {
+          setDebts(debtsData.map(d => ({
+            id: d.id,
+            cabin_id: d.cabin_id,
+            client_name: d.client_name,
+            amount: Number(d.amount),
+            due_date: d.due_date || undefined,
+            phone: d.phone || undefined,
+            status: d.status,
+            type: d.type,
+            operator: d.operator || undefined,
+            created_at: d.created_at
+          })))
+        } else {
+          setDebts([])
+        }
       } catch (err) {
         console.error("Error loading cabin data:", err)
       }
@@ -577,15 +691,35 @@ export default function Home() {
     if (storedTransactions) setTransactions(JSON.parse(storedTransactions))
 
     const storedVmBalances = localStorage.getItem('momo_vm_balances')
-    if (storedVmBalances) setVmBalances(JSON.parse(storedVmBalances))
+    if (storedVmBalances) {
+      setVmBalances(JSON.parse(storedVmBalances))
+    } else {
+      const demoBalances = { mtn: 400000, moov: 0, celtiis: 0, cash: 350000 }
+      setVmBalances(demoBalances)
+      localStorage.setItem('momo_vm_balances', JSON.stringify(demoBalances))
+    }
 
     const storedVmClients = localStorage.getItem('momo_vm_clients')
-    if (storedVmClients) setVmClients(JSON.parse(storedVmClients))
+    if (storedVmClients) {
+      setVmClients(JSON.parse(storedVmClients))
+    } else {
+      const demoClients: VmClient[] = [
+        { id: 'c1', cabin_id: 'default', name: 'SOGEMA SARL', phone: '0199887766' },
+        { id: 'c2', cabin_id: 'default', name: 'Cabine Agla', phone: '0196887722' },
+        { id: 'c3', cabin_id: 'default', name: 'Cabine Gbégamey', phone: '0177665544' }
+      ]
+      setVmClients(demoClients)
+      localStorage.setItem('momo_vm_clients', JSON.stringify(demoClients))
+    }
 
     const storedVmOperator = localStorage.getItem('momo_vm_operator') as 'mtn' | 'moov' | 'celtiis' | null
     if (storedVmOperator) {
       setVmOperator(storedVmOperator)
       setVmOpInput(storedVmOperator)
+    } else {
+      setVmOperator('mtn')
+      setVmOpInput('mtn')
+      localStorage.setItem('momo_vm_operator', 'mtn')
     }
 
     const storedVmRunners = localStorage.getItem('momo_vm_runners')
@@ -608,6 +742,9 @@ export default function Home() {
 
     const storedCabinNotes = localStorage.getItem('momo_cabin_notes')
     if (storedCabinNotes) setCabinNotes(JSON.parse(storedCabinNotes))
+
+    const storedDebts = localStorage.getItem('momo_debts')
+    if (storedDebts) setDebts(JSON.parse(storedDebts))
   }
 
   // Automatically select operator based on runner's assigned network
@@ -881,6 +1018,133 @@ export default function Home() {
       client.from('momo_cabin_notes').delete().eq('id', id).then(({ error }) => {
         if (error) console.error('Supabase cabin note delete error:', error)
       })
+    }
+  }
+
+  // ─── Dettes & Rappels ─────────────────────────────────────────────────────
+  const syncAddDebt = async (debtData: Omit<Debt, 'id' | 'cabin_id'>) => {
+    if (!activeCabinId) return
+    const newDebt: Debt = {
+      id: `DEBT-${Date.now()}`,
+      cabin_id: activeCabinId,
+      ...debtData
+    }
+
+    setDebts(prev => {
+      const updated = [newDebt, ...prev]
+      localStorage.setItem('momo_debts', JSON.stringify(updated))
+      return updated
+    })
+
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_debts').insert([{
+          id: newDebt.id,
+          cabin_id: activeCabinId,
+          client_name: newDebt.client_name,
+          amount: newDebt.amount,
+          due_date: newDebt.due_date || null,
+          phone: newDebt.phone || null,
+          status: newDebt.status,
+          type: newDebt.type,
+          operator: newDebt.operator || null
+        }])
+      } catch (e) {
+        console.error("Supabase sync add debt error:", e)
+      }
+    }
+  }
+
+  const syncSettleDebt = async (id: string) => {
+    const debt = debts.find(d => d.id === id)
+    if (!debt) return
+
+    // 1. Update status locally
+    const updatedDebts = debts.map(d => d.id === id ? { ...d, status: 'paye' as const } : d)
+    setDebts(updatedDebts)
+    localStorage.setItem('momo_debts', JSON.stringify(updatedDebts))
+
+    // 2. Perform Cash / SIM balance adjustment if it is a proprietor/booth transfer
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const todayDateStr = getLocalDateString()
+
+    if (debt.type === 'transfert_proprio_cash') {
+      const isApport = debt.client_name.includes('APPORT')
+      const multiplier = isApport ? 1 : -1
+      const nextBalances = {
+        ...balances,
+        cash: balances.cash + (debt.amount * multiplier)
+      }
+      await syncBalances(nextBalances)
+
+      const newTxn: Transaction = {
+        id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
+        phone: 'SYSTEM',
+        operator: 'mtn', // default fallback operator for cash adjustments
+        type: 'ajust_cash',
+        amount: debt.amount,
+        time: timeStr,
+        date: todayDateStr,
+        category: isApport ? 'Injection Cash' : 'Retrait Cash (Dépense/Banque)',
+        note: `Règlement transfert : ${debt.client_name}`
+      }
+      await syncAddTransaction(newTxn)
+    } else if (debt.type === 'transfert_proprio_sim' && debt.operator) {
+      const isAppro = debt.client_name.includes('APPRO')
+      const multiplier = isAppro ? 1 : -1
+      const nextBalances = {
+        ...balances,
+        [debt.operator]: balances[debt.operator] + (debt.amount * multiplier)
+      }
+      await syncBalances(nextBalances)
+
+      const newTxn: Transaction = {
+        id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
+        phone: 'SYSTEM',
+        operator: debt.operator,
+        type: 'appro_sim',
+        amount: debt.amount,
+        time: timeStr,
+        date: todayDateStr,
+        category: isAppro ? 'Approvisionnement SIM' : 'Ajustement SIM (Débit)',
+        note: `Règlement transfert : ${debt.client_name}`
+      }
+      await syncAddTransaction(newTxn)
+    }
+
+    // 3. Sync status to Supabase
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_debts').update({ status: 'paye' }).eq('id', id)
+      } catch (e) {
+        console.error("Supabase sync settle debt error:", e)
+      }
+    }
+  }
+
+  const syncDeleteDebt = async (id: string) => {
+    if (role !== 'proprio') {
+      alert("Action non autorisée : Seul le propriétaire peut supprimer définitivement des dettes.")
+      return
+    }
+    if (!confirm("Supprimer définitivement ce rappel/dette de l'historique ?")) return
+
+    setDebts(prev => {
+      const updated = prev.filter(d => d.id !== id)
+      localStorage.setItem('momo_debts', JSON.stringify(updated))
+      return updated
+    })
+
+    const client = getSupabase()
+    if (client) {
+      try {
+        await client.from('momo_debts').delete().eq('id', id)
+      } catch (e) {
+        console.error("Supabase sync delete debt error:", e)
+      }
     }
   }
 
@@ -1202,6 +1466,10 @@ export default function Home() {
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
     if (vmActionType === 'deposit') {
+      if (vmBalances[op] < amount) {
+        alert(`Solde virtuel ${op.toUpperCase()} insuffisant sur votre SIM (${vmBalances[op].toLocaleString('fr-FR')} FCFA) pour effectuer ce transfert !`);
+        return;
+      }
       // Client donne cash → VM envoie virtuel. Cash monte, virtuel baisse.
       nextVmBalances = {
         ...vmBalances,
@@ -2408,6 +2676,19 @@ export default function Home() {
           />
         )}
 
+        {/* Dettes & Rappels — espace caissier */}
+        {activeTab === 'caissier' && (
+          <DettesRappels
+            theme={theme}
+            role={role}
+            debts={debts}
+            onAddDebt={syncAddDebt}
+            onSettleDebt={syncSettleDebt}
+            onDeleteDebt={syncDeleteDebt}
+          />
+        )}
+
+
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
         {activeTab === 'vm' && (
           <DashboardVm
@@ -2485,6 +2766,14 @@ export default function Home() {
               notes={cabinNotes}
               onAddNote={syncAddCabinNote}
               onDeleteNote={syncDeleteCabinNote}
+            />
+            <DettesRappels
+              theme={theme}
+              role={role}
+              debts={debts}
+              onAddDebt={syncAddDebt}
+              onSettleDebt={syncSettleDebt}
+              onDeleteDebt={syncDeleteDebt}
             />
           </>
         )}

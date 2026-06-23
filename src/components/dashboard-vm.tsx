@@ -1,14 +1,32 @@
 "use client";
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   ArrowDownLeft, 
   ArrowUpRight, 
   Building, 
-  Trash2 
+  Trash2, 
+  Coins, 
+  CheckCircle, 
+  AlertCircle, 
+  Edit3, 
+  Plus, 
+  Clock,
+  Smartphone,
+  Info
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Transaction, VmClient } from '../types'
+
+interface VmDehorsItem {
+  id: string;
+  name: string;
+  phone: string;
+  amount: number;
+  operator: 'mtn' | 'moov' | 'celtiis';
+  date: string;
+  time: string;
+}
 
 interface DashboardVmProps {
   theme: 'dark' | 'light';
@@ -67,7 +85,112 @@ export function DashboardVm({
   const [saveClientCheckbox, setSaveClientCheckbox] = useState(false)
   const [vmAmountInput, setVmAmountInput] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  // Payment option for transfers: immediately paid cash or credit/dehors
+  const [paymentType, setPaymentType] = useState<'cash' | 'credit'>('cash')
 
+  // Float management & outstanding credit states (saved locally)
+  const [sommeConfiee, setSommeConfiee] = useState<number>(800000)
+  const [isEditingSomme, setIsEditingSomme] = useState(false)
+  const [sommeInput, setSommeInput] = useState('800000')
+  const [dehorsList, setDehorsList] = useState<VmDehorsItem[]>([])
+  const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({})
+
+  // Setup Wizard States
+  const [setupStep, setSetupStep] = useState(1)
+  const [setupOperator, setSetupOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null)
+  const [setupCapital, setSetupCapital] = useState('800000')
+  const [setupVirtuel, setSetupVirtuel] = useState('300000')
+  const [setupCash, setSetupCash] = useState('500000')
+
+  const isDark = theme === 'dark'
+
+  // Load float config & dehors list from localStorage on mount
+  useEffect(() => {
+    const savedSomme = localStorage.getItem('momo_vm_somme_confiee')
+    if (savedSomme) {
+      setSommeConfiee(parseFloat(savedSomme))
+      setSommeInput(savedSomme)
+    }
+    const savedDehors = localStorage.getItem('momo_vm_dehors_list')
+    if (savedDehors) {
+      setDehorsList(JSON.parse(savedDehors))
+    }
+  }, [])
+
+  // Calculate totals
+  const totalDehors = dehorsList.reduce((sum, item) => sum + item.amount, 0)
+  const virtualAvailable = vmOperator ? vmBalances[vmOperator] : 0
+  const totalActifReel = virtualAvailable + vmBalances.cash + totalDehors
+  const ecart = totalActifReel - sommeConfiee
+
+  // Group dehorsList by client/enterprise (using name as key, fallback to phone)
+  const groupedDehors = dehorsList.reduce((acc, item) => {
+    const key = (item.name || item.phone).trim();
+    if (!acc[key]) {
+      acc[key] = {
+        name: item.name,
+        phone: item.phone,
+        totalAmount: 0,
+        items: [] as VmDehorsItem[]
+      }
+    }
+    acc[key].totalAmount += item.amount;
+    acc[key].items.push(item);
+    return acc;
+  }, {} as Record<string, { name: string; phone: string; totalAmount: number; items: VmDehorsItem[] }>);
+
+  const saveDehorsList = (newList: VmDehorsItem[]) => {
+    setDehorsList(newList)
+    localStorage.setItem('momo_vm_dehors_list', JSON.stringify(newList))
+  }
+
+  const handleUpdateSommeConfiee = (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = parseFloat(sommeInput)
+    if (!isNaN(val) && val >= 0) {
+      setSommeConfiee(val)
+      localStorage.setItem('momo_vm_somme_confiee', val.toString())
+      setIsEditingSomme(false)
+    }
+  }
+
+  const toggleClientExpand = (clientKey: string) => {
+    setExpandedClients(prev => ({
+      ...prev,
+      [clientKey]: !prev[clientKey]
+    }))
+  }
+
+  // Handle Wizard Submit and Activation
+  const handleWizardSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!setupOperator) return
+    const cap = parseFloat(setupCapital) || 0
+    const virt = parseFloat(setupVirtuel) || 0
+    const csh = parseFloat(setupCash) || 0
+
+    // Set operator
+    setVmOperator(setupOperator)
+    localStorage.setItem('momo_vm_operator', setupOperator)
+
+    // Set capital
+    setSommeConfiee(cap)
+    setSommeInput(cap.toString())
+    localStorage.setItem('momo_vm_somme_confiee', cap.toString())
+
+    // Set balances
+    const newBalances = {
+      mtn: setupOperator === 'mtn' ? virt : 0,
+      moov: setupOperator === 'moov' ? virt : 0,
+      celtiis: setupOperator === 'celtiis' ? virt : 0,
+      cash: csh
+    }
+    setVmBalances(newBalances)
+    localStorage.setItem('momo_vm_balances', JSON.stringify(newBalances))
+  }
+
+  // Handle a new terrain credit manually or from transaction workflow
   const handleVmTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!vmAmountInput || !phoneInput) return
@@ -81,14 +204,41 @@ export function DashboardVm({
     setLoading(true)
     try {
       if (vmActionType === 'deposit') {
-        // Client donne cash → VM envoie virtuel. Cash monte, virtuel baisse.
-        nextVmBalances = {
-          ...vmBalances,
-          cash: vmBalances.cash + amount,
-          [op]: vmBalances[op] - amount
+        // Envoi: check if SIM virtual balance is sufficient
+        if (vmBalances[op] < amount) {
+          alert(`Solde virtuel ${op.toUpperCase()} insuffisant sur votre SIM (${vmBalances[op].toLocaleString('fr-FR')} FCFA) pour effectuer ce transfert !`);
+          setLoading(false);
+          return;
+        }
+
+        if (paymentType === 'cash') {
+          // Normal: Client gives cash -> VM sends virtual. Cash increases, virtual decreases.
+          nextVmBalances = {
+            ...vmBalances,
+            cash: vmBalances.cash + amount,
+            [op]: vmBalances[op] - amount
+          }
+        } else {
+          // Credit/Dehors: Client gets virtual on credit. Virtual decreases, cash does NOT change yet.
+          // Instead, we add to "dehorsList".
+          nextVmBalances = {
+            ...vmBalances,
+            [op]: vmBalances[op] - amount
+          }
+          const finalName = clientNameInput.trim() !== '' ? clientNameInput.trim() : `Client ${phoneInput}`
+          const newCreditItem: VmDehorsItem = {
+            id: `DEHORS-${Date.now()}`,
+            name: finalName,
+            phone: phoneInput.trim(),
+            amount,
+            operator: op,
+            date: getLocalDateString(),
+            time: timeStr
+          }
+          saveDehorsList([...dehorsList, newCreditItem])
         }
       } else {
-        // Client veut cash → VM prend virtuel. Cash baisse, virtuel monte.
+        // Withdrawal: VM gives cash -> VM takes virtual. Cash decreases, virtual increases.
         nextVmBalances = {
           ...vmBalances,
           cash: vmBalances.cash - amount,
@@ -100,6 +250,9 @@ export function DashboardVm({
       localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
 
       const finalClientName = clientNameInput.trim() !== '' ? clientNameInput.trim() : undefined
+      const categoryStr = vmActionType === 'deposit' 
+        ? (paymentType === 'cash' ? 'Vente Mobile VM (Cash)' : 'Vente Mobile VM (Crédit Dehors)')
+        : 'Vente Mobile VM (Retrait)'
 
       const newTxn: Transaction = {
         id: `VM-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -109,7 +262,7 @@ export function DashboardVm({
         amount,
         time: timeStr,
         date: getLocalDateString(),
-        category: 'Vente Mobile VM',
+        category: categoryStr,
         isScamReported: false,
         clientName: finalClientName
       }
@@ -120,12 +273,15 @@ export function DashboardVm({
       }
 
       await syncAddTransaction(newTxn)
+      
+      // Reset form states
       setVmAmountInput('')
       setPhoneInput('')
       setSelectedClientId('')
       setClientNameInput('')
       setSaveClientCheckbox(false)
       setVmActionType(null)
+      setPaymentType('cash')
     } catch (err) {
       console.error(err)
     } finally {
@@ -133,61 +289,497 @@ export function DashboardVm({
     }
   }
 
+  // Recover credit from client later
+  const handleRecoverCredit = async (item: VmDehorsItem) => {
+    const confirmed = confirm(`Confirmer la récupération de ${item.amount.toLocaleString('fr-FR')} FCFA en espèces de la part de "${item.name}" ?`)
+    if (!confirmed) return
+
+    // Update balances: cash increases, dehors decreases (removed from list)
+    const nextVmBalances = {
+      ...vmBalances,
+      cash: vmBalances.cash + item.amount
+    }
+    setVmBalances(nextVmBalances)
+    localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
+
+    // Remove from dehorsList
+    const updatedDehors = dehorsList.filter(d => d.id !== item.id)
+    saveDehorsList(updatedDehors)
+
+    // Log recovery transaction
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const recoveryTxn: Transaction = {
+      id: `RECOV-${Date.now()}`,
+      phone: item.phone,
+      operator: item.operator,
+      type: 'ajust_cash',
+      amount: item.amount,
+      time: timeStr,
+      date: getLocalDateString(),
+      category: 'Encaissement Crédit Terrain',
+      isScamReported: false,
+      clientName: item.name
+    }
+    await syncAddTransaction(recoveryTxn)
+    alert(`Crédit récupéré ! +${item.amount.toLocaleString('fr-FR')} FCFA ajouté à vos espèces.`)
+  }
+
+  // Recover all outstanding balances for a grouped client/enterprise
+  const handleRecoverAllForClient = async (clientKey: string) => {
+    const clientData = groupedDehors[clientKey]
+    if (!clientData) return
+    const confirmed = confirm(`Confirmer la récupération de TOUT le solde de "${clientData.name}" (${clientData.totalAmount.toLocaleString('fr-FR')} FCFA) ?`)
+    if (!confirmed) return
+
+    // Update balances: add total to cash
+    const nextVmBalances = {
+      ...vmBalances,
+      cash: vmBalances.cash + clientData.totalAmount
+    }
+    setVmBalances(nextVmBalances)
+    localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
+
+    // Remove all these items from dehorsList
+    const itemIds = clientData.items.map(i => i.id)
+    const updatedDehors = dehorsList.filter(d => !itemIds.includes(d.id))
+    saveDehorsList(updatedDehors)
+
+    // Log recovery transaction
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const recoveryTxn: Transaction = {
+      id: `RECOV-ALL-${Date.now()}`,
+      phone: clientData.phone,
+      operator: clientData.items[0]?.operator || 'mtn',
+      type: 'ajust_cash',
+      amount: clientData.totalAmount,
+      time: timeStr,
+      date: getLocalDateString(),
+      category: `Règlement Global — ${clientData.name}`,
+      isScamReported: false,
+      clientName: clientData.name
+    }
+    await syncAddTransaction(recoveryTxn)
+    alert(`Tout le crédit de "${clientData.name}" (${clientData.totalAmount.toLocaleString('fr-FR')} F) a été encaissé en cash !`)
+  }
+
+  // Cancel credit item in case of error
+  const handleCancelCredit = (id: string) => {
+    if (!confirm("Annuler ce crédit sans récupérer l'argent ? (Attention, cela modifiera votre bilan global)")) return
+    saveDehorsList(dehorsList.filter(d => d.id !== id))
+  }
+
   return (
     <div className="flex flex-col gap-6 mb-16 md:mb-0">
-      {/* SETUP: Choix du réseau si pas encore défini */}
+      {/* SETUP WIZARD: Request precise initial float & network balances */}
       {!vmOperator ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-8">
-          <div className="text-center">
-            <p className="text-3xl mb-3">🛵</p>
-            <h2 className="font-serif text-2xl font-black tracking-tight mb-2">
-              Quel est ton réseau ?
+        <div className="flex flex-col gap-6 py-8 px-2 max-w-md mx-auto w-full">
+          <div className="text-center mb-2">
+            <span className="text-4xl block mb-2 animate-bounce">🛵</span>
+            <h2 className="font-serif text-2xl font-black tracking-tight mb-2 text-natural-accent">
+              Configuration de mon Espace VM
             </h2>
-            <p className={`text-xs leading-relaxed max-w-xs mx-auto ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
-              Choisis le réseau mobile sur lequel tu travailles. Ce choix est définitif et ne peut pas être changé plus tard.
+            <p className={`text-[11px] leading-relaxed max-w-xs mx-auto ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
+              Initialise les montants que le réseau t'a confiés pour démarrer l'activité.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 w-full max-w-xs">
-            {([
-              { op: 'mtn', label: 'MTN Mobile Money', color: 'amber', emoji: '🟡', desc: 'Je suis agent MTN MoMo' },
-              { op: 'moov', label: 'Moov Money', color: 'blue', emoji: '🔵', desc: 'Je suis agent Moov Money' },
-              { op: 'celtiis', label: 'Celtiis Cash', color: 'emerald', emoji: '🟢', desc: 'Je suis agent Celtiis Cash' },
-            ] as const).map(item => (
-              <button
-                key={item.op}
-                onClick={() => {
-                  const confirmed = confirm(`Confirmer : je suis VM ${item.label} ?`)
-                  if (!confirmed) return
-                  setVmOperator(item.op)
-                  localStorage.setItem('momo_vm_operator', item.op)
-                  // Init balances pour ce seul réseau
-                  const newVm = { mtn: 0, moov: 0, celtiis: 0, cash: 0 }
-                  setVmBalances(newVm)
-                  localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
-                }}
-                className={`p-5 rounded-[28px] border text-left flex items-center gap-4 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-                  theme === 'dark'
-                    ? 'border-[#1C2C22] bg-[#0E1B15] hover:border-[#D4AF37]/50'
-                    : 'border-[#DCD6CD] bg-white hover:border-[#D4AF37]/50 shadow-sm'
-                }`}
-              >
-                <span className="text-3xl">{item.emoji}</span>
-                <div>
-                  <div className={`font-serif font-bold text-sm ${
-                    item.op === 'mtn' ? 'text-amber-500' : item.op === 'moov' ? 'text-blue-500' : 'text-emerald-500'
-                  }`}>{item.label}</div>
-                  <div className={`text-[10px] ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>{item.desc}</div>
+          <form onSubmit={handleWizardSubmit} className={`p-6 rounded-[32px] border flex flex-col gap-5 ${
+            isDark ? 'bg-[#0E1B15] border-[#1C2C22] shadow-2xl' : 'bg-white border-[#DCD6CD] shadow-md'
+          }`}>
+            {setupStep === 1 ? (
+              <>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-extrabold text-stone-500 uppercase tracking-widest">① Choisir mon Réseau</span>
+                  <p className="text-[10px] text-stone-500 mb-2">Sélectionne ton réseau principal terrain</p>
+                  
+                  <div className="flex flex-col gap-3">
+                    {([
+                      { op: 'mtn', label: 'MTN Mobile Money', emoji: '🟡', color: 'text-amber-500' },
+                      { op: 'moov', label: 'Moov Money', emoji: '🔵', color: 'text-blue-500' },
+                      { op: 'celtiis', label: 'Celtiis Cash', emoji: '🟢', color: 'text-emerald-500' },
+                    ] as const).map(item => (
+                      <button
+                        key={item.op}
+                        type="button"
+                        onClick={() => setSetupOperator(item.op)}
+                        className={`p-4 rounded-[20px] border text-left flex items-center gap-3 transition-all cursor-pointer ${
+                          setupOperator === item.op
+                            ? isDark ? 'border-natural-accent bg-natural-accent/10' : 'border-natural-accent bg-amber-50'
+                            : isDark ? 'border-[#1C2C22] bg-[#050807] hover:border-stone-800' : 'border-[#DCD6CD] bg-white hover:bg-stone-50'
+                        }`}
+                      >
+                        <span className="text-2xl">{item.emoji}</span>
+                        <div>
+                          <div className={`font-serif font-bold text-xs ${item.color}`}>{item.label}</div>
+                          <span className="text-[8px] text-stone-500 uppercase font-semibold">Réseau principal</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
+
+                <Button
+                  type="button"
+                  variant="premium"
+                  disabled={!setupOperator}
+                  onClick={() => setSetupStep(2)}
+                  className="font-bold py-3.5 mt-2"
+                >
+                  Continuer
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-stone-500/5">
+                    <span className="text-lg">💰</span>
+                    <div>
+                      <h4 className="text-xs font-black uppercase text-stone-300">Montants de Départ</h4>
+                      <p className="text-[8px] text-stone-500">Ajuste les soldes à cet instant précis</p>
+                    </div>
+                  </div>
+
+                  {/* Capital Confié (Float) */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-extrabold text-stone-500 uppercase tracking-wider">Capital Global Confié (ex: 800K)</label>
+                    <input
+                      type="number"
+                      required
+                      value={setupCapital}
+                      onChange={e => setSetupCapital(e.target.value)}
+                      className={`p-3 border rounded-xl font-mono text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-900'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Solde Virtuel Initial */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-extrabold text-stone-500 uppercase tracking-wider">Solde Virtuel {setupOperator?.toUpperCase()} sur SIM</label>
+                    <input
+                      type="number"
+                      required
+                      value={setupVirtuel}
+                      onChange={e => setSetupVirtuel(e.target.value)}
+                      className={`p-3 border rounded-xl font-mono text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-900'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Solde Cash Initial */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-extrabold text-stone-500 uppercase tracking-wider">Espèces (Cash) en main</label>
+                    <input
+                      type="number"
+                      required
+                      value={setupCash}
+                      onChange={e => setSetupCash(e.target.value)}
+                      className={`p-3 border rounded-xl font-mono text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-900'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Validation Math summary */}
+                  <div className={`p-3.5 rounded-xl border flex flex-col gap-1.5 text-[10px] ${
+                    isDark ? 'bg-[#050807]/60 border-stone-850' : 'bg-stone-50 border-stone-250'
+                  }`}>
+                    <div className="flex justify-between font-bold text-stone-400">
+                      <span>Total Actif Initial (Virtuel + Cash) :</span>
+                      <span className="font-mono text-stone-200">
+                        {(parseFloat(setupVirtuel) + parseFloat(setupCash)).toLocaleString('fr-FR')} F
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-stone-400">
+                      <span>Capital Confié déclaré :</span>
+                      <span className="font-mono text-stone-200">{parseFloat(setupCapital).toLocaleString('fr-FR')} F</span>
+                    </div>
+                    
+                    {parseFloat(setupVirtuel) + parseFloat(setupCash) === parseFloat(setupCapital) ? (
+                      <span className="text-[9px] font-black text-emerald-500 mt-1.5 flex items-center gap-1">
+                        ✔ Les comptes concordent parfaitement.
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black text-amber-500 mt-1.5 flex items-center gap-1.5 leading-tight">
+                        ⚠️ Attention: Le total initial ({parseFloat(setupVirtuel) + parseFloat(setupCash)} F) ne correspond pas à la somme confiée ({setupCapital} F). Assure-toi que c'est correct.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSetupStep(1)}
+                    className={`flex-1 py-3 rounded-xl border font-bold text-xs cursor-pointer ${
+                      isDark ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-500 hover:bg-stone-50'
+                    }`}
+                  >
+                    Retour
+                  </button>
+                  
+                  <Button
+                    type="submit"
+                    variant="premium"
+                    className="flex-1 font-bold py-3"
+                  >
+                    Activer mon Espace
+                  </Button>
+                </div>
+              </>
+            )}
+          </form>
         </div>
       ) : (
         <>
-          {/* Collapsible Client Manager Section */}
+          {/* 1. COMPTABILITÉ & FOND DE ROULEMENT - PREMIUM CAISSIER GRID LOOK */}
+          <section className={`p-6 rounded-[36px] border flex flex-col gap-5 relative overflow-hidden ${
+            isDark 
+              ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22] shadow-2xl' 
+              : 'bg-gradient-to-b from-white to-[#F2EFE9] border-[#DCD6CD] shadow-md'
+          }`}>
+            <div className="absolute -right-16 -top-16 size-48 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+
+            {/* Header info */}
+            <div className="flex justify-between items-center relative z-10">
+              <div className="flex flex-col">
+                <span className="text-[8px] font-extrabold text-stone-550 uppercase tracking-widest font-sans">Solde Global du Vendeur Mobile</span>
+                <span className="text-[10px] font-bold text-natural-accent uppercase tracking-wider mt-0.5">
+                  Bilan Comptable Actif 🛵
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-wider block">Écart Comptable</span>
+                {ecart === 0 ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 mt-0.5">
+                    <CheckCircle className="size-3.5 fill-emerald-500/10" /> Solde équilibré
+                  </span>
+                ) : ecart > 0 ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-cyan-400 mt-0.5 bg-cyan-950/20 px-2.5 py-0.5 rounded-lg border border-cyan-800/30">
+                    Surplus : +{ecart.toLocaleString('fr-FR')} F
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-500 mt-0.5 bg-rose-950/20 px-2.5 py-0.5 rounded-lg border border-rose-800/30 animate-pulse">
+                    <AlertCircle className="size-3.5" /> Manquant : {ecart.toLocaleString('fr-FR')} F
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Solde global display */}
+            <div className="text-center py-2 mb-2 relative z-10">
+              <h2 className="text-4xl font-serif font-black tracking-tight text-natural-accent">
+                {totalActifReel.toLocaleString('fr-FR')} <span className="text-lg font-sans font-medium text-stone-500">FCFA Actif</span>
+              </h2>
+              {ecart !== 0 && (
+                <p className="text-[9.5px] text-stone-500 mt-1.5 max-w-xs mx-auto leading-normal">
+                  ⚠️ Si le solde ne correspond pas à vos <strong>{sommeConfiee.toLocaleString('fr-FR')} F</strong> confiés, vérifiez quelle vente vous avez oublié de notifier (Espèces vs Crédit).
+                </p>
+              )}
+            </div>
+
+            {/* PREMIUM BALANCE GRID (CAISSIER STYLE) */}
+            <div className="grid grid-cols-2 gap-4 relative z-10">
+              {/* Virtual Account SIM */}
+              <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+                isDark ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
+              }`}>
+                <span className={`inline-flex items-center gap-1.5 text-[9px] font-bold mb-1.5 uppercase tracking-wider ${
+                  vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                }`}>
+                  <span className={`size-2 rounded-full ${
+                    vmOperator === 'mtn' ? 'bg-amber-400 shadow-sm shadow-amber-400'
+                    : vmOperator === 'moov' ? 'bg-blue-500 shadow-sm shadow-blue-500'
+                    : 'bg-emerald-500 shadow-sm shadow-emerald-500'
+                  }`} />
+                  SIM {vmOperator?.toUpperCase()} (Virtuel)
+                </span>
+                <div className={`font-mono font-bold text-base ${
+                  vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                }`}>
+                  {virtualAvailable.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                </div>
+              </div>
+
+              {/* Cash en Poche */}
+              <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+                isDark ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
+              }`}>
+                <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-purple-400 mb-1.5 uppercase tracking-wider">
+                  <span className="size-2 rounded-full bg-purple-500 shadow-sm shadow-purple-500" />
+                  Cash en Poche (Espèces)
+                </span>
+                <div className="font-mono font-bold text-base text-purple-400">
+                  {vmBalances.cash.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                </div>
+              </div>
+
+              {/* Argent dehors */}
+              <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+                isDark ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
+              }`}>
+                <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-amber-500 mb-1.5 uppercase tracking-wider">
+                  <span className="size-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500" />
+                  Argent Dehors (Créances)
+                </span>
+                <div className="font-mono font-bold text-base text-amber-500">
+                  {totalDehors.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                </div>
+              </div>
+
+              {/* Capital Confié */}
+              <div className={`p-4 rounded-[20px] border transition-all hover:scale-[1.02] ${
+                isDark ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
+              }`}>
+                <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-natural-accent mb-1.5 uppercase tracking-wider">
+                  <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
+                  Somme Confiée (Réseau)
+                </span>
+                {isEditingSomme ? (
+                  <form onSubmit={handleUpdateSommeConfiee} className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      value={sommeInput}
+                      onChange={e => setSommeInput(e.target.value)}
+                      className={`px-1.5 py-0.5 border rounded-lg text-xs font-mono w-20 focus:outline-none ${
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-900'
+                      }`}
+                    />
+                    <button type="submit" className="text-[8px] bg-natural-accent text-[#0A0F0D] px-1.5 py-0.5 rounded font-black">OK</button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <div className="font-mono font-bold text-base text-stone-300">
+                      {sommeConfiee.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsEditingSomme(true)}
+                      className="text-stone-500 hover:text-natural-accent transition-colors"
+                      title="Modifier"
+                    >
+                      <Edit3 className="size-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* 2. OUTSTANDING CREDIT LEDGER ("ARGENT DEHORS" GROUPED BY ENTERPRISE) */}
+          <section className={`p-5 rounded-[28px] border flex flex-col gap-3.5 ${
+            isDark ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+          }`}>
+            <h3 className="text-sm font-bold font-serif uppercase text-natural-accent flex items-center gap-2 px-1">
+              <Clock className="size-4 text-natural-accent" />
+              Créances Terrain & Solde Dehors par Entreprise
+            </h3>
+            <p className="text-[10px] text-stone-500 -mt-2 px-1">
+              Liste des entreprises ayant des soldes dehors. Réclamez et encaissez en cash.
+            </p>
+
+            <div className="flex flex-col gap-3 max-h-72 overflow-y-auto pr-1">
+              {Object.keys(groupedDehors).length > 0 ? (
+                Object.keys(groupedDehors).map(clientKey => {
+                  const client = groupedDehors[clientKey];
+                  const isExpanded = !!expandedClients[clientKey];
+
+                  return (
+                    <div key={clientKey} className={`p-3.5 rounded-2xl border flex flex-col gap-3 transition-all ${
+                      isDark ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                    }`}>
+                      {/* Group Header (Client Name & Total Balance) */}
+                      <div className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-stone-200 dark:text-stone-300 text-xs flex items-center gap-1.5">
+                            🏢 {client.name}
+                          </span>
+                          <span className="font-mono text-[9px] text-stone-500 mt-0.5">{client.phone}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono font-black text-sm text-amber-500 block">
+                            {client.totalAmount.toLocaleString('fr-FR')} F
+                          </span>
+                          <span className="text-[8px] text-stone-500 block">{client.items.length} opération(s)</span>
+                        </div>
+                      </div>
+
+                      {/* Group Action Buttons */}
+                      <div className="flex justify-between items-center border-t border-stone-500/5 pt-2.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleClientExpand(clientKey)}
+                          className="text-[9px] font-bold text-natural-accent hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          {isExpanded ? '▲ Masquer détails' : `▼ Voir détails (${client.items.length})`}
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleRecoverAllForClient(clientKey)}
+                          className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase bg-emerald-500 text-[#0A0F0D] hover:bg-emerald-450 active:scale-[0.97] transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Coins className="size-3" /> Tout Encaisser (Cash)
+                        </button>
+                      </div>
+
+                      {/* Expanded Details List */}
+                      {isExpanded && (
+                        <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-dashed border-stone-500/10 pl-2">
+                          {client.items.map(item => (
+                            <div key={item.id} className={`p-2.5 rounded-xl border flex justify-between items-center text-[10px] ${
+                              isDark ? 'bg-[#0E1B15]/40 border-stone-850' : 'bg-white border-stone-200 shadow-2xs'
+                            }`}>
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  {renderOperatorBadge(item.operator)}
+                                  <span className="font-mono text-[9px] text-stone-500">{item.date} {item.time}</span>
+                                </div>
+                                <span className="font-mono font-bold text-stone-300 dark:text-stone-400 mt-0.5">
+                                  {item.amount.toLocaleString('fr-FR')} FCFA
+                                </span>
+                              </div>
+                              
+                              <div className="flex gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRecoverCredit(item)}
+                                  className="px-2 py-1 rounded bg-stone-100 dark:bg-[#0E1B15] border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 font-bold hover:border-emerald-500 dark:hover:border-emerald-500 transition-all cursor-pointer"
+                                  title="Encaisser cette transaction"
+                                >
+                                  Encaisser
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCancelCredit(item.id)}
+                                  className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                  title="Annuler"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className={`text-center py-8 border border-dashed rounded-2xl ${
+                  isDark ? 'border-stone-800 text-stone-600' : 'border-stone-300 text-stone-400'
+                } text-[10px] italic`}>
+                  Aucun crédit ou solde dehors pour le moment. Tout est équilibré !
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* 3. COLLAPSIBLE CLIENT CONTACTS */}
           <section className={`p-5 rounded-[28px] border transition-all ${
-            theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+            isDark ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
           }`}>
             <button
               type="button"
@@ -195,7 +787,7 @@ export function DashboardVm({
               className="w-full flex justify-between items-center font-serif text-sm font-bold text-natural-accent uppercase tracking-wide cursor-pointer text-left"
             >
               <span className="flex items-center gap-2">
-                💼 Gérer mes Clients Entreprises ({vmClients.length})
+                💼 Gérer mes Contacts Entreprises ({vmClients.length})
               </span>
               <span>{showClientManager ? '▲ Masquer' : '▼ Afficher'}</span>
             </button>
@@ -220,7 +812,7 @@ export function DashboardVm({
                     value={newClientName}
                     onChange={e => setNewClientName(e.target.value)}
                     className={`flex-1 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
-                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                   <input
@@ -230,7 +822,7 @@ export function DashboardVm({
                     value={newClientPhone}
                     onChange={e => setNewClientPhone(e.target.value)}
                     className={`w-full sm:w-44 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
-                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                   <Button variant="premium" type="submit" className="text-xs px-4 py-2.5 rounded-xl font-bold cursor-pointer shrink-0">
@@ -243,7 +835,7 @@ export function DashboardVm({
                   {vmClients.length > 0 ? (
                     vmClients.map(client => (
                       <div key={client.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs ${
-                        theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                        isDark ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
                       }`}>
                         <div className="flex flex-col">
                           <span className="font-bold text-stone-200 dark:text-stone-300">{client.name}</span>
@@ -271,67 +863,11 @@ export function DashboardVm({
             )}
           </section>
 
-          <section className={`p-6 rounded-[36px] border transition-all overflow-hidden relative ${
-            theme === 'dark' 
-              ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22] shadow-2xl' 
-              : 'bg-gradient-to-b from-white to-[#F2EFE9] border-[#DCD6CD] shadow-md'
-          }`}>
-            <div className="absolute -right-16 -top-16 size-48 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
-
-            <div className="flex justify-between items-center mb-4 relative z-10">
-              <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-500 font-sans">Mon Solde Terrain</span>
-              <span className={`text-[9px] font-bold px-2.5 py-1 rounded-lg border ${
-                vmOperator === 'mtn' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-                : vmOperator === 'moov' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
-              }`}>
-                {vmOperator?.toUpperCase()} — {profile?.name || 'VM'}
-              </span>
-            </div>
-
-            <div className="text-center py-4 mb-6 relative z-10">
-              <p className={`text-[10px] uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
-                Virtuel {vmOperator?.toUpperCase()} disponible
-              </p>
-              <h2 className={`text-4xl font-serif font-black tracking-tight ${
-                vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
-              }`}>
-                {vmOperator ? vmBalances[vmOperator].toLocaleString('fr-FR') : '0'} <span className="text-lg font-sans font-medium text-stone-500">FCFA</span>
-              </h2>
-              <p className={`text-[10px] mt-1 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
-                + <span className="font-bold text-purple-400">{vmBalances.cash.toLocaleString('fr-FR')} FCFA</span> en poche (espèces)
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 relative z-10">
-              <div className={`p-4 rounded-[20px] border ${
-                theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
-              }`}>
-                <span className={`block text-[9px] font-bold mb-1.5 uppercase ${
-                  vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
-                }`}>Virtuel {vmOperator?.toUpperCase()}</span>
-                <div className={`font-mono font-bold text-base ${
-                  vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
-                }`}>
-                  {vmOperator ? vmBalances[vmOperator].toLocaleString('fr-FR') : '0'} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
-                </div>
-              </div>
-              <div className={`p-4 rounded-[20px] border ${
-                theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-white border-[#E4DFD5]'
-              }`}>
-                <span className="block text-[9px] font-bold text-purple-400 mb-1.5 uppercase">Cash en Poche</span>
-                <div className="font-mono font-bold text-base text-purple-400">
-                  {vmBalances.cash.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Operations Terrain */}
+          {/* 4. TRANSACTION ENGINE */}
           <section className="flex flex-col gap-3">
             <div className="px-1">
               <h3 className="text-sm font-bold font-serif uppercase text-natural-accent">Mes Opérations Terrain</h3>
-              <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>Enregistre chaque transaction avec ton client</p>
+              <p className={`text-[10px] mt-0.5 ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>Enregistre chaque transaction avec ton client</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -340,7 +876,7 @@ export function DashboardVm({
                 className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-32 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                   vmActionType === 'deposit'
                     ? 'bg-natural-accent text-[#0A0F0D]'
-                    : theme === 'dark'
+                    : isDark
                       ? 'border border-[#1C2C22] bg-[#0E1B15] text-white hover:bg-[#12241C]'
                       : 'border border-[#DCD6CD] bg-white text-[#111614] hover:bg-stone-50'
                 }`}
@@ -360,7 +896,7 @@ export function DashboardVm({
                 className={`p-5 rounded-[28px] text-left flex flex-col justify-between h-32 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                   vmActionType === 'withdrawal'
                     ? 'bg-natural-accent text-[#0A0F0D]'
-                    : theme === 'dark'
+                    : isDark
                       ? 'border border-[#1C2C22] bg-[#0E1B15] text-white hover:bg-[#12241C]'
                       : 'border border-[#DCD6CD] bg-white text-[#111614] hover:bg-stone-50'
                 }`}
@@ -378,8 +914,39 @@ export function DashboardVm({
 
             {vmActionType && (
               <form onSubmit={handleVmTransaction} className={`p-5 rounded-[28px] border flex flex-col gap-4 mt-1 ${
-                theme === 'dark' ? 'bg-[#0E1B15]/60 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+                isDark ? 'bg-[#0E1B15]/60 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
               }`}>
+
+                {/* Switch Paid Cash / On Credit (Only for Deposit/Envoi) */}
+                {vmActionType === 'deposit' && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Règlement client</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentType('cash')}
+                        className={`py-2 px-3 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
+                          paymentType === 'cash'
+                            ? 'bg-natural-accent text-[#0A0F0D] border-transparent'
+                            : isDark ? 'border-stone-850 text-stone-400' : 'border-stone-300 text-stone-600'
+                        }`}
+                      >
+                        💵 Cash Direct
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentType('credit')}
+                        className={`py-2 px-3 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
+                          paymentType === 'credit'
+                            ? 'bg-amber-500 text-[#0A0F0D] border-transparent'
+                            : isDark ? 'border-stone-850 text-stone-400' : 'border-stone-300 text-stone-600'
+                        }`}
+                      >
+                        ⏱ Crédit (Dehors)
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Select Enterprise (Registered Clients) */}
                 {vmClients.length > 0 && (
@@ -403,7 +970,7 @@ export function DashboardVm({
                         }
                       }}
                       className={`p-3 border rounded-xl focus:outline-none text-xs ${
-                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                       }`}
                     >
                       <option value="">-- Saisir manuellement (Aucune) --</option>
@@ -417,7 +984,6 @@ export function DashboardVm({
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Tel Client</label>
-                    {/* Check if phone matches any registered client */}
                     {(() => {
                       const matched = vmClients.find(c => c.phone.trim() === phoneInput.trim())
                       if (matched && selectedClientId === '') {
@@ -438,7 +1004,6 @@ export function DashboardVm({
                     onChange={e => {
                       const val = e.target.value
                       setPhoneInput(val)
-                      // If it matches a client, set the clientNameInput
                       const found = vmClients.find(c => c.phone.trim() === val.trim())
                       if (found) {
                         setClientNameInput(found.name)
@@ -450,7 +1015,7 @@ export function DashboardVm({
                     className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
                       selectedClientId !== '' ? 'opacity-60 cursor-not-allowed ' : ''
                     }${
-                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
@@ -465,7 +1030,7 @@ export function DashboardVm({
                       value={clientNameInput}
                       onChange={e => setClientNameInput(e.target.value)}
                       className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
-                        theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                       }`}
                     />
                     {clientNameInput.trim() !== '' && !vmClients.some(c => c.phone.trim() === phoneInput.trim()) && (
@@ -490,8 +1055,8 @@ export function DashboardVm({
                     placeholder="Ex: 25000"
                     value={vmAmountInput}
                     onChange={e => setVmAmountInput(e.target.value)}
-                    className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm ${
-                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                    className={`w-full p-3.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm font-mono font-bold ${
+                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
                   />
                 </div>
@@ -502,9 +1067,12 @@ export function DashboardVm({
                   </Button>
                   <button
                     type="button"
-                    onClick={() => setVmActionType(null)}
+                    onClick={() => {
+                      setVmActionType(null)
+                      setPaymentType('cash')
+                    }}
                     className={`px-5 rounded-xl border font-bold text-xs cursor-pointer ${
-                      theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-500 hover:bg-stone-50'
+                      isDark ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-500 hover:bg-stone-50'
                     }`}
                   >
                     Annuler
@@ -514,84 +1082,99 @@ export function DashboardVm({
             )}
           </section>
 
-          {/* Point Agence */}
+          {/* 5. POINT AGENCE */}
           <section className={`p-6 rounded-[32px] border transition-colors ${
-            theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
+            isDark ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
           }`}>
             <h3 className="text-sm font-bold font-serif uppercase text-natural-accent flex items-center gap-2 mb-1">
               <Building className="size-4.5" />
               Point Agence
             </h3>
-            <p className={`text-[10px] mb-5 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
+            <p className={`text-[10px] mb-5 ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
               À l'agence : remets tes espèces collectées et recharge ton virtuel pour continuer à servir tes clients
             </p>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <button
                 onClick={() => {
-                  const montant = prompt("Espèces à remettre à l'agence (FCFA) :")
-                  if (!montant || isNaN(Number(montant)) || Number(montant) <= 0) return
-                  const amt = Number(montant)
-                  if (amt > vmBalances.cash) { alert("Montant supérieur à ton cash disponible !"); return }
-                  const newVm = { ...vmBalances, cash: vmBalances.cash - amt }
+                  const op = vmOperator || 'mtn'
+                  const defaultOpStr = vmOperator ? vmOperator.toUpperCase() : 'MTN'
+                  const amountStr = prompt(`Montant d'espèces remis à l'agence pour recharge virtuelle (FCFA) :`)
+                  if (!amountStr || isNaN(Number(amountStr)) || Number(amountStr) <= 0) return
+                  const amt = Number(amountStr)
+                  if (amt > vmBalances.cash) {
+                    alert("Erreur: Le montant d'espèces saisi dépasse votre cash disponible en poche.")
+                    return
+                  }
+                  
+                  const opChoice = prompt(`Sur quel réseau voulez-vous recevoir le virtuel ?\nSaisissez mtn, moov, ou celtiis (Par défaut: ${defaultOpStr}) :`, op)
+                  if (opChoice === null) return
+                  
+                  const selectedOp = opChoice.trim().toLowerCase() as 'mtn' | 'moov' | 'celtiis'
+                  if (!['mtn', 'moov', 'celtiis'].includes(selectedOp)) {
+                    alert("Réseau invalide ! Veuillez saisir mtn, moov ou celtiis.")
+                    return
+                  }
+                  
+                  const newVm = {
+                    ...vmBalances,
+                    cash: vmBalances.cash - amt,
+                    [selectedOp]: (vmBalances as any)[selectedOp] + amt
+                  }
                   setVmBalances(newVm)
                   localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
-                  alert(`OK: ${amt.toLocaleString('fr-FR')} FCFA remis à l'agence.`)
+                  
+                  // Also log this transaction to the VM day journal for tracing
+                  const newTxn: Transaction = {
+                    id: 'agency-swap-' + Date.now(),
+                    phone: 'AGENCE',
+                    amount: amt,
+                    operator: selectedOp,
+                    type: 'withdrawal', // withdrawal of cash from pocket
+                    category: `Vente Mobile (Échange Cash ➔ Virtuel ${selectedOp.toUpperCase()})`,
+                    date: TODAY_STR,
+                    time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                    clientName: 'AGENCE ROTATION'
+                  }
+                  syncAddTransaction(newTxn)
+                  
+                  alert(`Rotation effectuée !\nRemis à l'agence: -${amt.toLocaleString('fr-FR')} FCFA Cash\nReçu sur SIM: +${amt.toLocaleString('fr-FR')} FCFA virtuel ${selectedOp.toUpperCase()}`)
                 }}
                 className={`p-4 rounded-[24px] border text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-                  theme === 'dark' ? 'border-[#1C2C22] bg-[#050807]/60 hover:border-rose-900/40' : 'border-[#DCD6CD] bg-stone-50 hover:border-rose-300'
+                  isDark ? 'border-[#1C2C22] bg-[#050807]/60 hover:border-natural-accent/45' : 'border-[#DCD6CD] bg-stone-50 hover:border-[#8C7A5C]'
                 }`}
               >
-                <div className="flex items-center gap-2 text-rose-500">
-                  <ArrowUpRight className="size-4 stroke-[2.5px]" />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Remettre Espèces</span>
+                <div className="flex items-center gap-2 text-natural-accent">
+                  <Building className="size-4 stroke-[2.5px]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">Échanger Cash contre Virtuel</span>
                 </div>
-                <p className={`text-[10px] leading-relaxed ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
-                  Déposer le cash collecté sur le terrain
+                <p className={`text-[10px] leading-relaxed ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
+                  Remets ton cash collecté à l'agence, elle te le recharge immédiatement en virtuel sur ton téléphone.
                 </p>
-                <span className="font-mono font-bold text-xs text-purple-400">{vmBalances.cash.toLocaleString('fr-FR')} FCFA dispo</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  const op = vmOperator
-                  if (!op) { alert("Veuillez d'abord configurer votre réseau."); return }
-                  const montant = prompt(`Montant de virtuel ${op.toUpperCase()} reçu de l'agence (FCFA) :`)
-                  if (!montant || isNaN(Number(montant)) || Number(montant) <= 0) return
-                  const amt = Number(montant)
-                  const newVm = { ...vmBalances, [op]: (vmBalances as any)[op] + amt }
-                  setVmBalances(newVm)
-                  localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
-                  alert(`OK: +${amt.toLocaleString('fr-FR')} FCFA virtuel ${op.toUpperCase()} rechargé !`)
-                }}
-                className={`p-4 rounded-[24px] border text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-                  theme === 'dark' ? 'border-[#1C2C22] bg-[#050807]/60 hover:border-emerald-900/40' : 'border-[#DCD6CD] bg-stone-50 hover:border-emerald-300'
-                }`}
-              >
-                <div className="flex items-center gap-2 text-emerald-500">
-                  <ArrowDownLeft className="size-4 stroke-[2.5px]" />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Recevoir Virtuel</span>
+                <div className="flex justify-between items-center text-[10px] font-mono mt-1">
+                  <span className={isDark ? 'text-stone-500' : 'text-stone-500'}>
+                    Cash dispo : <strong className="text-purple-400">{vmBalances.cash.toLocaleString('fr-FR')} F</strong>
+                  </span>
+                  <span className={isDark ? 'text-stone-500' : 'text-stone-500'}>
+                    Virtuel SIM : <strong className="text-natural-accent">{(vmBalances.mtn + vmBalances.moov + vmBalances.celtiis).toLocaleString('fr-FR')} F</strong>
+                  </span>
                 </div>
-                <p className={`text-[10px] leading-relaxed ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>
-                  Recharger mon solde virtuel auprès de l'agence
-                </p>
-                <span className="font-mono font-bold text-xs text-natural-accent">{(vmBalances.mtn + vmBalances.moov + vmBalances.celtiis).toLocaleString('fr-FR')} FCFA actuel</span>
               </button>
             </div>
 
             {/* Bilan journée */}
             <div className={`mt-4 p-4 rounded-2xl border flex flex-col gap-2 ${
-              theme === 'dark' ? 'bg-[#050807]/40 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+              isDark ? 'bg-[#050807]/40 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
             }`}>
               <p className="text-[10px] font-bold text-stone-500 uppercase mb-1">Bilan de ma journée</p>
               <div className="flex justify-between text-xs">
-                <span className={theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}>Cash reçu (envois clients)</span>
+                <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>Cash reçu (envois clients)</span>
                 <span className="font-mono font-bold text-natural-accent">
                   +{transactions.filter(t => t.category.startsWith('Vente Mobile') && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className={theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}>Cash donné (retraits clients)</span>
+                <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>Cash donné (retraits clients)</span>
                 <span className="font-mono font-bold text-rose-400">
                   -{transactions.filter(t => t.category.startsWith('Vente Mobile') && t.type === 'withdrawal' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
                 </span>
@@ -599,11 +1182,11 @@ export function DashboardVm({
             </div>
           </section>
 
-          {/* Journal du Jour */}
+          {/* 6. JOURNAL DU JOUR */}
           <section className="flex flex-col gap-3">
             <div className="px-1">
               <h3 className="text-sm font-bold font-serif uppercase text-natural-accent">Mon Journal du Jour</h3>
-              <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-stone-500' : 'text-stone-400'}`}>Toutes mes opérations enregistrées aujourd'hui</p>
+              <p className={`text-[10px] mt-0.5 ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>Toutes mes opérations enregistrées aujourd'hui</p>
             </div>
             <div className="flex flex-col gap-3">
               {transactions.filter(t => t.category.startsWith('Vente Mobile') && t.date === TODAY_STR).length > 0 ? (
@@ -611,7 +1194,7 @@ export function DashboardVm({
                   .filter(t => t.category.startsWith('Vente Mobile') && t.date === TODAY_STR)
                   .map(txn => (
                     <div key={txn.id} className={`p-4 rounded-2xl border flex justify-between items-center ${
-                      theme === 'dark' ? 'border-[#1C2C22] bg-[#0E1B15]/20' : 'border-[#DCD6CD] bg-white'
+                      isDark ? 'border-[#1C2C22] bg-[#0E1B15]/20' : 'border-[#DCD6CD] bg-white'
                     }`}>
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
@@ -631,9 +1214,9 @@ export function DashboardVm({
                   ))
               ) : (
                 <div className={`text-center py-10 rounded-2xl border ${
-                  theme === 'dark' ? 'border-[#1C2C22] bg-[#0E1B15]/10 text-stone-500' : 'border-stone-200 bg-stone-50 text-stone-400'
+                  isDark ? 'border-[#1C2C22] bg-[#0E1B15]/10 text-stone-500' : 'border-stone-200 bg-stone-50 text-stone-400'
                 } text-xs`}>
-                  <p className="text-2xl mb-2">{'\u{1F6F5}'}</p>
+                  <p className="text-2xl mb-2">🛵</p>
                   <p className="font-bold">Aucune opération enregistrée aujourd'hui</p>
                   <p className="text-[10px] mt-1 opacity-60">Utilise les boutons ci-dessus pour enregistrer tes transactions</p>
                 </div>

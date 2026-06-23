@@ -17,12 +17,19 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Momo Premium - Gestion de Transactions Mobile Money",
   description: "Suivez vos comptes Orange Money, MTN MoMo et Wave sur une interface premium conçue pour les professionnels et fondateurs d'entreprises.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Momo Premium",
+  },
 };
 
 export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#0E1B15",
 };
 
 
@@ -36,8 +43,14 @@ export default function RootLayout({
       lang="fr"
       className={`${inter.variable} ${playfair.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+      </head>
+      <body className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }
+
 

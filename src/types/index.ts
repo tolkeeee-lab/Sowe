@@ -26,3 +26,17 @@ export interface CabinNote {
   time: string;       // HH:MM
   author: string;     // role: 'proprio', 'employe', 'vm', etc.
 }
+
+export interface Debt {
+  id: string;
+  cabin_id: string;
+  client_name: string;
+  amount: number;
+  due_date?: string; // YYYY-MM-DD
+  phone?: string;
+  status: 'non_paye' | 'paye';
+  type: 'depot_a_rendre' | 'credit_client' | 'transfert_proprio_cash' | 'transfert_proprio_sim' | 'autre';
+  operator?: 'mtn' | 'moov' | 'celtiis';
+  created_at?: string;
+}
+
