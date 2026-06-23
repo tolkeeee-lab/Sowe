@@ -884,6 +884,50 @@ export default function Home() {
       localStorage.setItem('momo_transactions', JSON.stringify(updated))
       return updated
     })
+
+    // Automatic balance adjustment for caissier transactions
+    const isVm = txn.id.startsWith('VM-') || 
+                 txn.id.startsWith('agency-swap-') || 
+                 txn.category.includes('Vente Mobile') || 
+                 txn.category.includes('Point Agence') || 
+                 txn.clientName === 'AGENCE ROTATION';
+
+    if (!isVm) {
+      let nextBalances = { ...balances }
+      const amount = txn.amount
+      const op = txn.operator
+
+      if (txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait') {
+        nextBalances = {
+          ...balances,
+          cash: balances.cash + amount,
+          [op]: balances[op] - amount
+        }
+      } else if (txn.type === 'withdrawal') {
+        nextBalances = {
+          ...balances,
+          cash: balances.cash - amount,
+          [op]: balances[op] + amount
+        }
+      } else if (txn.type === 'appro_sim') {
+        const isDebit = txn.category.includes('Débit') || txn.category.includes('Retrait')
+        const multiplier = isDebit ? -1 : 1
+        nextBalances = {
+          ...balances,
+          [op]: balances[op] + (amount * multiplier)
+        }
+      } else if (txn.type === 'ajust_cash') {
+        const isInjection = txn.category.includes('Injection') || txn.category.includes('Apport')
+        const multiplier = isInjection ? 1 : -1
+        nextBalances = {
+          ...balances,
+          cash: balances.cash + (amount * multiplier)
+        }
+      }
+
+      await syncBalances(nextBalances)
+    }
+
     const client = getSupabase()
     if (client && activeCabinId) {
       try {
@@ -1072,13 +1116,6 @@ export default function Home() {
 
     if (debt.type === 'transfert_proprio_cash') {
       const isApport = debt.client_name.includes('APPORT')
-      const multiplier = isApport ? 1 : -1
-      const nextBalances = {
-        ...balances,
-        cash: balances.cash + (debt.amount * multiplier)
-      }
-      await syncBalances(nextBalances)
-
       const newTxn: Transaction = {
         id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
         phone: 'SYSTEM',
@@ -1093,13 +1130,6 @@ export default function Home() {
       await syncAddTransaction(newTxn)
     } else if (debt.type === 'transfert_proprio_sim' && debt.operator) {
       const isAppro = debt.client_name.includes('APPRO')
-      const multiplier = isAppro ? 1 : -1
-      const nextBalances = {
-        ...balances,
-        [debt.operator]: balances[debt.operator] + (debt.amount * multiplier)
-      }
-      await syncBalances(nextBalances)
-
       const newTxn: Transaction = {
         id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
         phone: 'SYSTEM',
@@ -1699,12 +1729,6 @@ export default function Home() {
     if (actionType === 'adjust_ext') {
       const amount = parseFloat(amountInput) || 0
       if (adjType === 'appro_sim') {
-        const nextBalances = {
-          ...balances,
-          [adjOperator]: balances[adjOperator] + amount
-        }
-        await syncBalances(nextBalances)
-
         const newTxn: Transaction = {
           id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
           phone: 'SYSTEM',
@@ -1717,13 +1741,6 @@ export default function Home() {
         }
         await syncAddTransaction(newTxn)
       } else {
-        const multiplier = adjCashDirection === 'inject' ? 1 : -1
-        const nextBalances = {
-          ...balances,
-          cash: balances.cash + (amount * multiplier)
-        }
-        await syncBalances(nextBalances)
-
         const newTxn: Transaction = {
           id: `ADJ-${Math.floor(1000 + Math.random() * 9000)}`,
           phone: 'SYSTEM',
@@ -1754,22 +1771,6 @@ export default function Home() {
     if (isBlacklisted) {
       alert("⚠️ Ce numéro est répertorié dans la BLACKLIST COMMUNAUTAIRE. Soyez vigilant !")
     }
-
-    let nextBalances = { ...balances }
-    if (actionType === 'deposit' || actionType === 'credit' || actionType === 'forfait') {
-      nextBalances = {
-        ...balances,
-        cash: balances.cash + amount,
-        [opInput]: balances[opInput] - amount
-      }
-    } else if (actionType === 'withdrawal') {
-      nextBalances = {
-        ...balances,
-        cash: balances.cash - amount,
-        [opInput]: balances[opInput] + amount
-      }
-    }
-    await syncBalances(nextBalances)
 
     const newTxn: Transaction = {
       id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
