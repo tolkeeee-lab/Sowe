@@ -96,6 +96,19 @@ export function DashboardVm({
   const [dehorsList, setDehorsList] = useState<VmDehorsItem[]>([])
   const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({})
 
+  const [isEditingVirtuel, setIsEditingVirtuel] = useState(false)
+  const [virtuelInput, setVirtuelInput] = useState('')
+  const [isEditingCash, setIsEditingCash] = useState(false)
+  const [cashInput, setCashInput] = useState('')
+
+  // Keep inputs in sync with current balances
+  useEffect(() => {
+    if (vmOperator) {
+      setVirtuelInput(vmBalances[vmOperator].toString())
+    }
+    setCashInput(vmBalances.cash.toString())
+  }, [vmBalances, vmOperator])
+
   // Setup Wizard States
   const [setupStep, setSetupStep] = useState(1)
   const [setupOperator, setSetupOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null)
@@ -152,6 +165,34 @@ export function DashboardVm({
       setSommeConfiee(val)
       localStorage.setItem('momo_vm_somme_confiee', val.toString())
       setIsEditingSomme(false)
+    }
+  }
+
+  const handleUpdateVirtuel = (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = parseFloat(virtuelInput)
+    if (!isNaN(val) && val >= 0 && vmOperator) {
+      const newVm = {
+        ...vmBalances,
+        [vmOperator]: val
+      }
+      setVmBalances(newVm)
+      localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
+      setIsEditingVirtuel(false)
+    }
+  }
+
+  const handleUpdateCash = (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = parseFloat(cashInput)
+    if (!isNaN(val) && val >= 0) {
+      const newVm = {
+        ...vmBalances,
+        cash: val
+      }
+      setVmBalances(newVm)
+      localStorage.setItem('momo_vm_balances', JSON.stringify(newVm))
+      setIsEditingCash(false)
     }
   }
 
@@ -597,11 +638,40 @@ export function DashboardVm({
                   }`} />
                   SIM {vmOperator?.toUpperCase()} (Virtuel)
                 </span>
-                <div className={`font-mono font-bold text-base ${
-                  vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
-                }`}>
-                  {virtualAvailable.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
-                </div>
+                {isEditingVirtuel ? (
+                  <form onSubmit={handleUpdateVirtuel} className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      value={virtuelInput}
+                      onChange={e => setVirtuelInput(e.target.value)}
+                      className={`px-1.5 py-0.5 border rounded-lg text-xs font-mono w-20 focus:outline-none ${
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-900'
+                      }`}
+                    />
+                    <button type="submit" className="text-[8px] bg-natural-accent text-[#0A0F0D] px-1.5 py-0.5 rounded font-black cursor-pointer">OK</button>
+                    <button type="button" onClick={() => setIsEditingVirtuel(false)} className="text-[8px] text-stone-500 hover:text-stone-300 px-1 py-0.5 cursor-pointer">X</button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <div className={`font-mono font-bold text-base ${
+                      vmOperator === 'mtn' ? 'text-amber-500' : vmOperator === 'moov' ? 'text-blue-500' : 'text-emerald-500'
+                    }`}>
+                      {virtualAvailable.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (vmOperator) {
+                          setVirtuelInput(vmBalances[vmOperator].toString())
+                          setIsEditingVirtuel(true)
+                        }
+                      }}
+                      className="text-stone-500 hover:text-natural-accent transition-colors cursor-pointer"
+                      title="Modifier"
+                    >
+                      <Edit3 className="size-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Cash en Poche */}
@@ -612,9 +682,36 @@ export function DashboardVm({
                   <span className="size-2 rounded-full bg-purple-500 shadow-sm shadow-purple-500" />
                   Cash en Poche (Espèces)
                 </span>
-                <div className="font-mono font-bold text-base text-purple-400">
-                  {vmBalances.cash.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
-                </div>
+                {isEditingCash ? (
+                  <form onSubmit={handleUpdateCash} className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      value={cashInput}
+                      onChange={e => setCashInput(e.target.value)}
+                      className={`px-1.5 py-0.5 border rounded-lg text-xs font-mono w-20 focus:outline-none ${
+                        isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-900'
+                      }`}
+                    />
+                    <button type="submit" className="text-[8px] bg-natural-accent text-[#0A0F0D] px-1.5 py-0.5 rounded font-black cursor-pointer">OK</button>
+                    <button type="button" onClick={() => setIsEditingCash(false)} className="text-[8px] text-stone-500 hover:text-stone-300 px-1 py-0.5 cursor-pointer">X</button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <div className="font-mono font-bold text-base text-purple-400">
+                      {vmBalances.cash.toLocaleString('fr-FR')} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setCashInput(vmBalances.cash.toString())
+                        setIsEditingCash(true)
+                      }}
+                      className="text-stone-500 hover:text-natural-accent transition-colors cursor-pointer"
+                      title="Modifier"
+                    >
+                      <Edit3 className="size-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Argent dehors */}
