@@ -2565,7 +2565,7 @@ export default function Home() {
                 <CheckCircle2 className="size-4" />
                 <span>Inventaire</span>
               </button>
-              {role === 'proprio' && (
+              {(role === 'proprio' || role === 'vm') && (
                 <button
                   onClick={() => setSubTab('bilan')}
                   className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
@@ -2723,8 +2723,8 @@ export default function Home() {
         )}
 
 
-        {/* Bilan Périodique (subTab autonome, cabine + vm) - réservé au proprio */}
-        {role === 'proprio' && subTab === 'bilan' && (
+        {/* Bilan Périodique (subTab autonome, cabine + vm) - réservé au proprio et au VM runner */}
+        {(role === 'proprio' || role === 'vm') && subTab === 'bilan' && (
           <BilanPeriodique
             theme={theme}
             transactions={activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t))}
@@ -2834,7 +2834,7 @@ export default function Home() {
                 <CheckCircle2 className="size-4" />
                 <span>Inventaire</span>
               </button>
-              {role === 'proprio' && (
+              {(role === 'proprio' || role === 'vm') && (
                 <button
                   onClick={() => setSubTab('bilan')}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
