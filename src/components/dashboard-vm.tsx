@@ -287,10 +287,18 @@ export function DashboardVm({
         }
       }
 
+      // Validate business name is provided
+      if (!clientNameInput.trim()) {
+        alert("Le nom de l'entreprise cliente est requis pour enregistrer une opération VM !");
+        setLoading(false);
+        return;
+      }
+
+      const finalClientName = clientNameInput.trim()
+
       setVmBalances(nextVmBalances)
       localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
 
-      const finalClientName = clientNameInput.trim() !== '' ? clientNameInput.trim() : undefined
       const categoryStr = vmActionType === 'deposit' 
         ? (paymentType === 'cash' ? 'Vente Mobile VM (Cash)' : 'Vente Mobile VM (Crédit Dehors)')
         : 'Vente Mobile VM (Retrait)'
@@ -308,9 +316,11 @@ export function DashboardVm({
         clientName: finalClientName
       }
 
-      // Save client if requested
-      if (saveClientCheckbox && finalClientName) {
-        await syncAddVmClient(finalClientName, phoneInput)
+      // Auto-save client if not already in contact list
+      const phoneClean = phoneInput.trim()
+      const isAlreadySaved = vmClients.some(c => c.phone.trim() === phoneClean)
+      if (!isAlreadySaved) {
+        await syncAddVmClient(finalClientName, phoneClean)
       }
 
       await syncAddTransaction(newTxn)
@@ -934,8 +944,16 @@ export function DashboardVm({
                       <div key={client.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs ${
                         isDark ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
                       }`}>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-stone-200 dark:text-stone-300">{client.name}</span>
+                        <div 
+                          onClick={() => {
+                            setSelectedClientId(client.id)
+                            setPhoneInput(client.phone)
+                            setClientNameInput(client.name)
+                            setVmActionType('deposit')
+                          }}
+                          className="flex flex-col flex-1 cursor-pointer hover:opacity-80 transition-all"
+                        >
+                          <span className="font-bold text-stone-200 dark:text-stone-300">🏢 {client.name}</span>
                           <span className="font-mono text-[10px] text-stone-500">{client.phone}</span>
                         </div>
                         <button
@@ -1120,9 +1138,10 @@ export function DashboardVm({
                 {/* Client Name Input for unregistered clients */}
                 {selectedClientId === '' && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom de l'Entreprise (Optionnel)</label>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom de l'Entreprise <span className="text-red-500">*</span></label>
                     <input
                       type="text"
+                      required
                       placeholder="Ex: SOGEMA SARL"
                       value={clientNameInput}
                       onChange={e => setClientNameInput(e.target.value)}
@@ -1130,17 +1149,9 @@ export function DashboardVm({
                         isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                       }`}
                     />
-                    {clientNameInput.trim() !== '' && !vmClients.some(c => c.phone.trim() === phoneInput.trim()) && (
-                      <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={saveClientCheckbox}
-                          onChange={e => setSaveClientCheckbox(e.target.checked)}
-                          className="rounded accent-natural-accent"
-                        />
-                        <span className="text-[9px] text-stone-400">Enregistrer cette entreprise dans mes contacts</span>
-                      </label>
-                    )}
+                    <span className="text-[8px] text-stone-400">
+                      L'entreprise sera automatiquement enregistrée dans vos contacts si elle est nouvelle.
+                    </span>
                   </div>
                 )}
 
