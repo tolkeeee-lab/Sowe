@@ -1666,11 +1666,7 @@ export default function Home() {
     }
   }
 
-  const handleSwitchToEmployee = () => {
-    setRole('employe')
-    localStorage.setItem('momo_role', 'employe')
-    setActiveTab('cabine')
-  }
+
 
   // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
   const handleAddTransaction = async (e: React.FormEvent) => {
@@ -2247,42 +2243,10 @@ export default function Home() {
           )}
 
           <form onSubmit={handleCompleteProfile} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Type de Compte</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRoleInput('proprio')}
-                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                    roleInput === 'proprio'
-                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  👑 Proprio
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRoleInput('employe')}
-                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                    roleInput === 'employe'
-                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  👤 Gérant
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRoleInput('vm')}
-                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                    roleInput === 'vm'
-                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  🛵 VM Uniquement
-                </button>
+            <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-stone-500/10 bg-stone-500/5">
+              <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Type de Compte</label>
+              <div className="text-xs font-bold text-natural-accent uppercase tracking-wider">
+                {roleInput === 'proprio' ? '👑 Propriétaire' : roleInput === 'employe' ? '👤 Gérant' : '🛵 VM Uniquement'}
               </div>
             </div>
 
@@ -2449,33 +2413,7 @@ export default function Home() {
               </div>
             )}
 
-            {role === 'proprio' && (
-              <button
-                onClick={handleSwitchToEmployee}
-                className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  theme === 'dark' 
-                    ? 'bg-rose-950/20 border-rose-900/30 text-rose-500 hover:bg-rose-950/40' 
-                    : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
-                }`}
-                title="Verrouiller la session Propriétaire"
-              >
-                <Lock className="size-3" /> Verrouiller
-              </button>
-            )}
 
-            {role === 'employe' && (
-              <button
-                onClick={() => setShowPinModal(true)}
-                className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  theme === 'dark' 
-                    ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-400 hover:bg-emerald-950/40' 
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                }`}
-                title="Déverrouiller l'administration"
-              >
-                <Lock className="size-3" /> Déverrouiller Admin
-              </button>
-            )}
 
 
 
@@ -2645,31 +2583,7 @@ export default function Home() {
 
           {/* Bottom Actions */}
           <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-stone-850/10 dark:border-[#1C2C22]">
-            {role === 'proprio' && (
-              <button
-                onClick={handleSwitchToEmployee}
-                className={`w-full px-3 py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  theme === 'dark' 
-                    ? 'bg-rose-950/20 border-rose-900/30 text-rose-500 hover:bg-rose-950/40' 
-                    : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
-                }`}
-              >
-                <Lock className="size-3" /> Verrouiller Proprio
-              </button>
-            )}
 
-            {role === 'employe' && (
-              <button
-                onClick={() => setShowPinModal(true)}
-                className={`w-full px-3 py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  theme === 'dark' 
-                    ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-400 hover:bg-emerald-950/40' 
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                }`}
-              >
-                <Lock className="size-3" /> Espace Admin (PIN)
-              </button>
-            )}
 
             <button
               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
