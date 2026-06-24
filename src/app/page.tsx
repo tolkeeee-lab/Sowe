@@ -85,96 +85,7 @@ const getWeekRange = (dateStr: string) => {
 const TODAY_STR = getLocalDateString()
 const YESTERDAY_STR = getYesterdayDateString()
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'VM-demo-1',
-    phone: '0199887766',
-    operator: 'mtn',
-    type: 'deposit',
-    amount: 150000,
-    time: '09:15',
-    date: TODAY_STR,
-    category: 'Vente Mobile VM (Cash)',
-    clientName: 'Cabine Agla'
-  },
-  {
-    id: 'VM-demo-2',
-    phone: '0177665544',
-    operator: 'mtn',
-    type: 'withdrawal',
-    amount: 100000,
-    time: '10:00',
-    date: TODAY_STR,
-    category: 'Vente Mobile VM (Retrait)',
-    clientName: 'Cabine Gbégamey'
-  },
-  {
-    id: 'VM-demo-3',
-    phone: '0199887766',
-    operator: 'mtn',
-    type: 'deposit',
-    amount: 50000,
-    time: '11:30',
-    date: TODAY_STR,
-    category: 'Vente Mobile VM (Crédit Dehors)',
-    clientName: 'SOGEMA SARL'
-  },
-  {
-    id: 'VM-demo-4',
-    phone: 'AGENCE',
-    operator: 'mtn',
-    type: 'withdrawal', // Cash leaving pocket
-    amount: 200000,
-    time: '14:20',
-    date: TODAY_STR,
-    category: 'Vente Mobile (Échange Cash ➔ Virtuel MTN)',
-    clientName: 'AGENCE ROTATION'
-  },
-  {
-    id: 'TXN-1004',
-    phone: '0196887722',
-    operator: 'mtn',
-    type: 'withdrawal',
-    amount: 5000,
-    time: '16:45',
-    date: TODAY_STR,
-    category: 'Frais de transaction',
-    isScamReported: false,
-  },
-  {
-    id: 'TXN-1003',
-    phone: '0140223190',
-    operator: 'celtiis',
-    type: 'deposit',
-    amount: 50000,
-    time: '16:10',
-    date: TODAY_STR,
-    category: 'Business/Ventes',
-    isScamReported: false,
-  },
-  {
-    id: 'TXN-1002',
-    phone: '0161485060',
-    operator: 'moov',
-    type: 'withdrawal',
-    amount: 120000,
-    time: '15:32',
-    date: TODAY_STR,
-    category: 'Frais de transaction',
-    isScamReported: false,
-  },
-  {
-    id: 'TXN-1001',
-    phone: '0197451230',
-    operator: 'mtn',
-    type: 'deposit',
-    amount: 15000,
-    time: '14:15',
-    date: YESTERDAY_STR,
-    category: 'Business/Ventes',
-    isScamReported: false,
-  }
-];
+const INITIAL_TRANSACTIONS: Transaction[] = [];
 
 const BENIN_FORFAITS = {
   mtn: [
@@ -206,18 +117,14 @@ export default function Home() {
 
   // VM (Vente Mobile) States
   const [vmBalances, setVmBalances] = useState({
-    mtn: 400000,
+    mtn: 0,
     moov: 0,
     celtiis: 0,
-    cash: 350000
+    cash: 0
   })
-  const [vmOperator, setVmOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>('mtn') // Le reseau du VM (un seul)
-  const [selectedVmRunner, setSelectedVmRunner] = useState('Moussa')
-  const [vmRunners, setVmRunners] = useState<any[]>([
-    { name: 'Moussa', operator: 'mtn', zone: 'Cotonou Centre' },
-    { name: 'Kofi', operator: 'moov', zone: 'Fidjrossé' },
-    { name: 'Ablavi', operator: 'celtiis', zone: 'Abomey-Calavi' }
-  ])
+  const [vmOperator, setVmOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null) // Let user set it up
+  const [selectedVmRunner, setSelectedVmRunner] = useState('')
+  const [vmRunners, setVmRunners] = useState<any[]>([])
   const [newRunnerName, setNewRunnerName] = useState('')
   const [newRunnerOperator, setNewRunnerOperator] = useState<'mtn' | 'moov' | 'celtiis'>('mtn')
   const [newRunnerZone, setNewRunnerZone] = useState('')
@@ -270,18 +177,18 @@ export default function Home() {
 
   // Balances in each medium
   const [balances, setBalances] = useState({
-    mtn: 240000,
-    moov: 270000,
-    celtiis: 50000,
-    cash: 140000,
+    mtn: 0,
+    moov: 0,
+    celtiis: 0,
+    cash: 0,
   })
 
   // Start & Float Reserves
   const [coffres, setCoffres] = useState({
-    mtn: 250000,
-    moov: 150000,
-    celtiis: 100000,
-    cash: 200000,
+    mtn: 0,
+    moov: 0,
+    celtiis: 0,
+    cash: 0,
   })
 
   // Period type: 'day' | 'week' | 'month' | 'year'
@@ -302,10 +209,10 @@ export default function Home() {
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null)
 
   // Transactions list
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   
   // Blacklist database
-  const [blacklist, setBlacklist] = useState<string[]>(['0197451239', '0161485000'])
+  const [blacklist, setBlacklist] = useState<string[]>([])
   const [newBlacklistPhone, setNewBlacklistPhone] = useState('')
   const [showBlacklistModal, setShowBlacklistModal] = useState(false)
 
