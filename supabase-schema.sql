@@ -89,9 +89,18 @@ ALTER TABLE public.momo_settings ENABLE ROW LEVEL SECURITY;
 
 -- CREATE RLS SECURITY POLICIES
 
--- profiles: read/write owned/assigned
-CREATE POLICY "Access profiles" ON public.momo_profiles
-    FOR ALL USING (
+-- profiles: separate policies for CRUD to avoid FOR ALL inserting conflicts during signup
+CREATE POLICY "Select profiles" ON public.momo_profiles
+    FOR SELECT USING (
+        id = auth.uid() 
+        OR owner_id = auth.uid()
+    );
+
+CREATE POLICY "Insert profiles" ON public.momo_profiles
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Update profiles" ON public.momo_profiles
+    FOR UPDATE USING (
         id = auth.uid() 
         OR owner_id = auth.uid()
     ) WITH CHECK (
@@ -99,8 +108,11 @@ CREATE POLICY "Access profiles" ON public.momo_profiles
         OR owner_id = auth.uid()
     );
 
-CREATE POLICY "Insert profiles" ON public.momo_profiles
-    FOR INSERT WITH CHECK (true);
+CREATE POLICY "Delete profiles" ON public.momo_profiles
+    FOR DELETE USING (
+        id = auth.uid() 
+        OR owner_id = auth.uid()
+    );
 
 -- cabins: owners manage all their cabins, employees see their assigned one
 CREATE POLICY "Access cabins" ON public.momo_cabins

@@ -197,7 +197,7 @@ const BENIN_FORFAITS = {
 
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const [activeTab, setActiveTab] = useState<'caissier' | 'vm' | 'proprietaire'>('caissier')
+  const [activeTab, setActiveTab] = useState<'cabine' | 'vm'>('cabine')
   const [subTab, setSubTab] = useState<'dashboard' | 'notes' | 'debts'>('dashboard')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
@@ -460,7 +460,8 @@ export default function Home() {
             }
           }
           fetchProprioEmployees(userId)
-          setShowHub(true)
+          setActiveTab('cabine')
+          setShowHub(false)
         } else if (profileData.role === 'vm') {
           setActiveTab('vm')
           setSelectedVmRunner(profileData.name)
@@ -478,7 +479,7 @@ export default function Home() {
             setActiveCabinId(defaultCabinId)
           }
         } else if (profileData.role === 'vm_hybrid') {
-          setActiveTab('vm')
+          setActiveTab('cabine')
           setSelectedVmRunner(profileData.name)
           const { data: cabinsData } = await client
             .from('momo_cabins')
@@ -493,10 +494,10 @@ export default function Home() {
             setActiveCabinId(defaultCabinId)
           }
           fetchProprioEmployees(userId)
-          setShowHub(true)
+          setShowHub(false)
         } else {
           // Employee
-          setActiveTab('caissier')
+          setActiveTab('cabine')
           setShowHub(false)
           if (profileData.assigned_cabin_id) {
             const { data: cabinData } = await client
@@ -1346,7 +1347,8 @@ export default function Home() {
     setVmRunners(mockRunners)
     setActiveCabinId('mock-cabin-id')
     setSupabaseConnected(false)
-    setShowHub(true)
+    setShowHub(false)
+    setActiveTab('cabine')
     setAuthLoading(false)
     
     localStorage.setItem('momo_role', 'vm_hybrid')
@@ -1705,7 +1707,7 @@ export default function Home() {
       setShowPinModal(false)
       setPinInput('')
       setPinError('')
-      setActiveTab('proprietaire')
+      setActiveTab('cabine')
     } else {
       setPinError('Code PIN incorrect')
     }
@@ -1714,7 +1716,7 @@ export default function Home() {
   const handleSwitchToEmployee = () => {
     setRole('employe')
     localStorage.setItem('momo_role', 'employe')
-    setActiveTab('caissier')
+    setActiveTab('cabine')
   }
 
   // Handle transaction creation (MTN / MOOV / CELTIIS swap with Drawer Cash or external adjustment)
@@ -2450,18 +2452,21 @@ export default function Home() {
               </button>
             )}
 
-            {(role === 'vm_hybrid' || role === 'proprio') && !showHub && (
+            {role === 'employe' && (
               <button
-                onClick={() => setShowHub(true)}
+                onClick={() => setShowPinModal(true)}
                 className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   theme === 'dark' 
                     ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-400 hover:bg-emerald-950/40' 
                     : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                 }`}
+                title="Déverrouiller l'administration"
               >
-                🏠 Menu Hub
+                <Lock className="size-3" /> Déverrouiller Admin
               </button>
             )}
+
+
 
             <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-colors hidden md:inline-block ${
               theme === 'dark' ? 'bg-[#0E1B15] text-emerald-400 border-[#1C2C22]' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -2497,101 +2502,20 @@ export default function Home() {
 
       {/* Main Body */}
       <main className="max-w-xl mx-auto px-4 pt-8 pb-24 md:pb-8 flex flex-col gap-6">
-        {showHub && (role === 'vm_hybrid' || role === 'proprio') ? (
-          <div className="flex flex-col gap-6 py-4">
-            <div className="text-center mb-4">
-              <h2 className="font-serif text-3xl font-black tracking-tight text-[#D4AF37]">Bienvenue dans votre Hub</h2>
-              <p className="text-xs text-stone-500 uppercase tracking-widest font-bold mt-1">Sélectionnez l'espace de travail souhaité</p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              {/* Option 1: Espace Propriétaire / Cabine Physique */}
-              <button
-                onClick={() => {
-                  if (role === 'proprio') {
-                    setActiveTab('proprietaire')
-                  } else {
-                    setActiveTab('caissier')
-                  }
-                  setShowHub(false)
-                  setSubTab('dashboard')
-                }}
-                className={`p-6 rounded-[36px] border text-left flex flex-col justify-between h-44 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative overflow-hidden group ${
-                  theme === 'dark'
-                    ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] text-white hover:border-[#D4AF37]/50'
-                    : 'border-[#DCD6CD] bg-white text-[#111614] hover:border-[#D4AF37]/50'
-                }`}
-              >
-                <div className="absolute -right-8 -top-8 size-24 rounded-full bg-[#D4AF37]/5 group-hover:bg-[#D4AF37]/10 transition-colors blur-xl pointer-events-none" />
-                <div className="flex items-center gap-3">
-                  <div className={`size-12 rounded-2xl flex items-center justify-center shadow ${
-                    theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border border-stone-200 text-[#D4AF37]'
-                  }`}>
-                    <Building className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-lg font-bold">Espace Cabines & Administration</h3>
-                    <p className="text-[10px] uppercase font-bold text-stone-500">Propriétaire / Cabine Momo physique</p>
-                  </div>
-                </div>
-                <div>
-                  <p className={`text-[11px] leading-relaxed ${theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}`}>
-                    Gérez vos cabines physiques, visualisez le solde global, affectez vos gérants, configurez vos coffres et gérez la blacklist.
-                  </p>
-                  <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest mt-2 block font-sans">Accéder à l'espace →</span>
-                </div>
-              </button>
-
-              {/* Option 2: Espace Vendeur Motorisé (VM) */}
-              <button
-                onClick={() => {
-                  setActiveTab('vm')
-                  setShowHub(false)
-                  setSubTab('dashboard')
-                }}
-                className={`p-6 rounded-[36px] border text-left flex flex-col justify-between h-44 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative overflow-hidden group ${
-                  theme === 'dark'
-                    ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] text-white hover:border-[#D4AF37]/50'
-                    : 'border-[#DCD6CD] bg-white text-[#111614] hover:border-[#D4AF37]/50'
-                }`}
-              >
-                <div className="absolute -right-8 -top-8 size-24 rounded-full bg-[#D4AF37]/5 group-hover:bg-[#D4AF37]/10 transition-colors blur-xl pointer-events-none" />
-                <div className="flex items-center gap-3">
-                  <div className={`size-12 rounded-2xl flex items-center justify-center shadow ${
-                    theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border border-stone-200 text-[#D4AF37]'
-                  }`}>
-                    <Send className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-lg font-bold">Espace Vendeur Motorisé (VM)</h3>
-                    <p className="text-[10px] uppercase font-bold text-[#D4AF37]">Mode Terrain / Vente Mobile</p>
-                  </div>
-                </div>
-                <div>
-                  <p className={`text-[11px] leading-relaxed ${theme === 'dark' ? 'text-stone-400' : 'text-stone-600'}`}>
-                    Suivez la flotte de vente mobile, gérez les transferts de fonds sur le terrain, enregistrez les dépôts et retraits des VM.
-                  </p>
-                  <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest mt-2 block font-sans">Accéder à l'espace →</span>
-                </div>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-        {/* Espace Tabs Switcher (Desktop only) */}
-        {role !== 'vm' && role !== 'employe' && (
-          <div className={`hidden md:flex p-1 rounded-2xl border text-xs font-bold transition-all ${
+        
+        {role === 'vm_hybrid' && (
+          <div className={`flex p-1 rounded-2xl border text-xs font-bold transition-all mb-4 ${
             theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
           }`}>
             <button
-              onClick={() => { setActiveTab('caissier'); setSubTab('dashboard'); }}
+              onClick={() => { setActiveTab('cabine'); setSubTab('dashboard'); }}
               className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-                activeTab === 'caissier' 
+                activeTab === 'cabine' 
                   ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
                   : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <span>Espace Caissier 👤</span>
+              <span>🗄️ Espace Cabine & Admin</span>
             </button>
             <button
               onClick={() => { setActiveTab('vm'); setSubTab('dashboard'); }}
@@ -2601,78 +2525,55 @@ export default function Home() {
                   : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <span>Espace VM (Vente Mobile) 🛵</span>
-            </button>
-            <button
-              onClick={() => {
-                if (role === 'proprio') {
-                  setActiveTab('proprietaire')
-                  setSubTab('dashboard')
-                } else {
-                  setShowPinModal(true)
-                }
-              }}
-              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-                activeTab === 'proprietaire' 
-                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <span>Espace Propriétaire 👑</span>
-              {role !== 'proprio' && <Lock className="size-3" />}
+              <span>🛵 Espace VM (Vente Mobile)</span>
             </button>
           </div>
         )}
 
-        {role === 'employe' && (
-          <div className={`hidden md:flex p-1 rounded-2xl border text-xs font-bold transition-all ${
-            theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
-          }`}>
-            <button
-              onClick={() => { setActiveTab('caissier'); setSubTab('dashboard'); }}
-              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-                activeTab === 'caissier' 
-                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <span>Espace Caissier 👤</span>
-            </button>
-            <button
-              onClick={() => setShowPinModal(true)}
-              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-                activeTab === 'proprietaire' 
-                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <span>Espace Propriétaire 👑</span>
-              <Lock className="size-3" />
-            </button>
-          </div>
-        )}
-
-        {/* TAB 1: CAISSIER / OPERATIONS */}
-        {activeTab === 'caissier' && subTab === 'dashboard' && (
-          <DashboardCaissier
+        {/* TAB 1: CABINE (CAISSIER + ADMIN) */}
+        {activeTab === 'cabine' && subTab === 'dashboard' && (
+          <DashboardProprio
             theme={theme}
-            balances={balances}
-            transactions={transactions}
-            blacklist={blacklist}
             role={role}
-            activeTab={activeTab}
+            balances={balances}
             syncAddTransaction={syncAddTransaction}
             syncToggleScamReport={syncToggleScamReport}
-            setActionType={setActionType}
             setOpInput={setOpInput}
             setSelectedForfait={setSelectedForfait}
             setActiveReceipt={setActiveReceipt}
+            cabins={cabins}
+            activeCabinId={activeCabinId}
+            newCabinName={newCabinName}
+            setNewCabinName={setNewCabinName}
+            handleCreateCabin={handleCreateCabin}
+            creatingCabin={creatingCabin}
+            allEmployees={allEmployees}
+            handleAssignCabin={handleAssignCabin}
+            coffres={coffres}
+            setCoffreMtn={setCoffreMtn}
+            setCoffreMoov={setCoffreMoov}
+            setCoffreCeltiis={setCoffreCeltiis}
+            setCoffreCash={setCoffreCash}
+            setShowCoffreModal={setShowCoffreModal}
+            setActionType={setActionType}
+            blacklist={blacklist}
+            setShowBlacklistModal={setShowBlacklistModal}
+            transactions={transactions}
+            deleteTransaction={deleteTransaction}
             renderOperatorBadge={renderOperatorBadge}
+            syncBalances={syncBalances}
+            setTransactions={setTransactions}
+            setActiveTab={setActiveTab}
+            TODAY_STR={TODAY_STR}
+            YESTERDAY_STR={YESTERDAY_STR}
+            getWeekRange={getWeekRange}
+            getLocalDateString={getLocalDateString}
+            getYesterdayDateString={getYesterdayDateString}
           />
         )}
 
-        {/* Carnet de Bord — espace caissier */}
-        {activeTab === 'caissier' && subTab === 'notes' && (
+        {/* Carnet de Bord — espace cabine */}
+        {activeTab === 'cabine' && subTab === 'notes' && (
           <CarnetDeBord
             theme={theme}
             role={role}
@@ -2682,8 +2583,8 @@ export default function Home() {
           />
         )}
 
-        {/* Dettes & Rappels — espace caissier */}
-        {activeTab === 'caissier' && subTab === 'debts' && (
+        {/* Dettes & Rappels — espace cabine */}
+        {activeTab === 'cabine' && subTab === 'debts' && (
           <DettesRappels
             theme={theme}
             role={role}
@@ -2727,74 +2628,7 @@ export default function Home() {
           />
         )}
 
-        {/* TAB 2: PROPRIÉTAIRE / CONFIG */}
-        {activeTab === 'proprietaire' && role === 'proprio' && subTab === 'dashboard' && (
-          <DashboardProprio
-            theme={theme}
-            role={role}
-            balances={balances}
-            syncAddTransaction={syncAddTransaction}
-            syncToggleScamReport={syncToggleScamReport}
-            setOpInput={setOpInput}
-            setSelectedForfait={setSelectedForfait}
-            setActiveReceipt={setActiveReceipt}
-            cabins={cabins}
-            activeCabinId={activeCabinId}
-            newCabinName={newCabinName}
-            setNewCabinName={setNewCabinName}
-            handleCreateCabin={handleCreateCabin}
-            creatingCabin={creatingCabin}
-            allEmployees={allEmployees}
-            handleAssignCabin={handleAssignCabin}
-            coffres={coffres}
-            setCoffreMtn={setCoffreMtn}
-            setCoffreMoov={setCoffreMoov}
-            setCoffreCeltiis={setCoffreCeltiis}
-            setCoffreCash={setCoffreCash}
-            setShowCoffreModal={setShowCoffreModal}
-            setActionType={setActionType}
-            blacklist={blacklist}
-            setShowBlacklistModal={setShowBlacklistModal}
-            transactions={transactions}
-            deleteTransaction={deleteTransaction}
-            renderOperatorBadge={renderOperatorBadge}
-            syncBalances={syncBalances}
-            setTransactions={setTransactions}
-            setActiveTab={setActiveTab}
-            TODAY_STR={TODAY_STR}
-            YESTERDAY_STR={YESTERDAY_STR}
-            getWeekRange={getWeekRange}
-            getLocalDateString={getLocalDateString}
-            getYesterdayDateString={getYesterdayDateString}
-          />
-        )}
-
-        {/* Carnet de Bord — espace proprio */}
-        {activeTab === 'proprietaire' && role === 'proprio' && subTab === 'notes' && (
-          <CarnetDeBord
-            theme={theme}
-            role={role}
-            notes={cabinNotes}
-            onAddNote={syncAddCabinNote}
-            onDeleteNote={syncDeleteCabinNote}
-          />
-        )}
-
-        {/* Dettes & Rappels — espace proprio */}
-        {activeTab === 'proprietaire' && role === 'proprio' && subTab === 'debts' && (
-          <DettesRappels
-            theme={theme}
-            role={role}
-            debts={debts}
-            onAddDebt={syncAddDebt}
-            onSettleDebt={syncSettleDebt}
-            onDeleteDebt={syncDeleteDebt}
-          />
-        )}
-          </>
-        )}
         {/* Floating Bottom Navigation Bar for active workspaces */}
-        {!showHub && (
           <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
             <div className={`p-1.5 rounded-2xl border shadow-xl flex gap-1 pointer-events-auto backdrop-blur-lg ${
               theme === 'dark' ? 'bg-[#0E1B15]/90 border-[#1C2C22]' : 'bg-[#FAF9F6]/95 border-[#DCD6CD]'
@@ -2836,7 +2670,6 @@ export default function Home() {
               )}
             </div>
           </div>
-        )}
       </main>
 
       {/* FOOTER */}
@@ -3484,22 +3317,22 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Mobile Bottom Navigation Bar */}
-      {role !== 'vm' && role !== 'employe' && (
+      {role === 'vm_hybrid' && (
         <div className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-md transition-colors duration-550 ${
           theme === 'dark' 
             ? 'bg-[#050807]/90 border-[#1C2C22] text-[#E4EAD8]' 
             : 'bg-[#FAF9F6]/90 border-[#DCD6CD] text-[#111614]'
         }`}>
-          <div className="flex h-16 items-center gap-2 overflow-x-auto scrollbar-none flex-nowrap px-4 py-2">
+          <div className="flex h-16 items-center gap-2 overflow-x-auto scrollbar-none flex-nowrap px-4 py-2 justify-around">
             <button
-              onClick={() => setActiveTab('caissier')}
-              className={`flex flex-col items-center justify-center flex-shrink-0 min-w-[110px] h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
-                activeTab === 'caissier'
+              onClick={() => setActiveTab('cabine')}
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+                activeTab === 'cabine'
                   ? 'text-natural-accent'
                   : 'text-stone-500 hover:text-stone-400'
               }`}
             >
-              {activeTab === 'caissier' && (
+              {activeTab === 'cabine' && (
                 <motion.div
                   layoutId="activeTabMobileIndicator"
                   className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
@@ -3507,12 +3340,12 @@ export default function Home() {
                 />
               )}
               <Wallet className="size-4.5 relative z-10" />
-              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Caisse</span>
+              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Cabine</span>
             </button>
             
             <button
               onClick={() => setActiveTab('vm')}
-              className={`flex flex-col items-center justify-center flex-shrink-0 min-w-[110px] h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
                 activeTab === 'vm'
                   ? 'text-natural-accent'
                   : 'text-stone-500 hover:text-stone-400'
@@ -3527,87 +3360,6 @@ export default function Home() {
               )}
               <Send className="size-4.5 relative z-10" />
               <span className="text-[9px] uppercase tracking-wider font-sans font-bold relative z-10">Flotte VM</span>
-            </button>
-            
-            <button
-              onClick={() => {
-                if (role === 'proprio') {
-                  setActiveTab('proprietaire')
-                } else {
-                  setShowPinModal(true)
-                }
-              }}
-              className={`flex flex-col items-center justify-center flex-shrink-0 min-w-[110px] h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
-                activeTab === 'proprietaire'
-                  ? 'text-natural-accent'
-                  : 'text-stone-500 hover:text-stone-400'
-              }`}
-            >
-              {activeTab === 'proprietaire' && (
-                <motion.div
-                  layoutId="activeTabMobileIndicator"
-                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <div className="relative z-10">
-                <Building className="size-4.5" />
-                {role !== 'proprio' && (
-                  <Lock className="size-2.5 absolute -top-1 -right-1 text-natural-accent" />
-                )}
-              </div>
-              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Proprio</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {role === 'employe' && (
-        <div className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-md transition-colors duration-550 ${
-          theme === 'dark' 
-            ? 'bg-[#050807]/90 border-[#1C2C22] text-[#E4EAD8]' 
-            : 'bg-[#FAF9F6]/90 border-[#DCD6CD] text-[#111614]'
-        }`}>
-          <div className="flex h-16 items-center gap-2 overflow-x-auto scrollbar-none flex-nowrap px-4 py-2 justify-around">
-            <button
-              onClick={() => setActiveTab('caissier')}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
-                activeTab === 'caissier'
-                  ? 'text-natural-accent'
-                  : 'text-stone-500 hover:text-stone-400'
-              }`}
-            >
-              {activeTab === 'caissier' && (
-                <motion.div
-                  layoutId="activeTabMobileIndicator"
-                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <Wallet className="size-4.5 relative z-10" />
-              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Caisse</span>
-            </button>
-            
-            <button
-              onClick={() => setShowPinModal(true)}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
-                activeTab === 'proprietaire'
-                  ? 'text-natural-accent'
-                  : 'text-stone-500 hover:text-stone-400'
-              }`}
-            >
-              {activeTab === 'proprietaire' && (
-                <motion.div
-                  layoutId="activeTabMobileIndicator"
-                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <div className="relative z-10">
-                <Building className="size-4.5" />
-                <Lock className="size-2.5 absolute -top-1 -right-1 text-natural-accent" />
-              </div>
-              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Proprio</span>
             </button>
           </div>
         </div>
