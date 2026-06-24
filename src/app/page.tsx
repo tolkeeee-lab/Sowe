@@ -156,8 +156,10 @@ export default function Home() {
   const [roleInput, setRoleInput] = useState<'proprio' | 'employe' | 'vm' | 'vm_hybrid'>('proprio')
   const [bossEmailInput, setBossEmailInput] = useState('')
   const [businessNameInput, setBusinessNameInput] = useState('')
-  const [firstCabinNameInput, setFirstCabinNameInput] = useState('Cabine Principale')
+  const [firstCabinNameInput, setFirstCabinNameInput] = useState('')
+  const [firstCabinAddressInput, setFirstCabinAddressInput] = useState('')
   const [newCabinName, setNewCabinName] = useState('')
+  const [newCabinAddress, setNewCabinAddress] = useState('')
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
 
@@ -1213,6 +1215,9 @@ export default function Home() {
         if (!firstCabinNameInput.trim()) {
           throw new Error("Le nom de votre première cabine est requis.")
         }
+        if (!firstCabinAddressInput.trim()) {
+          throw new Error("Le quartier/adresse de votre cabine est requis.")
+        }
       }
 
       const { error: profileErr } = await client.from('momo_profiles').insert({
@@ -1230,9 +1235,13 @@ export default function Home() {
         const cabinName = roleInput === 'vm' 
           ? `Espace VM de ${nameInput.trim()}` 
           : firstCabinNameInput.trim()
+        const cabinAddress = roleInput === 'vm'
+          ? 'Mobile'
+          : firstCabinAddressInput.trim()
         const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
           name: cabinName,
-          owner_id: session.user.id
+          owner_id: session.user.id,
+          address: cabinAddress
         }).select().single()
 
         if (cabinErr) throw cabinErr
@@ -1369,12 +1378,14 @@ export default function Home() {
       const mockNewCabin = {
         id: `mock-cabin-${Math.floor(1000 + Math.random() * 9000)}`,
         name: newCabinName.trim(),
-        owner_id: 'mock-user-id'
+        owner_id: 'mock-user-id',
+        address: newCabinAddress.trim()
       }
       setCabins(prev => [...prev, mockNewCabin])
       setActiveCabinId(mockNewCabin.id)
       localStorage.setItem('momo_active_cabin_id', mockNewCabin.id)
       setNewCabinName('')
+      setNewCabinAddress('')
       alert(`Cabine "${mockNewCabin.name}" créée (Local Bypass) avec succès !`)
       setCreatingCabin(false)
       return
@@ -1386,7 +1397,8 @@ export default function Home() {
     try {
       const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
         name: newCabinName.trim(),
-        owner_id: session.user.id
+        owner_id: session.user.id,
+        address: newCabinAddress.trim()
       }).select().single()
 
       if (cabinErr) throw cabinErr
@@ -2364,9 +2376,23 @@ export default function Home() {
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Cabine Etoile / Cabine Principale"
+                    placeholder="Ex: Cabine Étoile / Cabine Carrefour"
                     value={firstCabinNameInput}
                     onChange={e => setFirstCabinNameInput(e.target.value)}
+                    className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                    }`}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Quartier / Adresse de la Cabine</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Agla / Gbégamey / Calavi"
+                    value={firstCabinAddressInput}
+                    onChange={e => setFirstCabinAddressInput(e.target.value)}
                     className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
                       theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
                     }`}
@@ -2818,6 +2844,8 @@ export default function Home() {
             activeCabinId={activeCabinId}
             newCabinName={newCabinName}
             setNewCabinName={setNewCabinName}
+            newCabinAddress={newCabinAddress}
+            setNewCabinAddress={setNewCabinAddress}
             handleCreateCabin={handleCreateCabin}
             creatingCabin={creatingCabin}
             allEmployees={allEmployees}

@@ -67,6 +67,8 @@ interface DashboardProprioProps {
   activeCabinId: string | null;
   newCabinName: string;
   setNewCabinName: (name: string) => void;
+  newCabinAddress: string;
+  setNewCabinAddress: (address: string) => void;
   handleCreateCabin: (e: React.FormEvent) => Promise<void>;
   creatingCabin: boolean;
   allEmployees: any[];
@@ -117,6 +119,8 @@ export function DashboardProprio({
   activeCabinId,
   newCabinName,
   setNewCabinName,
+  newCabinAddress,
+  setNewCabinAddress,
   handleCreateCabin,
   creatingCabin,
   allEmployees,
@@ -293,18 +297,30 @@ export function DashboardProprio({
                 Créez de nouvelles cabines physiques et suivez leurs performances individuelles.
               </p>
 
-              <form onSubmit={handleCreateCabin} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  required
-                  placeholder="Nom de la cabine (ex: Cabine Cotonou Nord)"
-                  value={newCabinName}
-                  onChange={(e) => setNewCabinName(e.target.value)}
-                  className={`flex-1 p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
-                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300 text-stone-900'
-                  }`}
-                />
-                <Button variant="premium" type="submit" loading={creatingCabin} className="text-xs cursor-pointer font-bold px-4 rounded-xl">
+              <form onSubmit={handleCreateCabin} className="flex flex-col gap-3 mb-4">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nom de la cabine (ex: Cabine Cotonou Nord)"
+                    value={newCabinName}
+                    onChange={(e) => setNewCabinName(e.target.value)}
+                    className={`flex-1 p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300 text-stone-900'
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Quartier (ex: Agla / Gbégamey / Calavi)"
+                    value={newCabinAddress}
+                    onChange={(e) => setNewCabinAddress(e.target.value)}
+                    className={`flex-1 p-3 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-stone-300 text-stone-900'
+                    }`}
+                  />
+                </div>
+                <Button variant="premium" type="submit" loading={creatingCabin} className="text-xs cursor-pointer font-bold py-3 px-4 rounded-xl w-full md:w-auto self-end">
                   Créer la cabine
                 </Button>
               </form>
@@ -315,10 +331,17 @@ export function DashboardProprio({
                   <div key={cab.id} className={`flex justify-between items-center p-3 rounded-xl border text-xs ${
                     theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-[#DCD6CD]'
                   }`}>
-                    <span className="font-bold flex items-center gap-2">
-                      <Building className="size-3.5 text-natural-accent" />
-                      {cab.name}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-bold flex items-center gap-2">
+                        <Building className="size-3.5 text-natural-accent" />
+                        {cab.name}
+                      </span>
+                      {cab.address && (
+                        <span className="text-[10px] text-stone-500 pl-5">
+                          📍 {cab.address}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[9px] text-stone-400 font-mono">
                       ID: {cab.id.slice(0, 8)}...
                     </span>

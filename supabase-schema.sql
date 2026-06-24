@@ -16,6 +16,7 @@ CREATE TABLE public.momo_cabins (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     owner_id UUID NOT NULL, -- References auth.users.id
+    address TEXT, -- Neighborhood / Quartier
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
