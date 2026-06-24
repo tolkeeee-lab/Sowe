@@ -90,9 +90,9 @@ export function DashboardVm({
   const [paymentType, setPaymentType] = useState<'cash' | 'credit'>('cash')
 
   // Float management & outstanding credit states (saved locally)
-  const [sommeConfiee, setSommeConfiee] = useState<number>(800000)
+  const [sommeConfiee, setSommeConfiee] = useState<number>(0)
   const [isEditingSomme, setIsEditingSomme] = useState(false)
-  const [sommeInput, setSommeInput] = useState('800000')
+  const [sommeInput, setSommeInput] = useState('')
   const [dehorsList, setDehorsList] = useState<VmDehorsItem[]>([])
   const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({})
 
@@ -112,9 +112,9 @@ export function DashboardVm({
   // Setup Wizard States
   const [setupStep, setSetupStep] = useState(1)
   const [setupOperator, setSetupOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null)
-  const [setupCapital, setSetupCapital] = useState('800000')
-  const [setupVirtuel, setSetupVirtuel] = useState('300000')
-  const [setupCash, setSetupCash] = useState('500000')
+  const [setupCapital, setSetupCapital] = useState('')
+  const [setupVirtuel, setSetupVirtuel] = useState('')
+  const [setupCash, setSetupCash] = useState('')
 
   const isDark = theme === 'dark'
 
@@ -602,21 +602,43 @@ export function DashboardVm({
                   Bilan Comptable Actif 🛵
                 </span>
               </div>
-              <div className="text-right">
-                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-wider block">Écart Comptable</span>
-                {ecart === 0 ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 mt-0.5">
-                    <CheckCircle className="size-3.5 fill-emerald-500/10" /> Solde équilibré
-                  </span>
-                ) : ecart > 0 ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-cyan-400 mt-0.5 bg-cyan-950/20 px-2.5 py-0.5 rounded-lg border border-cyan-800/30">
-                    Surplus : +{ecart.toLocaleString('fr-FR')} F
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-500 mt-0.5 bg-rose-950/20 px-2.5 py-0.5 rounded-lg border border-rose-800/30 animate-pulse">
-                    <AlertCircle className="size-3.5" /> Manquant : {ecart.toLocaleString('fr-FR')} F
-                  </span>
-                )}
+              <div className="text-right flex items-center gap-3">
+                {/* Change Operator Select option */}
+                <div className="flex flex-col text-left">
+                  <select
+                    value={vmOperator || ''}
+                    onChange={(e) => {
+                      const selectedOp = e.target.value as 'mtn' | 'moov' | 'celtiis' | ''
+                      if (selectedOp) {
+                        setVmOperator(selectedOp)
+                        localStorage.setItem('momo_vm_operator', selectedOp)
+                      }
+                    }}
+                    className={`p-1 px-1.5 rounded-lg border text-[9px] font-bold focus:outline-none transition-all cursor-pointer ${
+                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-850'
+                    }`}
+                  >
+                    <option value="mtn">🟡 MTN MoMo</option>
+                    <option value="moov">🔵 Moov Money</option>
+                    <option value="celtiis">🟢 Celtiis Cash</option>
+                  </select>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-bold text-stone-500 uppercase tracking-wider block">Écart Comptable</span>
+                  {ecart === 0 ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-500 mt-0.5">
+                      <CheckCircle className="size-3.5 fill-emerald-500/10" /> Solde équilibré
+                    </span>
+                  ) : ecart > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-cyan-400 mt-0.5 bg-cyan-950/20 px-2.5 py-0.5 rounded-lg border border-cyan-800/30">
+                      Surplus : +{ecart.toLocaleString('fr-FR')} F
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-500 mt-0.5 bg-rose-950/20 px-2.5 py-0.5 rounded-lg border border-rose-800/30 animate-pulse">
+                      <AlertCircle className="size-3.5" /> Manquant : {ecart.toLocaleString('fr-FR')} F
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
