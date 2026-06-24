@@ -446,10 +446,20 @@ export default function Home() {
           .eq('cabin_id', activeCabinId)
           .maybeSingle()
         if (settingsData) {
-          setPinCode(settingsData.pin_code)
+          const parts = settingsData.pin_code.split('|')
+          setPinCode(parts[0])
+          if (parts[1]) {
+            setVmOperator(parts[1] as any)
+            localStorage.setItem('momo_vm_operator', parts[1])
+          } else {
+            setVmOperator(null)
+            localStorage.removeItem('momo_vm_operator')
+          }
         } else {
           await client.from('momo_settings').insert({ cabin_id: activeCabinId, pin_code: '1234' })
           setPinCode('1234')
+          setVmOperator(null)
+          localStorage.removeItem('momo_vm_operator')
         }
 
         // Fetch Balances
@@ -459,16 +469,21 @@ export default function Home() {
           .eq('cabin_id', activeCabinId)
           .maybeSingle()
         if (balancesData) {
-          setBalances({
+          const loadedBalances = {
             mtn: Number(balancesData.mtn),
             moov: Number(balancesData.moov),
             celtiis: Number(balancesData.celtiis),
             cash: Number(balancesData.cash)
-          })
+          }
+          setBalances(loadedBalances)
+          setVmBalances(loadedBalances)
+          localStorage.setItem('momo_vm_balances', JSON.stringify(loadedBalances))
         } else {
           const zeroBalances = { mtn: 0, moov: 0, celtiis: 0, cash: 0 }
           await client.from('momo_balances').insert({ cabin_id: activeCabinId, ...zeroBalances })
           setBalances(zeroBalances)
+          setVmBalances(zeroBalances)
+          localStorage.setItem('momo_vm_balances', JSON.stringify(zeroBalances))
         }
 
         // Fetch Coffres
@@ -773,6 +788,37 @@ export default function Home() {
         await client.from('momo_coffres').upsert({ cabin_id: activeCabinId, ...newCoffres, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync coffres error:", e)
+      }
+    }
+  }
+
+  const syncVmBalances = async (newVmBalances: typeof vmBalances) => {
+    setVmBalances(newVmBalances)
+    localStorage.setItem('momo_vm_balances', JSON.stringify(newVmBalances))
+    const client = getSupabase()
+    if (client && activeCabinId) {
+      try {
+        await client.from('momo_balances').upsert({ cabin_id: activeCabinId, ...newVmBalances, updated_at: new Date().toISOString() })
+      } catch (e) {
+        console.error("Supabase sync VM balances error:", e)
+      }
+    }
+  }
+
+  const syncVmOperator = async (op: 'mtn' | 'moov' | 'celtiis' | null) => {
+    setVmOperator(op)
+    if (op) {
+      localStorage.setItem('momo_vm_operator', op)
+    } else {
+      localStorage.removeItem('momo_vm_operator')
+    }
+    const client = getSupabase()
+    if (client && activeCabinId) {
+      try {
+        const val = `${pinCode}|${op || ''}`
+        await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: val, updated_at: new Date().toISOString() })
+      } catch (e) {
+        console.error("Supabase sync VM operator error:", e)
       }
     }
   }
@@ -1090,7 +1136,8 @@ export default function Home() {
     const client = getSupabase()
     if (client && activeCabinId) {
       try {
-        await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: newPin, updated_at: new Date().toISOString() })
+        const val = role === 'vm' ? `${newPin}|${vmOperator || ''}` : newPin
+        await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: val, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync PIN error:", e)
       }
@@ -1472,8 +1519,7 @@ export default function Home() {
       }
     }
 
-    setVmBalances(nextVmBalances)
-    localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
+    syncVmBalances(nextVmBalances)
 
     const finalClientName = clientNameInput.trim() !== '' ? clientNameInput.trim() : undefined
 
@@ -2743,11 +2789,11 @@ export default function Home() {
             profile={profile}
             role={role}
             vmBalances={vmBalances}
-            setVmBalances={setVmBalances}
+            setVmBalances={syncVmBalances}
             transactions={transactions.filter(isVmTransaction)}
             TODAY_STR={TODAY_STR}
             vmOperator={vmOperator}
-            setVmOperator={setVmOperator}
+            setVmOperator={syncVmOperator}
             vmClients={vmClients}
             syncAddVmClient={syncAddVmClient}
             syncDeleteVmClient={syncDeleteVmClient}

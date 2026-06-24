@@ -39,12 +39,12 @@ interface DashboardVmProps {
     celtiis: number;
     cash: number;
   };
-  setVmBalances: React.Dispatch<React.SetStateAction<{
+  setVmBalances: (balances: {
     mtn: number;
     moov: number;
     celtiis: number;
     cash: number;
-  }>>;
+  }) => void;
   transactions: Transaction[];
   TODAY_STR: string;
   vmOperator: 'mtn' | 'moov' | 'celtiis' | null;
