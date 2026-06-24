@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Transaction, VmClient } from '../types'
+import { BilanPeriodique } from './bilan-periodique'
 
 interface VmDehorsItem {
   id: string;
@@ -31,7 +32,7 @@ interface VmDehorsItem {
 interface DashboardVmProps {
   theme: 'dark' | 'light';
   profile: any;
-  role: 'proprio' | 'employe' | 'vm' | 'vm_hybrid';
+  role: 'proprio' | 'employe' | 'vm';
   vmBalances: {
     mtn: number;
     moov: number;
@@ -53,6 +54,8 @@ interface DashboardVmProps {
   syncDeleteVmClient: (id: string) => Promise<void>;
   syncAddTransaction: (txn: Transaction) => Promise<void>;
   getLocalDateString: (d?: Date) => string;
+  getWeekRange: (dateStr: string) => { start: string; end: string };
+  YESTERDAY_STR: string;
   renderOperatorBadge: (op: string) => React.ReactNode;
 }
 
@@ -71,6 +74,8 @@ export function DashboardVm({
   syncDeleteVmClient,
   syncAddTransaction,
   getLocalDateString,
+  getWeekRange,
+  YESTERDAY_STR,
   renderOperatorBadge
 }: DashboardVmProps) {
   // Local form & display states
@@ -88,6 +93,13 @@ export function DashboardVm({
   
   // Payment option for transfers: immediately paid cash or credit/dehors
   const [paymentType, setPaymentType] = useState<'cash' | 'credit'>('cash')
+
+  // Quick sale state: client selected for inline rapid transaction
+  const [quickSaleClientId, setQuickSaleClientId] = useState<string | null>(null)
+  const [quickSaleType, setQuickSaleType] = useState<'deposit' | 'withdrawal'>('deposit')
+  const [quickSaleAmount, setQuickSaleAmount] = useState('')
+  const [quickSalePayType, setQuickSalePayType] = useState<'cash' | 'credit'>('cash')
+  const [quickLoading, setQuickLoading] = useState(false)
 
   // Float management & outstanding credit states (saved locally)
   const [sommeConfiee, setSommeConfiee] = useState<number>(0)
@@ -337,6 +349,82 @@ export function DashboardVm({
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Handle a quick sale directly from contact click
+  const handleQuickSale = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!quickSaleClientId) return
+    const client = vmClients.find(c => c.id === quickSaleClientId)
+    if (!client) return
+    const amount = parseFloat(quickSaleAmount)
+    if (isNaN(amount) || amount <= 0) return
+    const op = vmOperator || 'mtn'
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+    setQuickLoading(true)
+    try {
+      let nextVmBalances = { ...vmBalances }
+
+      if (quickSaleType === 'deposit') {
+        if (vmBalances[op] < amount) {
+          alert(`Solde virtuel ${op.toUpperCase()} insuffisant (${vmBalances[op].toLocaleString('fr-FR')} FCFA)`)
+          return
+        }
+        if (quickSalePayType === 'cash') {
+          nextVmBalances = { ...vmBalances, cash: vmBalances.cash + amount, [op]: vmBalances[op] - amount }
+        } else {
+          // Credit/Dehors
+          nextVmBalances = { ...vmBalances, [op]: vmBalances[op] - amount }
+          const newCreditItem: VmDehorsItem = {
+            id: `DEHORS-${Date.now()}`,
+            name: client.name,
+            phone: client.phone,
+            amount,
+            operator: op,
+            date: getLocalDateString(),
+            time: timeStr
+          }
+          saveDehorsList([...dehorsList, newCreditItem])
+        }
+      } else {
+        // Withdrawal: give cash to client, receive virtual
+        if (vmBalances.cash < amount) {
+          alert(`Cash en poche insuffisant (${vmBalances.cash.toLocaleString('fr-FR')} FCFA)`)
+          return
+        }
+        nextVmBalances = { ...vmBalances, cash: vmBalances.cash - amount, [op]: vmBalances[op] + amount }
+      }
+
+      setVmBalances(nextVmBalances)
+      localStorage.setItem('momo_vm_balances', JSON.stringify(nextVmBalances))
+
+      const categoryStr = quickSaleType === 'deposit'
+        ? (quickSalePayType === 'cash' ? 'Vente Mobile VM (Cash)' : 'Vente Mobile VM (Crédit Dehors)')
+        : 'Vente Mobile VM (Retrait)'
+
+      const newTxn: Transaction = {
+        id: `VM-${Math.floor(1000 + Math.random() * 9000)}`,
+        phone: client.phone,
+        operator: op,
+        type: quickSaleType,
+        amount,
+        time: timeStr,
+        date: getLocalDateString(),
+        category: categoryStr,
+        isScamReported: false,
+        clientName: client.name
+      }
+      await syncAddTransaction(newTxn)
+      setQuickSaleAmount('')
+      setQuickSaleType('deposit')
+      setQuickSalePayType('cash')
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setQuickLoading(false)
     }
   }
 
@@ -906,96 +994,252 @@ export function DashboardVm({
             </div>
           </section>
 
-          {/* 3. COLLAPSIBLE CLIENT CONTACTS */}
-          <section className={`p-5 rounded-[28px] border transition-all ${
+          {/* 3. CONTACTS ENTREPRISES + VENTE RAPIDE */}
+          <section className={`p-5 rounded-[28px] border flex flex-col gap-4 ${
             isDark ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
           }`}>
-            <button
-              type="button"
-              onClick={() => setShowClientManager(prev => !prev)}
-              className="w-full flex justify-between items-center font-serif text-sm font-bold text-natural-accent uppercase tracking-wide cursor-pointer text-left"
-            >
-              <span className="flex items-center gap-2">
-                💼 Gérer mes Contacts Entreprises ({vmClients.length})
-              </span>
-              <span>{showClientManager ? '▲ Masquer' : '▼ Afficher'}</span>
-            </button>
+            {/* Header */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-bold font-serif uppercase text-natural-accent flex items-center gap-2">
+                  💼 Contacts Entreprises
+                </h3>
+                <p className={`text-[10px] mt-0.5 ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
+                  Clique sur une entreprise pour une vente rapide
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowClientManager(prev => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer ${
+                  isDark ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-500 hover:bg-stone-50'
+                }`}
+              >
+                <Plus className="size-3" />
+                Ajouter
+              </button>
+            </div>
 
+            {/* Add client form (collapsible) */}
             {showClientManager && (
-              <div className="flex flex-col gap-4 mt-4 pt-4 border-t border-stone-500/10">
-                {/* Form to add a client */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    if (!newClientName.trim() || !newClientPhone.trim()) return
-                    syncAddVmClient(newClientName, newClientPhone)
-                    setNewClientName('')
-                    setNewClientPhone('')
-                  }}
-                  className="flex flex-col sm:flex-row gap-2"
-                >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nom de l'entreprise (ex: SOGEMA SARL)"
-                    value={newClientName}
-                    onChange={e => setNewClientName(e.target.value)}
-                    className={`flex-1 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
-                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
-                    }`}
-                  />
-                  <input
-                    type="tel"
-                    required
-                    placeholder="Numéro MoMo (ex: 0122334455)"
-                    value={newClientPhone}
-                    onChange={e => setNewClientPhone(e.target.value)}
-                    className={`w-full sm:w-44 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
-                      isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
-                    }`}
-                  />
-                  <Button variant="premium" type="submit" className="text-xs px-4 py-2.5 rounded-xl font-bold cursor-pointer shrink-0">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!newClientName.trim() || !newClientPhone.trim()) return
+                  syncAddVmClient(newClientName, newClientPhone)
+                  setNewClientName('')
+                  setNewClientPhone('')
+                  setShowClientManager(false)
+                }}
+                className={`flex flex-col gap-2 p-4 rounded-2xl border ${
+                  isDark ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+                }`}
+              >
+                <p className="text-[9px] font-black text-natural-accent uppercase tracking-widest">Nouvelle entreprise cliente</p>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nom de l'entreprise (ex: SOGEMA SARL)"
+                  value={newClientName}
+                  onChange={e => setNewClientName(e.target.value)}
+                  className={`p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                    isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-white border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+                <input
+                  type="tel"
+                  required
+                  placeholder="Numéro MoMo (ex: 0122334455)"
+                  value={newClientPhone}
+                  onChange={e => setNewClientPhone(e.target.value)}
+                  className={`p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-natural-accent/30 ${
+                    isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-white border-[#DCD6CD] text-[#111614]'
+                  }`}
+                />
+                <div className="flex gap-2">
+                  <Button variant="premium" type="submit" className="flex-1 text-xs py-2 rounded-xl font-bold cursor-pointer">
                     Enregistrer
                   </Button>
-                </form>
+                  <button type="button" onClick={() => setShowClientManager(false)}
+                    className={`px-4 py-2 rounded-xl border text-xs cursor-pointer ${
+                      isDark ? 'border-[#1C2C22] text-stone-400' : 'border-stone-200 text-stone-500'
+                    }`}>
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            )}
 
-                {/* Clients List */}
-                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-                  {vmClients.length > 0 ? (
-                    vmClients.map(client => (
-                      <div key={client.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs ${
-                        isDark ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
-                      }`}>
-                        <div 
+            {/* Contacts list */}
+            {vmClients.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {vmClients.map(client => {
+                  const isSelected = quickSaleClientId === client.id
+                  const clientHistory = transactions.filter(t =>
+                    t.clientName === client.name && t.category.startsWith('Vente Mobile')
+                  ).slice(-5).reverse()
+
+                  return (
+                    <div key={client.id} className={`rounded-2xl border overflow-hidden transition-all ${
+                      isSelected
+                        ? isDark ? 'border-natural-accent/50 bg-[#0E1B15]' : 'border-natural-accent/60 bg-amber-50/40'
+                        : isDark ? 'border-[#1C2C22] bg-[#050807]/40' : 'border-stone-200 bg-white'
+                    }`}>
+                      {/* Client row - click to select for quick sale */}
+                      <div className="flex items-center justify-between p-3.5">
+                        <button
+                          type="button"
                           onClick={() => {
-                            setSelectedClientId(client.id)
-                            setPhoneInput(client.phone)
-                            setClientNameInput(client.name)
-                            setVmActionType('deposit')
+                            if (isSelected) {
+                              setQuickSaleClientId(null)
+                              setQuickSaleAmount('')
+                            } else {
+                              setQuickSaleClientId(client.id)
+                              setQuickSaleAmount('')
+                              setQuickSaleType('deposit')
+                              setQuickSalePayType('cash')
+                            }
                           }}
-                          className="flex flex-col flex-1 cursor-pointer hover:opacity-80 transition-all"
+                          className="flex items-center gap-3 flex-1 text-left cursor-pointer"
                         >
-                          <span className="font-bold text-stone-200 dark:text-stone-300">🏢 {client.name}</span>
-                          <span className="font-mono text-[10px] text-stone-500">{client.phone}</span>
-                        </div>
+                          <div className={`size-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
+                            isSelected ? 'bg-natural-accent text-[#0A0F0D]' : isDark ? 'bg-[#1C2C22] text-natural-accent' : 'bg-amber-50 text-natural-accent'
+                          }`}>
+                            {client.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className={`font-bold text-xs truncate ${isDark ? 'text-stone-200' : 'text-stone-800'}`}>
+                              {client.name}
+                            </span>
+                            <span className="font-mono text-[10px] text-stone-500">{client.phone}</span>
+                          </div>
+                          {isSelected && (
+                            <span className="ml-auto text-[9px] font-black text-natural-accent bg-natural-accent/10 border border-natural-accent/25 px-2 py-0.5 rounded-full shrink-0">
+                              SÉLECTIONNÉ
+                            </span>
+                          )}
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
                             if (confirm(`Supprimer l'entreprise "${client.name}" de vos contacts ?`)) {
+                              if (quickSaleClientId === client.id) setQuickSaleClientId(null)
                               syncDeleteVmClient(client.id)
                             }
                           }}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                          className="p-1.5 ml-2 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer shrink-0"
                           title="Supprimer"
                         >
-                          <Trash2 className="size-4" />
+                          <Trash2 className="size-3.5" />
                         </button>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-center py-6 text-[10px] text-stone-500 italic">Aucune entreprise enregistrée pour le moment.</p>
-                  )}
-                </div>
+
+                      {/* INLINE QUICK SALE PANEL */}
+                      {isSelected && (
+                        <div className={`border-t px-4 pb-4 pt-3.5 flex flex-col gap-3.5 ${
+                          isDark ? 'border-natural-accent/20' : 'border-natural-accent/25'
+                        }`}>
+
+                          {/* Transaction type selector */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => setQuickSaleType('deposit')}
+                              className={`py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                quickSaleType === 'deposit' ? 'bg-natural-accent text-[#0A0F0D] border-transparent' : isDark ? 'border-stone-800 text-stone-400' : 'border-stone-300 text-stone-600'
+                              }`}>
+                              <ArrowDownLeft className="size-3.5 stroke-[3px]" /> Envoi
+                            </button>
+                            <button type="button" onClick={() => setQuickSaleType('withdrawal')}
+                              className={`py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                quickSaleType === 'withdrawal' ? 'bg-rose-500 text-white border-transparent' : isDark ? 'border-stone-800 text-stone-400' : 'border-stone-300 text-stone-600'
+                              }`}>
+                              <ArrowUpRight className="size-3.5 stroke-[3px]" /> Retrait
+                            </button>
+                          </div>
+
+                          {/* Payment type (only for envoi) */}
+                          {quickSaleType === 'deposit' && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <button type="button" onClick={() => setQuickSalePayType('cash')}
+                                className={`py-1.5 rounded-lg border text-[10px] font-bold cursor-pointer ${
+                                  quickSalePayType === 'cash' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : isDark ? 'border-stone-800 text-stone-500' : 'border-stone-300 text-stone-500'
+                                }`}>
+                                💵 Cash Direct
+                              </button>
+                              <button type="button" onClick={() => setQuickSalePayType('credit')}
+                                className={`py-1.5 rounded-lg border text-[10px] font-bold cursor-pointer ${
+                                  quickSalePayType === 'credit' ? 'bg-amber-500/15 border-amber-500/40 text-amber-400' : isDark ? 'border-stone-800 text-stone-500' : 'border-stone-300 text-stone-500'
+                                }`}>
+                                ⏱ Crédit
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Amount + submit */}
+                          <form onSubmit={handleQuickSale} className="flex gap-2 items-stretch">
+                            <input
+                              type="number"
+                              required
+                              autoFocus
+                              placeholder="Montant FCFA"
+                              value={quickSaleAmount}
+                              onChange={e => setQuickSaleAmount(e.target.value)}
+                              className={`flex-1 p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-accent/30 text-sm font-mono font-bold ${
+                                isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-white border-[#DCD6CD] text-[#111614]'
+                              }`}
+                            />
+                            <Button
+                              variant={quickSaleType === 'deposit' ? 'premium' : 'destructive'}
+                              type="submit"
+                              loading={quickLoading}
+                              className="px-5 py-3 rounded-xl font-bold text-xs cursor-pointer shrink-0"
+                            >
+                              OK
+                            </Button>
+                          </form>
+
+                          {/* Mini historique (5 dernières transactions) */}
+                          {clientHistory.length > 0 && (
+                            <div className="flex flex-col gap-1.5">
+                              <p className="text-[9px] font-black text-stone-500 uppercase tracking-widest">Historique récent</p>
+                              {clientHistory.map(txn => (
+                                <div key={txn.id} className={`flex justify-between items-center px-3 py-2 rounded-lg border text-[10px] ${
+                                  isDark ? 'bg-[#0A0F0D] border-stone-900' : 'bg-stone-50 border-stone-100'
+                                }`}>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`font-black ${
+                                      txn.type === 'deposit' ? 'text-cyan-400' : 'text-rose-400'
+                                    }`}>
+                                      {txn.type === 'deposit' ? '↙' : '↗'}
+                                    </span>
+                                    <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>
+                                      {txn.date} {txn.time}
+                                    </span>
+                                    {txn.category === 'Vente Mobile VM (Crédit Dehors)' && (
+                                      <span className="text-[8px] bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/25">Dehors</span>
+                                    )}
+                                  </div>
+                                  <span className={`font-mono font-bold ${
+                                    txn.type === 'deposit' ? 'text-cyan-400' : 'text-rose-400'
+                                  }`}>
+                                    {txn.type === 'deposit' ? '+' : '-'}{txn.amount.toLocaleString('fr-FR')} F
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className={`text-center py-8 border border-dashed rounded-2xl text-[10px] ${
+                isDark ? 'border-stone-800 text-stone-600' : 'border-stone-300 text-stone-400'
+              }`}>
+                <p className="text-2xl mb-2">🏢</p>
+                <p className="font-bold">Aucune entreprise enregistrée</p>
+                <p className="opacity-60 mt-1">Clique sur « Ajouter » pour créer votre premier contact</p>
               </div>
             )}
           </section>

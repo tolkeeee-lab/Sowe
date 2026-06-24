@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -24,6 +24,7 @@ import { Button } from './ui/button'
 import { Transaction } from '../types'
 import { getSupabase } from '../lib/supabase'
 import { SaisieRapide } from './saisie-rapide'
+import { BilanPeriodique } from './bilan-periodique'
 
 const BENIN_FORFAITS = {
   mtn: [
@@ -48,7 +49,7 @@ const BENIN_FORFAITS = {
 
 interface DashboardProprioProps {
   theme: 'dark' | 'light';
-  role: 'proprio' | 'employe' | 'vm' | 'vm_hybrid';
+  role: 'proprio' | 'employe' | 'vm';
   viewMode: 'dashboard' | 'caisse';
   // Operational props (same as caissier)
   balances: {
@@ -146,12 +147,7 @@ export function DashboardProprio({
   getLocalDateString,
   getYesterdayDateString
 }: DashboardProprioProps) {
-  // Local states for Proprio analytical dashboards
-  const [periodType, setPeriodType] = useState<'day' | 'week' | 'month' | 'year'>('day')
-  const [selectedReportDate, setSelectedReportDate] = useState<string>(TODAY_STR)
-  const [reportOperator, setReportOperator] = useState<'all' | 'mtn' | 'moov' | 'celtiis'>('all')
-
-  // Local states for history filters (same as caissier)
+  // Local states for history filters
   const [historySearch, setHistorySearch] = useState('')
   const [historyType, setHistoryType] = useState<'all' | 'deposit' | 'withdrawal' | 'credit' | 'forfait'>('all')
   const [historyOperator, setHistoryOperator] = useState<'all' | 'mtn' | 'moov' | 'celtiis'>('all')
@@ -191,99 +187,11 @@ export function DashboardProprio({
     link.click()
   }
 
-  // Computed states for statistics
-  const periodicReportStats = useMemo(() => {
-    let periodTxns: Transaction[] = []
-    
-    if (periodType === 'day') {
-      periodTxns = transactions.filter(t => t.date === selectedReportDate)
-    } else if (periodType === 'week') {
-      const range = getWeekRange(selectedReportDate)
-      periodTxns = transactions.filter(t => t.date >= range.start && t.date <= range.end)
-    } else if (periodType === 'month') {
-      const targetPrefix = selectedReportDate.slice(0, 7) // YYYY-MM
-      periodTxns = transactions.filter(t => t.date.startsWith(targetPrefix))
-    } else if (periodType === 'year') {
-      const targetPrefix = selectedReportDate.slice(0, 4) // YYYY
-      periodTxns = transactions.filter(t => t.date.startsWith(targetPrefix))
-    }
-
-    if (reportOperator !== 'all') {
-      periodTxns = periodTxns.filter(t => t.operator === reportOperator)
-    }
-
-    const stats = {
-      deposit: { sum: 0, count: 0 },
-      withdrawal: { sum: 0, count: 0 },
-      credit: { sum: 0, count: 0 },
-      forfait: { sum: 0, count: 0 },
-      total: { sum: 0, count: 0 }
-    }
-
-    periodTxns.forEach(t => {
-      if (t.type === 'deposit') {
-        stats.deposit.sum += t.amount
-        stats.deposit.count += 1
-        stats.total.sum += t.amount
-        stats.total.count += 1
-      } else if (t.type === 'withdrawal') {
-        stats.withdrawal.sum += t.amount
-        stats.withdrawal.count += 1
-        stats.total.sum += t.amount
-        stats.total.count += 1
-      } else if (t.type === 'credit') {
-        stats.credit.sum += t.amount
-        stats.credit.count += 1
-        stats.total.sum += t.amount
-        stats.total.count += 1
-      } else if (t.type === 'forfait') {
-        stats.forfait.sum += t.amount
-        stats.forfait.count += 1
-        stats.total.sum += t.amount
-        stats.total.count += 1
-      }
-    })
-
-    return stats
-  }, [transactions, periodType, selectedReportDate, reportOperator, getWeekRange])
-
-  const formattedReportPeriodLabel = useMemo(() => {
-    if (periodType === 'day') {
-      if (selectedReportDate === TODAY_STR) return "Aujourd'hui"
-      if (selectedReportDate === YESTERDAY_STR) return "Hier"
-      const parts = selectedReportDate.split('-')
-      if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
-        return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-      }
-      return selectedReportDate
-    } 
-    
-    if (periodType === 'week') {
-      const range = getWeekRange(selectedReportDate)
-      const pStart = range.start.split('-')
-      const pEnd = range.end.split('-')
-      const dStart = new Date(parseInt(pStart[0]), parseInt(pStart[1]) - 1, parseInt(pStart[2]))
-      const dEnd = new Date(parseInt(pEnd[0]), parseInt(pEnd[1]) - 1, parseInt(pEnd[2]))
-      return `Sem. du ${dStart.getDate()} ${dStart.toLocaleDateString('fr-FR', { month: 'short' })} au ${dEnd.getDate()} ${dEnd.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}`
-    }
-
-    if (periodType === 'month') {
-      const parts = selectedReportDate.split('-')
-      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1)
-      return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-    }
-
-    if (periodType === 'year') {
-      return `Année ${selectedReportDate.slice(0, 4)}`
-    }
-
-    return selectedReportDate
-  }, [selectedReportDate, periodType, TODAY_STR, YESTERDAY_STR, getWeekRange])
+  // (bilan state moved to BilanPeriodique component)
   if (viewMode === 'caisse') {
     return (
       <div className="flex flex-col gap-6">
-        {(role === 'proprio' || role === 'vm_hybrid') ? (
+        {(role === 'proprio') ? (
           <>
             {/* Cabin Management for Owners */}
             <section className={`p-6 rounded-[32px] border transition-colors ${
@@ -610,7 +518,7 @@ export function DashboardProprio({
         <div className="flex justify-between items-center mb-4 relative z-10">
           <span className="text-[10px] uppercase tracking-wider font-extrabold text-stone-500">Solde Global en Cabine</span>
           <span className="text-[10px] font-bold text-natural-accent uppercase tracking-wider">
-            {role === 'proprio' || role === 'vm_hybrid' ? 'Vue Propriétaire 👑' : 'Vue Gérant (Employé) 👤'}
+            {role === 'proprio' ? 'Vue Propriétaire 👑' : 'Vue Gérant (Employé) 👤'}
           </span>
         </div>
 
@@ -918,7 +826,7 @@ export function DashboardProprio({
                         <ShieldAlert className="size-3" />
                         {txn.isScamReported ? 'Arnaque Signalée' : 'Signaler Arnaque'}
                       </button>
-                      {(role === 'proprio' || role === 'vm_hybrid') && (
+                      {(role === 'proprio') && (
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteTransaction(txn.id); }}
                           className="text-rose-500 hover:text-rose-400 flex items-center gap-1 cursor-pointer"
@@ -943,316 +851,17 @@ export function DashboardProprio({
         </Button>
       </section>
 
-      {(role === 'proprio' || role === 'vm_hybrid') && (
-        <>
-          {/* Bilan Périodique */}
-          <section className={`p-6 rounded-[32px] border transition-colors ${
-            theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
-          }`}>
-            {/* Period type selector segments */}
-            <div className={`flex p-1 rounded-2xl border text-xs font-bold mb-5 transition-all ${
-              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
-            }`}>
-              {(['day', 'week', 'month', 'year'] as const).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriodType(p)}
-                  className={`flex-1 py-2.5 rounded-xl transition-all capitalize cursor-pointer font-bold ${
-                    periodType === p 
-                      ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                      : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  {p === 'day' ? 'Jour' : p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-              <div>
-                <h3 className="text-sm font-bold uppercase font-serif tracking-wide flex items-center gap-2 text-natural-accent">
-                  <Calendar className="size-4.5" />
-                  Bilan Périodique Cabine ({formattedReportPeriodLabel})
-                </h3>
-                <p className="text-[9px] text-stone-550">
-                  Cumul financier de la cabine active pour la période sélectionnée
-                </p>
-              </div>
-              
-              {/* Contextual Date Navigators */}
-              <div className={`flex items-center gap-1.5 p-1 rounded-xl border text-[10px] font-bold transition-all ${
-                theme === 'dark' ? 'bg-[#050807]/60 border-stone-800' : 'bg-stone-100 border-stone-200'
-              }`}>
-                {periodType === 'day' && (
-                  <>
-                    <button 
-                      onClick={() => setSelectedReportDate(TODAY_STR)}
-                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                        selectedReportDate === TODAY_STR 
-                          ? 'bg-natural-accent text-[#0A0F0D] shadow' 
-                          : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      Auj.
-                    </button>
-                    <button 
-                      onClick={() => setSelectedReportDate(YESTERDAY_STR)}
-                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                        selectedReportDate === YESTERDAY_STR 
-                          ? 'bg-natural-accent text-[#0A0F0D] shadow' 
-                          : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      Hier
-                    </button>
-                    <input 
-                      type="date"
-                      value={selectedReportDate}
-                      onChange={e => e.target.value && setSelectedReportDate(e.target.value)}
-                      className={`px-1 bg-transparent border-0 font-mono text-[9px] focus:outline-none cursor-pointer ${
-                        theme === 'dark' ? 'text-white' : 'text-stone-850'
-                      }`}
-                    />
-                  </>
-                )}
-
-                {periodType === 'week' && (
-                  <>
-                    <button 
-                      onClick={() => setSelectedReportDate(TODAY_STR)}
-                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                        getWeekRange(selectedReportDate).start === getWeekRange(TODAY_STR).start 
-                          ? 'bg-natural-accent text-[#0A0F0D] shadow' 
-                          : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      Cette Semaine
-                    </button>
-                    <button 
-                      onClick={() => {
-                        const d = new Date()
-                        d.setDate(d.getDate() - 7)
-                        setSelectedReportDate(getLocalDateString(d))
-                      }}
-                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                        getWeekRange(selectedReportDate).start === getWeekRange(getYesterdayDateString()).start && getWeekRange(selectedReportDate).start !== getWeekRange(TODAY_STR).start 
-                          ? 'bg-natural-accent text-[#0A0F0D] shadow' 
-                          : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      Précédente
-                    </button>
-                  </>
-                )}
-
-                {periodType === 'month' && (
-                  <select
-                    value={selectedReportDate.slice(0, 7)}
-                    onChange={e => setSelectedReportDate(`${e.target.value}-01`)}
-                    className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
-                      theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-850 bg-[#EFECE6]'
-                    }`}
-                  >
-                    <option value={TODAY_STR.slice(0, 7)}>Mois En Cours</option>
-                    <option value={YESTERDAY_STR.slice(0, 7)}>Mois Précédent</option>
-                    <option value="2026-05">Mai 2026</option>
-                    <option value="2026-04">Avril 2026</option>
-                  </select>
-                )}
-
-                {periodType === 'year' && (
-                  <select
-                    value={selectedReportDate.slice(0, 4)}
-                    onChange={e => setSelectedReportDate(`${e.target.value}-01-01`)}
-                    className={`p-1 bg-transparent border-0 font-mono text-[10px] focus:outline-none ${
-                      theme === 'dark' ? 'text-white bg-[#050807]' : 'text-stone-850 bg-[#EFECE6]'
-                    }`}
-                  >
-                    <option value="2026">2026</option>
-                    <option value="2025">2025</option>
-                  </select>
-                )}
-              </div>
-            </div>
-
-            {/* Bilan Network Filter buttons */}
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-[10px] font-bold text-stone-500 uppercase font-serif">Filtre Réseau :</span>
-              <div className={`flex p-0.5 rounded-lg border text-[9px] font-bold transition-all ${
-                theme === 'dark' ? 'bg-[#050807]/60 border-[#1C2C22]' : 'bg-stone-105 border-stone-200'
-              }`}>
-                {(['all', 'mtn', 'moov', 'celtiis'] as const).map(op => (
-                  <button
-                    key={op}
-                    onClick={() => setReportOperator(op)}
-                    className={`px-3 py-1 rounded transition-all capitalize cursor-pointer ${
-                      reportOperator === op 
-                        ? 'bg-natural-accent text-[#0A0F0D]' 
-                        : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    {op === 'all' ? 'Tous' : op}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Balance table sheet */}
-            <div className={`overflow-hidden rounded-2xl border shadow-inner transition-colors ${
-              theme === 'dark' ? 'bg-[#0A0F0D] border-stone-800' : 'bg-white border-stone-200'
-            }`}>
-              <table className="w-full text-left text-xs font-mono">
-                <thead>
-                  <tr className={`border-b text-[10px] uppercase font-extrabold ${
-                    theme === 'dark' ? 'bg-[#050807] border-stone-800 text-stone-300' : 'bg-stone-50 border-stone-200 text-stone-750'
-                  }`}>
-                    <th className="py-3 px-4">Activité</th>
-                    <th className="py-3 px-4 text-right">Cumul (FCFA)</th>
-                    <th className="py-3 px-4 text-center">Volume Ops</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${
-                  theme === 'dark' ? 'divide-stone-800/60' : 'divide-stone-200'
-                }`}>
-                  <tr className="hover:bg-stone-500/5 transition-colors">
-                    <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
-                      theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
-                    }`}>
-                      <span className="size-2 rounded-full bg-natural-accent shadow-sm shadow-natural-accent" />
-                      Dépôts (Envois)
-                    </td>
-                    <td className={`py-3 px-4 text-right font-bold ${
-                      theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
-                    }`}>
-                      {periodicReportStats.deposit.sum.toLocaleString('fr-FR')}
-                    </td>
-                    <td className={`py-3 px-4 text-center ${
-                      theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
-                    }`}>
-                      {periodicReportStats.deposit.count} tx
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-stone-500/5 transition-colors">
-                    <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
-                      theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
-                    }`}>
-                      <span className="size-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500" />
-                      Retraits (Sorties)
-                    </td>
-                    <td className={`py-3 px-4 text-right font-bold ${
-                      theme === 'dark' ? 'text-rose-400' : 'text-rose-700'
-                    }`}>
-                      {periodicReportStats.withdrawal.sum.toLocaleString('fr-FR')}
-                    </td>
-                    <td className={`py-3 px-4 text-center ${
-                      theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
-                    }`}>
-                      {periodicReportStats.withdrawal.count} tx
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-stone-500/5 transition-colors">
-                    <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
-                      theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
-                    }`}>
-                      <span className="size-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500" />
-                      Ventes de Crédits
-                    </td>
-                    <td className={`py-3 px-4 text-right font-bold ${
-                      theme === 'dark' ? 'text-amber-400' : 'text-amber-800'
-                    }`}>
-                      {periodicReportStats.credit.sum.toLocaleString('fr-FR')}
-                    </td>
-                    <td className={`py-3 px-4 text-center ${
-                      theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
-                    }`}>
-                      {periodicReportStats.credit.count} tx
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-stone-500/5 transition-colors">
-                    <td className={`py-3 px-4 font-sans font-bold flex items-center gap-2 ${
-                      theme === 'dark' ? 'text-[#E4EAD8]' : 'text-stone-900'
-                    }`}>
-                      <span className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500" />
-                      Ventes de Forfaits
-                    </td>
-                    <td className={`py-3 px-4 text-right font-bold ${
-                      theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'
-                    }`}>
-                      {periodicReportStats.forfait.sum.toLocaleString('fr-FR')}
-                    </td>
-                    <td className={`py-3 px-4 text-center ${
-                      theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
-                    }`}>
-                      {periodicReportStats.forfait.count} tx
-                    </td>
-                  </tr>
-                  {/* Total row */}
-                  <tr className={`border-t font-black ${
-                    theme === 'dark' ? 'bg-[#0A0F0D] text-natural-accent border-[#1C2C22]' : 'bg-stone-50 text-stone-900 border-[#DCD6CD]'
-                  }`}>
-                    <td className="py-3.5 px-4 font-sans font-black flex items-center gap-2">
-                      <Coins className="size-4" />
-                      Total Période
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-sm">
-                      {periodicReportStats.total.sum.toLocaleString('fr-FR')}
-                    </td>
-                    <td className="py-3.5 px-4 text-center text-sm">
-                      {periodicReportStats.total.count} tx
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Weekly activity chart Mockup */}
-          <section className={`p-6 rounded-[32px] border transition-colors ${
-            theme === 'dark' ? 'bg-[#0E1B15]/40 border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
-          }`}>
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-sm font-bold uppercase font-serif text-natural-accent">Activité Hebdomadaire</h3>
-                <p className="text-[9px] text-stone-550">Volume de vente de crédit & forfaits de la cabine active</p>
-              </div>
-              <div className="flex gap-1 bg-stone-900/10 p-0.5 border border-stone-800/10 dark:border-stone-800 rounded-lg text-[9px] font-bold">
-                <span className="px-2.5 py-1 rounded bg-natural-accent text-[#0A0F0D]">VOLUME (FCFA)</span>
-                <span className="px-2.5 py-1 text-stone-400 cursor-not-allowed">OPS</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-end h-32 px-4 gap-2 pt-2 border-b border-stone-500/10">
-              {['sam 13', 'dim 14', 'lun 15', 'mar 16', 'mer 17', 'jeu 18', 'ven 19'].map((day, idx) => {
-                const heights = [
-                  { mtn: 'h-2', moov: 'h-3', celtiis: 'h-1' },
-                  { mtn: 'h-1', moov: 'h-1', celtiis: 'h-0' },
-                  { mtn: 'h-4', moov: 'h-2', celtiis: 'h-2' },
-                  { mtn: 'h-6', moov: 'h-4', celtiis: 'h-3' },
-                  { mtn: 'h-5', moov: 'h-6', celtiis: 'h-2' },
-                  { mtn: 'h-3', moov: 'h-5', celtiis: 'h-4' },
-                  { mtn: 'h-12', moov: 'h-16', celtiis: 'h-6' },
-                ]
-                return (
-                  <div key={day} className="flex flex-col items-center gap-2 flex-1">
-                    <div className="w-full max-w-[16px] flex flex-col justify-end rounded-t-lg overflow-hidden h-24 bg-stone-500/5">
-                      <div className={`w-full bg-emerald-500 transition-all duration-300 ${heights[idx].celtiis}`} />
-                      <div className={`w-full bg-blue-600 transition-all duration-300 ${heights[idx].moov}`} />
-                      <div className={`w-full bg-amber-400 transition-all duration-300 ${heights[idx].mtn}`} />
-                    </div>
-                    <span className="text-[8px] font-mono text-stone-550 uppercase">{day.split(' ')[1]}</span>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="flex justify-center gap-4 text-[9px] font-bold uppercase mt-4">
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-emerald-500" /> Celtiis</span>
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-500" /> MTN</span>
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-sm bg-blue-600" /> Moov</span>
-            </div>
-          </section>
-        </>
-      )}
+      {/* Bilan Périodique — visible pour tous les rôles */}
+      <BilanPeriodique
+        theme={theme}
+        transactions={transactions}
+        TODAY_STR={TODAY_STR}
+        YESTERDAY_STR={YESTERDAY_STR}
+        mode="cabine"
+        getWeekRange={getWeekRange}
+        getLocalDateString={getLocalDateString}
+      />
     </div>
   )
 }
+

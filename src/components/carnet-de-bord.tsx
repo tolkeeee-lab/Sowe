@@ -7,7 +7,7 @@ import { CabinNote } from '../types'
 
 interface CarnetDeBordProps {
   theme: 'dark' | 'light';
-  role: 'proprio' | 'employe' | 'vm' | 'vm_hybrid';
+  role: 'proprio' | 'employe' | 'vm';
   notes: CabinNote[];
   onAddNote: (text: string) => void;
   onDeleteNote: (id: string) => void;
@@ -17,7 +17,6 @@ const ROLE_LABELS: Record<string, string> = {
   proprio: '👑 Proprio',
   employe: '👤 Gérant',
   vm: '🛵 VM',
-  vm_hybrid: '🛵👑 VM/Proprio',
 }
 
 export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: CarnetDeBordProps) {

@@ -22,7 +22,7 @@ import { Button } from './ui/button'
 
 interface DettesRappelsProps {
   theme: 'dark' | 'light';
-  role: 'proprio' | 'employe' | 'vm' | 'vm_hybrid';
+  role: 'proprio' | 'employe' | 'vm';
   debts: Debt[];
   onAddDebt: (debtData: Omit<Debt, 'id' | 'cabin_id'>) => Promise<void>;
   onSettleDebt: (id: string) => Promise<void>;

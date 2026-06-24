@@ -53,6 +53,7 @@ import { CarnetDeBord } from '../components/carnet-de-bord'
 import { SaisieRapide } from '../components/saisie-rapide'
 import { DettesRappels } from '../components/dettes-rappels'
 import { Inventaire } from '../components/inventaire'
+import { BilanPeriodique } from '../components/bilan-periodique'
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -111,7 +112,7 @@ const BENIN_FORFAITS = {
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [activeTab, setActiveTab] = useState<'cabine' | 'vm'>('cabine')
-  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts' | 'inventaire'>('dashboard')
+  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts' | 'inventaire' | 'bilan'>('dashboard')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -153,7 +154,7 @@ export default function Home() {
   const [emailInput, setEmailInput] = useState('')
   const [passwordInput, setPasswordInput] = useState('')
   const [nameInput, setNameInput] = useState('')
-  const [roleInput, setRoleInput] = useState<'proprio' | 'employe' | 'vm' | 'vm_hybrid'>('proprio')
+  const [roleInput, setRoleInput] = useState<'proprio' | 'employe' | 'vm'>('proprio')
   const [bossEmailInput, setBossEmailInput] = useState('')
   const [businessNameInput, setBusinessNameInput] = useState('')
   const [firstCabinNameInput, setFirstCabinNameInput] = useState('')
@@ -168,7 +169,7 @@ export default function Home() {
   const [creatingCabin, setCreatingCabin] = useState(false)
 
   // Role & PIN states
-  const [role, setRole] = useState<'proprio' | 'employe' | 'vm' | 'vm_hybrid'>('employe')
+  const [role, setRole] = useState<'proprio' | 'employe' | 'vm'>('employe')
   const [showHub, setShowHub] = useState(true)
   const [pinCode, setPinCode] = useState('1234')
   const [showPinModal, setShowPinModal] = useState(false)
@@ -393,23 +394,6 @@ export default function Home() {
             const defaultCabinId = exists ? savedCabinId : (cabinsData[0]?.id || null)
             setActiveCabinId(defaultCabinId)
           }
-        } else if (profileData.role === 'vm_hybrid') {
-          setActiveTab('cabine')
-          setSelectedVmRunner(profileData.name)
-          const { data: cabinsData } = await client
-            .from('momo_cabins')
-            .select('*')
-            .eq('owner_id', userId)
-          
-          if (cabinsData) {
-            setCabins(cabinsData)
-            const savedCabinId = localStorage.getItem('momo_active_cabin_id')
-            const exists = cabinsData.find(c => c.id === savedCabinId)
-            const defaultCabinId = exists ? savedCabinId : (cabinsData[0]?.id || null)
-            setActiveCabinId(defaultCabinId)
-          }
-          fetchProprioEmployees(userId)
-          setShowHub(false)
         } else {
           // Employee
           setActiveTab('cabine')
@@ -573,7 +557,7 @@ export default function Home() {
     const storedRole = localStorage.getItem('momo_role')
     if (storedRole) {
       setRole(storedRole as any)
-      if (storedRole === 'proprio' || storedRole === 'vm_hybrid') {
+      if (storedRole === 'proprio') {
         setShowHub(true)
         // Restore bypass session if it was a mock session
         const bypassName = localStorage.getItem('momo_bypass_name')
@@ -793,6 +777,17 @@ export default function Home() {
     }
   }
 
+  const isVmTransaction = (txn: Transaction) => {
+    return txn.id.startsWith('VM-') || 
+           txn.id.startsWith('RECOV-') || 
+           txn.id.startsWith('agency-swap-') || 
+           txn.category.includes('Vente Mobile') || 
+           txn.category.includes('Point Agence') || 
+           txn.category.includes('Terrain') || 
+           txn.category.includes('Règlement Global') || 
+           txn.clientName === 'AGENCE ROTATION';
+  }
+
   const syncAddTransaction = async (txn: Transaction) => {
     setTransactions(prev => {
       const updated = [txn, ...prev]
@@ -801,11 +796,7 @@ export default function Home() {
     })
 
     // Automatic balance adjustment for caissier transactions
-    const isVm = txn.id.startsWith('VM-') || 
-                 txn.id.startsWith('agency-swap-') || 
-                 txn.category.includes('Vente Mobile') || 
-                 txn.category.includes('Point Agence') || 
-                 txn.clientName === 'AGENCE ROTATION';
+    const isVm = isVmTransaction(txn);
 
     if (!isVm) {
       let nextBalances = { ...balances }
@@ -1201,7 +1192,7 @@ export default function Home() {
         bossId = bossProfile.id
       }
 
-      const isOwnerRole = roleInput === 'proprio' || roleInput === 'vm_hybrid'
+      const isOwnerRole = roleInput === 'proprio'
       if (isOwnerRole) {
         if (!businessNameInput.trim()) {
           throw new Error("Le nom de votre entreprise est requis.")
@@ -1225,7 +1216,7 @@ export default function Home() {
 
       if (profileErr) throw profileErr
 
-      if (roleInput === 'proprio' || roleInput === 'vm' || roleInput === 'vm_hybrid') {
+      if (roleInput === 'proprio' || roleInput === 'vm') {
         const cabinName = roleInput === 'vm' 
           ? `Espace VM de ${nameInput.trim()}` 
           : firstCabinNameInput.trim()
@@ -1290,7 +1281,7 @@ export default function Home() {
 
   const handleBypass = () => {
     const mockSession = { user: { id: 'mock-user-id', email: 'bypass@demo.com' } }
-    const mockProfile = { id: 'mock-user-id', role: 'vm_hybrid', name: 'Propriétaire Démo' }
+    const mockProfile = { id: 'mock-user-id', role: 'proprio', name: 'Propriétaire Démo' }
     const mockCabins = [{ id: 'mock-cabin-id', name: 'Cabine Démo' }]
     const mockRunners = [
       { name: 'Moussa', operator: 'mtn', zone: 'Cotonou Centre' },
@@ -1300,7 +1291,7 @@ export default function Home() {
     
     setSession(mockSession)
     setProfile(mockProfile)
-    setRole('vm_hybrid')
+    setRole('proprio')
     setCabins(mockCabins)
     setVmRunners(mockRunners)
     setActiveCabinId('mock-cabin-id')
@@ -1309,7 +1300,7 @@ export default function Home() {
     setActiveTab('cabine')
     setAuthLoading(false)
     
-    localStorage.setItem('momo_role', 'vm_hybrid')
+    localStorage.setItem('momo_role', 'proprio')
     localStorage.setItem('momo_bypass_name', 'Propriétaire Démo')
     localStorage.setItem('momo_active_cabin_id', 'mock-cabin-id')
     localStorage.setItem('momo_vm_runners', JSON.stringify(mockRunners))
@@ -1933,7 +1924,7 @@ export default function Home() {
                 theme === 'dark' ? 'text-stone-500' : 'text-stone-400'
               }`}>Je suis...</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Propriétaire */}
                 <button
                   onClick={() => {
@@ -1958,7 +1949,7 @@ export default function Home() {
                     <p className={`text-[11px] leading-relaxed ${
                       theme === 'dark' ? 'text-stone-500' : 'text-stone-550'
                     }`}>
-                      Gérez vos cabines physiques, vos gérants et suivez vos performances.
+                      Gerez vos cabines physiques, vos gérants et suivez vos performances.
                     </p>
                   </div>
                   <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest">Accéder →</span>
@@ -2022,36 +2013,6 @@ export default function Home() {
                     </p>
                   </div>
                   <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Accéder →</span>
-                </button>
-
-                {/* VM & Propriétaire */}
-                <button
-                  onClick={() => {
-                    setRoleInput('vm_hybrid')
-                    setAuthView('login')
-                    setAppView('login')
-                  }}
-                  className={`group p-6 rounded-[32px] border text-left flex flex-col gap-4 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer relative overflow-hidden ${
-                    theme === 'dark'
-                      ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807] hover:border-amber-700/40'
-                      : 'border-[#DCD6CD] bg-white hover:border-amber-400 shadow-sm hover:shadow-md'
-                  }`}
-                >
-                  <div className="absolute -right-6 -top-6 size-20 rounded-full bg-amber-500/5 group-hover:bg-amber-500/10 blur-xl transition-colors pointer-events-none" />
-                  <div className={`size-12 rounded-2xl flex items-center justify-center text-2xl border ${
-                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
-                  }`}>
-                    🛵👑
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-base font-bold mb-1">VM & Propriétaire</h3>
-                    <p className={`text-[11px] leading-relaxed ${
-                      theme === 'dark' ? 'text-stone-500' : 'text-stone-550'
-                    }`}>
-                      Combinez la gestion de vos cabines physiques et vos opérations de vente mobile terrain.
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Accéder →</span>
                 </button>
               </div>
 
@@ -2321,17 +2282,6 @@ export default function Home() {
                 >
                   🛵 VM Uniquement
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setRoleInput('vm_hybrid')}
-                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                    roleInput === 'vm_hybrid'
-                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  🛵👑 VM & Proprio
-                </button>
               </div>
             </div>
 
@@ -2349,7 +2299,7 @@ export default function Home() {
               />
             </div>
 
-            {(roleInput === 'proprio' || roleInput === 'vm_hybrid') && (
+            {(roleInput === 'proprio') && (
               <>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom de l'Entreprise</label>
@@ -2614,37 +2564,6 @@ export default function Home() {
             <div className="text-[10px] text-stone-400 truncate">{profile?.email}</div>
           </div>
 
-          {/* Espace Selector for VM Hybrid (Desktop Sidebar) */}
-          {role === 'vm_hybrid' && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[9px] font-mono uppercase text-stone-500 font-bold px-1">Espace Actif</span>
-              <div className={`flex p-1 rounded-xl border text-[10px] font-bold transition-all ${
-                theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
-              }`}>
-                <button
-                  onClick={() => { setActiveTab('cabine'); setSubTab('dashboard'); }}
-                  className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
-                    activeTab === 'cabine'
-                      ? 'bg-natural-accent text-[#0A0F0D] shadow'
-                      : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  🗄️ Cabine
-                </button>
-                <button
-                  onClick={() => { setActiveTab('vm'); setSubTab('dashboard'); }}
-                  className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
-                    activeTab === 'vm'
-                      ? 'bg-natural-accent text-[#0A0F0D] shadow'
-                      : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  🛵 VM
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Navigation Links */}
           {activeCabinId && (
             <nav className="flex flex-col gap-1.5 mt-2">
@@ -2659,7 +2578,7 @@ export default function Home() {
                 <Smartphone className="size-4" />
                 <span>Opérations</span>
               </button>
-              {(role === 'proprio' || role === 'vm_hybrid') && (
+              {(role === 'proprio') && (
                 <button
                   onClick={() => setSubTab('caisse')}
                   className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
@@ -2706,6 +2625,17 @@ export default function Home() {
               >
                 <CheckCircle2 className="size-4" />
                 <span>Inventaire</span>
+              </button>
+              <button
+                onClick={() => setSubTab('bilan')}
+                className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  subTab === 'bilan'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <TrendingUp className="size-4" />
+                <span>Bilan Périodique</span>
               </button>
             </nav>
           )}
@@ -2795,33 +2725,6 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {role === 'vm_hybrid' && (
-          <div className={`md:hidden flex p-1 rounded-2xl border text-xs font-bold transition-all mb-4 ${
-            theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
-          }`}>
-            <button
-              onClick={() => { setActiveTab('cabine'); setSubTab('dashboard'); }}
-              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-                activeTab === 'cabine' 
-                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <span>🗄️ Espace Cabine & Admin</span>
-            </button>
-            <button
-              onClick={() => { setActiveTab('vm'); setSubTab('dashboard'); }}
-              className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
-                activeTab === 'vm' 
-                  ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
-                  : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <span>🛵 Espace VM (Vente Mobile)</span>
-            </button>
-          </div>
-        )}
-
         {/* TAB 1: CABINE (CAISSIER + ADMIN) */}
         {activeTab === 'cabine' && (subTab === 'dashboard' || subTab === 'caisse') && (
           <DashboardProprio
@@ -2853,7 +2756,7 @@ export default function Home() {
             setActionType={setActionType}
             blacklist={blacklist}
             setShowBlacklistModal={setShowBlacklistModal}
-            transactions={transactions}
+            transactions={transactions.filter(t => !isVmTransaction(t))}
             deleteTransaction={deleteTransaction}
             renderOperatorBadge={renderOperatorBadge}
             syncBalances={syncBalances}
@@ -2903,6 +2806,19 @@ export default function Home() {
         )}
 
 
+        {/* Bilan Périodique (subTab autonome, cabine + vm) */}
+        {subTab === 'bilan' && (
+          <BilanPeriodique
+            theme={theme}
+            transactions={activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t))}
+            TODAY_STR={TODAY_STR}
+            YESTERDAY_STR={YESTERDAY_STR}
+            mode={activeTab === 'vm' ? 'vm' : 'cabine'}
+            getWeekRange={getWeekRange}
+            getLocalDateString={getLocalDateString}
+          />
+        )}
+
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
         {activeTab === 'vm' && subTab === 'dashboard' && (
           <DashboardVm
@@ -2911,7 +2827,7 @@ export default function Home() {
             role={role}
             vmBalances={vmBalances}
             setVmBalances={setVmBalances}
-            transactions={transactions}
+            transactions={transactions.filter(isVmTransaction)}
             TODAY_STR={TODAY_STR}
             vmOperator={vmOperator}
             setVmOperator={setVmOperator}
@@ -2920,6 +2836,8 @@ export default function Home() {
             syncDeleteVmClient={syncDeleteVmClient}
             syncAddTransaction={syncAddTransaction}
             getLocalDateString={getLocalDateString}
+            getWeekRange={getWeekRange}
+            YESTERDAY_STR={YESTERDAY_STR}
             renderOperatorBadge={renderOperatorBadge}
           />
         )}
@@ -2951,7 +2869,7 @@ export default function Home() {
                 <Smartphone className="size-4" />
                 <span>Opérations</span>
               </button>
-              {(role === 'proprio' || role === 'vm_hybrid') && (
+              {(role === 'proprio') && (
                 <button
                   onClick={() => setSubTab('caisse')}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -2998,6 +2916,17 @@ export default function Home() {
               >
                 <CheckCircle2 className="size-4" />
                 <span>Inventaire</span>
+              </button>
+              <button
+                onClick={() => setSubTab('bilan')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  subTab === 'bilan'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <TrendingUp className="size-4" />
+                <span>Bilan</span>
               </button>
             </div>
           </div>
@@ -3650,54 +3579,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Mobile Bottom Navigation Bar */}
-      {role === 'vm_hybrid' && (
-        <div className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-md transition-colors duration-550 ${
-          theme === 'dark' 
-            ? 'bg-[#050807]/90 border-[#1C2C22] text-[#E4EAD8]' 
-            : 'bg-[#FAF9F6]/90 border-[#DCD6CD] text-[#111614]'
-        }`}>
-          <div className="flex h-16 items-center gap-2 overflow-x-auto scrollbar-none flex-nowrap px-4 py-2 justify-around">
-            <button
-              onClick={() => setActiveTab('cabine')}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
-                activeTab === 'cabine'
-                  ? 'text-natural-accent'
-                  : 'text-stone-500 hover:text-stone-400'
-              }`}
-            >
-              {activeTab === 'cabine' && (
-                <motion.div
-                  layoutId="activeTabMobileIndicator"
-                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <Wallet className="size-4.5 relative z-10" />
-              <span className="text-[9px] uppercase tracking-wider font-bold relative z-10">Cabine</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('vm')}
-              className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 relative rounded-xl transition-all cursor-pointer ${
-                activeTab === 'vm'
-                  ? 'text-natural-accent'
-                  : 'text-stone-500 hover:text-stone-400'
-              }`}
-            >
-              {activeTab === 'vm' && (
-                <motion.div
-                  layoutId="activeTabMobileIndicator"
-                  className="absolute inset-0 bg-natural-accent/10 dark:bg-natural-accent/15 rounded-xl -z-10"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <Send className="size-4.5 relative z-10" />
-              <span className="text-[9px] uppercase tracking-wider font-sans font-bold relative z-10">Flotte VM</span>
-            </button>
-          </div>
-        </div>
-      )}
+
 
     </div>
   )

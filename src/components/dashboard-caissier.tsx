@@ -28,7 +28,7 @@ interface DashboardCaissierProps {
   };
   transactions: Transaction[];
   blacklist: string[];
-  role: 'proprio' | 'employe' | 'vm' | 'vm_hybrid';
+  role: 'proprio' | 'employe' | 'vm';
   activeTab: 'caissier' | 'vm' | 'proprietaire';
   syncAddTransaction: (txn: Transaction) => Promise<void>;
   syncToggleScamReport: (id: string, isReported: boolean) => Promise<void>;
