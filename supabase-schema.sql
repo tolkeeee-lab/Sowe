@@ -93,10 +93,7 @@ ALTER TABLE public.momo_settings ENABLE ROW LEVEL SECURITY;
 
 -- profiles: separate policies for CRUD to avoid FOR ALL inserting conflicts during signup
 CREATE POLICY "Select profiles" ON public.momo_profiles
-    FOR SELECT USING (
-        id = auth.uid() 
-        OR owner_id = auth.uid()
-    );
+    FOR SELECT USING (true);
 
 CREATE POLICY "Insert profiles" ON public.momo_profiles
     FOR INSERT WITH CHECK (true);
