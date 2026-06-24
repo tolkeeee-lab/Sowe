@@ -1119,6 +1119,7 @@ export default function Home() {
       setAuthSuccess("Connexion réussie !")
       setEmailInput('')
       setPasswordInput('')
+      setLoading(false)
     }
   }
 
@@ -2626,17 +2627,19 @@ export default function Home() {
                 <CheckCircle2 className="size-4" />
                 <span>Inventaire</span>
               </button>
-              <button
-                onClick={() => setSubTab('bilan')}
-                className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  subTab === 'bilan'
-                    ? 'bg-natural-accent text-[#0A0F0D]'
-                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
-                }`}
-              >
-                <TrendingUp className="size-4" />
-                <span>Bilan Périodique</span>
-              </button>
+              {role === 'proprio' && (
+                <button
+                  onClick={() => setSubTab('bilan')}
+                  className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                    subTab === 'bilan'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                  }`}
+                >
+                  <TrendingUp className="size-4" />
+                  <span>Bilan Périodique</span>
+                </button>
+              )}
             </nav>
           )}
 
@@ -2806,8 +2809,8 @@ export default function Home() {
         )}
 
 
-        {/* Bilan Périodique (subTab autonome, cabine + vm) */}
-        {subTab === 'bilan' && (
+        {/* Bilan Périodique (subTab autonome, cabine + vm) - réservé au proprio */}
+        {role === 'proprio' && subTab === 'bilan' && (
           <BilanPeriodique
             theme={theme}
             transactions={activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t))}
@@ -2917,17 +2920,19 @@ export default function Home() {
                 <CheckCircle2 className="size-4" />
                 <span>Inventaire</span>
               </button>
-              <button
-                onClick={() => setSubTab('bilan')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  subTab === 'bilan'
-                    ? 'bg-natural-accent text-[#0A0F0D]'
-                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
-                }`}
-              >
-                <TrendingUp className="size-4" />
-                <span>Bilan</span>
-              </button>
+              {role === 'proprio' && (
+                <button
+                  onClick={() => setSubTab('bilan')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    subTab === 'bilan'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                  }`}
+                >
+                  <TrendingUp className="size-4" />
+                  <span>Bilan</span>
+                </button>
+              )}
             </div>
           </div>
           </>
