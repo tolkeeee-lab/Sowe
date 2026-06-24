@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo } from "react"
 import { BarChart3, Coins, TrendingUp, Download } from "lucide-react"
@@ -58,31 +58,46 @@ export function BilanPeriodique({
 
   const stats = useMemo(() => {
     const s = {
+      // Cabine types
       deposit:    { sum: 0, count: 0 },
       withdrawal: { sum: 0, count: 0 },
       credit:     { sum: 0, count: 0 },
       forfait:    { sum: 0, count: 0 },
+      appro:      { sum: 0, count: 0 },
+      ajust:      { sum: 0, count: 0 },
+      // VM types
       vmEnvoi:    { sum: 0, count: 0 },
       vmRetrait:  { sum: 0, count: 0 },
       vmCredit:   { sum: 0, count: 0 },
+      vmRecov:    { sum: 0, count: 0 },
+      vmSwap:     { sum: 0, count: 0 },
+      // Total
       total:      { sum: 0, count: 0 },
     };
     periodTxns.forEach((t) => {
       s.total.sum += t.amount;
       s.total.count += 1;
       if (mode === "vm") {
-        if (t.category === "Vente Mobile VM (Cash)" || t.category === "Vente Mobile VM") {
-          s.vmEnvoi.sum += t.amount; s.vmEnvoi.count += 1;
-        } else if (t.category === "Vente Mobile VM (Retrait)") {
+        if (t.id.startsWith("RECOV-") || t.category.includes("Encaissement") || t.category.includes("Règlement Global")) {
+          s.vmRecov.sum += t.amount; s.vmRecov.count += 1;
+        } else if (t.id.startsWith("agency-swap-") || t.category.includes("Échange") || t.category.includes("Rotation") || t.clientName === "AGENCE ROTATION") {
+          s.vmSwap.sum += t.amount; s.vmSwap.count += 1;
+        } else if (t.type === "withdrawal") {
           s.vmRetrait.sum += t.amount; s.vmRetrait.count += 1;
-        } else if (t.category === "Vente Mobile VM (Crédit Dehors)") {
-          s.vmCredit.sum += t.amount; s.vmCredit.count += 1;
+        } else {
+          if (t.category.includes("Crédit Dehors") || t.category.includes("Crédit")) {
+            s.vmCredit.sum += t.amount; s.vmCredit.count += 1;
+          } else {
+            s.vmEnvoi.sum += t.amount; s.vmEnvoi.count += 1;
+          }
         }
       } else {
         if (t.type === "deposit")    { s.deposit.sum    += t.amount; s.deposit.count    += 1; }
-        if (t.type === "withdrawal") { s.withdrawal.sum += t.amount; s.withdrawal.count += 1; }
-        if (t.type === "credit")     { s.credit.sum     += t.amount; s.credit.count     += 1; }
-        if (t.type === "forfait")    { s.forfait.sum    += t.amount; s.forfait.count    += 1; }
+        else if (t.type === "withdrawal") { s.withdrawal.sum += t.amount; s.withdrawal.count += 1; }
+        else if (t.type === "credit")     { s.credit.sum     += t.amount; s.credit.count     += 1; }
+        else if (t.type === "forfait")    { s.forfait.sum    += t.amount; s.forfait.count    += 1; }
+        else if (t.type === "appro_sim")  { s.appro.sum      += t.amount; s.appro.count      += 1; }
+        else if (t.type === "ajust_cash") { s.ajust.sum      += t.amount; s.ajust.count      += 1; }
       }
     });
     return s;
@@ -130,13 +145,17 @@ export function BilanPeriodique({
       ? [
           { label: "Envois (Cash Direct)", dot: "bg-cyan-400", textColor: isDark ? "text-cyan-400" : "text-cyan-700", s: stats.vmEnvoi },
           { label: "Retraits (Cash Versé)", dot: "bg-rose-500", textColor: isDark ? "text-rose-400" : "text-rose-700", s: stats.vmRetrait },
-          { label: "Crédit Dehors", dot: "bg-amber-500", textColor: isDark ? "text-amber-400" : "text-amber-800", s: stats.vmCredit },
+          { label: "Crédits Dehors (Terrain)", dot: "bg-amber-500", textColor: isDark ? "text-amber-400" : "text-amber-800", s: stats.vmCredit },
+          { label: "Récupérations de Crédits", dot: "bg-emerald-500", textColor: isDark ? "text-emerald-400" : "text-emerald-700", s: stats.vmRecov },
+          { label: "Rotations Agence (Échanges)", dot: "bg-indigo-500", textColor: isDark ? "text-indigo-400" : "text-indigo-700", s: stats.vmSwap },
         ]
       : [
           { label: "Dépôts (Envois)", dot: "bg-natural-accent", textColor: isDark ? "text-stone-200" : "text-stone-900", s: stats.deposit },
           { label: "Retraits (Sorties)", dot: "bg-rose-500", textColor: isDark ? "text-rose-400" : "text-rose-700", s: stats.withdrawal },
           { label: "Ventes de Crédits", dot: "bg-amber-500", textColor: isDark ? "text-amber-400" : "text-amber-800", s: stats.credit },
           { label: "Ventes de Forfaits", dot: "bg-emerald-500", textColor: isDark ? "text-emerald-400" : "text-emerald-700", s: stats.forfait },
+          { label: "Recharges SIM (Appro)", dot: "bg-indigo-500", textColor: isDark ? "text-indigo-400" : "text-indigo-700", s: stats.appro },
+          { label: "Ajustements Caisse (Cash)", dot: "bg-stone-500", textColor: isDark ? "text-stone-400" : "text-stone-600", s: stats.ajust },
         ];
 
   const byDate = useMemo(() => {
