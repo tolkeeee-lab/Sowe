@@ -2895,6 +2895,7 @@ export default function Home() {
           <Inventaire
             theme={theme}
             role={role}
+            activeTab={activeTab}
             activeCabinId={activeTab === 'vm' ? (profile?.assigned_cabin_id || activeCabinId) : activeCabinId}
             profile={profile}
             balances={activeTab === 'vm' ? vmBalances : balances}
