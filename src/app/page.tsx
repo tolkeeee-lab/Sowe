@@ -2727,10 +2727,10 @@ export default function Home() {
         {(role === 'proprio' || role === 'vm') && subTab === 'bilan' && (
           <BilanPeriodique
             theme={theme}
-            transactions={activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t))}
+            transactions={role === 'vm' ? transactions.filter(isVmTransaction) : (activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t)))}
             TODAY_STR={TODAY_STR}
             YESTERDAY_STR={YESTERDAY_STR}
-            mode={activeTab === 'vm' ? 'vm' : 'cabine'}
+            mode={role === 'vm' ? 'vm' : (activeTab === 'vm' ? 'vm' : 'cabine')}
             getWeekRange={getWeekRange}
             getLocalDateString={getLocalDateString}
           />
