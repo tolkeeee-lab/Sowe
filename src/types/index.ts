@@ -40,3 +40,19 @@ export interface Debt {
   created_at?: string;
 }
 
+export interface Inventory {
+  id: string;
+  cabin_id: string;
+  created_by: string;
+  system_mtn: number;
+  physical_mtn: number;
+  system_moov: number;
+  physical_moov: number;
+  system_celtiis: number;
+  physical_celtiis: number;
+  system_cash: number;
+  physical_cash: number;
+  created_at: string;
+  creator_name?: string; // Loaded dynamically
+}
+

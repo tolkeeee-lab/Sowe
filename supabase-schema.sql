@@ -231,3 +231,38 @@ CREATE POLICY "Access vm_clients" ON public.momo_vm_clients
             SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
         )
     );
+
+-- #################################################################
+-- 9. INVENTORIES TABLE (for physical balance checks)
+-- #################################################################
+CREATE TABLE IF NOT EXISTS public.momo_inventories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cabin_id UUID NOT NULL REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES public.momo_profiles(id) ON DELETE CASCADE,
+    system_mtn NUMERIC NOT NULL,
+    physical_mtn NUMERIC NOT NULL,
+    system_moov NUMERIC NOT NULL,
+    physical_moov NUMERIC NOT NULL,
+    system_celtiis NUMERIC NOT NULL,
+    physical_celtiis NUMERIC NOT NULL,
+    system_cash NUMERIC NOT NULL,
+    physical_cash NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.momo_inventories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Access momo_inventories" ON public.momo_inventories
+    FOR ALL USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    ) WITH CHECK (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );

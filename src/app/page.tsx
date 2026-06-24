@@ -52,6 +52,7 @@ import { DashboardProprio } from '../components/dashboard-proprio'
 import { CarnetDeBord } from '../components/carnet-de-bord'
 import { SaisieRapide } from '../components/saisie-rapide'
 import { DettesRappels } from '../components/dettes-rappels'
+import { Inventaire } from '../components/inventaire'
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -199,7 +200,7 @@ const BENIN_FORFAITS = {
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [activeTab, setActiveTab] = useState<'cabine' | 'vm'>('cabine')
-  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts'>('dashboard')
+  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts' | 'inventaire'>('dashboard')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -2768,6 +2769,17 @@ export default function Home() {
                   <span>Dettes & Rappels</span>
                 </button>
               )}
+              <button
+                onClick={() => setSubTab('inventaire')}
+                className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  subTab === 'inventaire'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <CheckCircle2 className="size-4" />
+                <span>Inventaire</span>
+              </button>
             </nav>
           )}
 
@@ -2949,6 +2961,17 @@ export default function Home() {
           />
         )}
 
+        {/* Inventaire — pour tous */}
+        {subTab === 'inventaire' && (
+          <Inventaire
+            theme={theme}
+            role={role}
+            activeCabinId={activeCabinId}
+            profile={profile}
+            balances={balances}
+          />
+        )}
+
 
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
         {activeTab === 'vm' && subTab === 'dashboard' && (
@@ -3032,9 +3055,20 @@ export default function Home() {
                   }`}
                 >
                   <Coins className="size-4" />
-                  <span>Dettes & Rappels</span>
+                  <span>Dettes</span>
                 </button>
               )}
+              <button
+                onClick={() => setSubTab('inventaire')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  subTab === 'inventaire'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <CheckCircle2 className="size-4" />
+                <span>Inventaire</span>
+              </button>
             </div>
           </div>
           </>
