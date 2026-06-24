@@ -2512,7 +2512,11 @@ export default function Home() {
                 {profile?.business_name || "MOMO PREMIUM"}
               </span>
               <span className="text-[9px] block font-bold tracking-widest uppercase text-natural-accent -mt-1">
-                {profile?.role === 'proprio' ? 'Administration' : 'Gérant'}
+                {profile?.role === 'proprio' 
+                  ? 'Administration de son entreprise' 
+                  : profile?.role === 'vm' 
+                    ? 'Mon Activité Terrain' 
+                    : 'Administration de son patron'}
               </span>
             </div>
           </div>
