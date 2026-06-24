@@ -615,22 +615,17 @@ export default function Home() {
     if (storedVmBalances) {
       setVmBalances(JSON.parse(storedVmBalances))
     } else {
-      const demoBalances = { mtn: 400000, moov: 0, celtiis: 0, cash: 350000 }
-      setVmBalances(demoBalances)
-      localStorage.setItem('momo_vm_balances', JSON.stringify(demoBalances))
+      const zeroBalances = { mtn: 0, moov: 0, celtiis: 0, cash: 0 }
+      setVmBalances(zeroBalances)
+      localStorage.setItem('momo_vm_balances', JSON.stringify(zeroBalances))
     }
 
     const storedVmClients = localStorage.getItem('momo_vm_clients')
     if (storedVmClients) {
       setVmClients(JSON.parse(storedVmClients))
     } else {
-      const demoClients: VmClient[] = [
-        { id: 'c1', cabin_id: 'default', name: 'SOGEMA SARL', phone: '0199887766' },
-        { id: 'c2', cabin_id: 'default', name: 'Cabine Agla', phone: '0196887722' },
-        { id: 'c3', cabin_id: 'default', name: 'Cabine Gbégamey', phone: '0177665544' }
-      ]
-      setVmClients(demoClients)
-      localStorage.setItem('momo_vm_clients', JSON.stringify(demoClients))
+      setVmClients([])
+      localStorage.setItem('momo_vm_clients', JSON.stringify([]))
     }
 
     const storedVmOperator = localStorage.getItem('momo_vm_operator') as 'mtn' | 'moov' | 'celtiis' | null
@@ -638,9 +633,8 @@ export default function Home() {
       setVmOperator(storedVmOperator)
       setVmOpInput(storedVmOperator)
     } else {
-      setVmOperator('mtn')
+      setVmOperator(null)
       setVmOpInput('mtn')
-      localStorage.setItem('momo_vm_operator', 'mtn')
     }
 
     const storedVmRunners = localStorage.getItem('momo_vm_runners')
@@ -2901,9 +2895,9 @@ export default function Home() {
           <Inventaire
             theme={theme}
             role={role}
-            activeCabinId={activeCabinId}
+            activeCabinId={activeTab === 'vm' ? (profile?.assigned_cabin_id || activeCabinId) : activeCabinId}
             profile={profile}
-            balances={balances}
+            balances={activeTab === 'vm' ? vmBalances : balances}
           />
         )}
 
