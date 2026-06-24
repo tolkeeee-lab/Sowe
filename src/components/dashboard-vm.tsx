@@ -1260,20 +1260,31 @@ export function DashboardVm({
             </div>
 
             {/* Bilan journée */}
-            <div className={`mt-4 p-4 rounded-2xl border flex flex-col gap-2 ${
+            <div className={`mt-4 p-4 rounded-2xl border flex flex-col gap-2.5 ${
               isDark ? 'bg-[#050807]/40 border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
             }`}>
-              <p className="text-[10px] font-bold text-stone-500 uppercase mb-1">Bilan de ma journée</p>
+              <p className="text-[10px] font-bold text-stone-500 uppercase mb-1">Rotation & Crédits de la journée</p>
+              
               <div className="flex justify-between text-xs">
-                <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>Cash reçu (envois clients)</span>
-                <span className="font-mono font-bold text-natural-accent">
-                  +{transactions.filter(t => t.category.startsWith('Vente Mobile') && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
+                <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>Cash encaissé (Envois clients)</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  +{transactions.filter(t => t.category === 'Vente Mobile VM (Cash)' && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
+
               <div className="flex justify-between text-xs">
-                <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>Cash donné (retraits clients)</span>
-                <span className="font-mono font-bold text-rose-400">
+                <span className={isDark ? 'text-stone-400' : 'text-stone-600'}>Cash décaissé (Retraits clients)</span>
+                <span className="font-mono font-bold text-rose-450">
                   -{transactions.filter(t => t.category.startsWith('Vente Mobile') && t.type === 'withdrawal' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+
+              <div className="border-t border-stone-800/40 my-0.5" />
+
+              <div className="flex justify-between text-xs">
+                <span className="text-amber-500 font-medium">Somme dehors à récupérer (Crédits du jour)</span>
+                <span className="font-mono font-bold text-amber-500">
+                  {transactions.filter(t => t.category === 'Vente Mobile VM (Crédit Dehors)' && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
             </div>
@@ -1303,9 +1314,14 @@ export function DashboardVm({
                         <span className="text-[10px] font-mono text-stone-500">
                           {txn.clientName ? `${txn.clientName} (${txn.phone})` : txn.phone} · {txn.time}
                         </span>
+                        {txn.category === 'Vente Mobile VM (Crédit Dehors)' && (
+                          <span className="text-[9px] bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/30">
+                            Dehors
+                          </span>
+                        )}
                       </div>
-                      <div className={`font-mono font-bold text-xs ${txn.type === 'deposit' ? 'text-natural-accent' : 'text-rose-400'}`}>
-                        {txn.type === 'deposit' ? '+' : '-'}{txn.amount.toLocaleString('fr-FR')} FCFA
+                      <div className={`font-mono font-bold text-xs ${txn.type === 'deposit' ? 'text-cyan-400' : 'text-rose-400'}`}>
+                        {txn.amount.toLocaleString('fr-FR')} FCFA
                       </div>
                     </div>
                   ))
