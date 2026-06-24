@@ -199,7 +199,7 @@ const BENIN_FORFAITS = {
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [activeTab, setActiveTab] = useState<'cabine' | 'vm'>('cabine')
-  const [subTab, setSubTab] = useState<'dashboard' | 'notes' | 'debts'>('dashboard')
+  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts'>('dashboard')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -2731,6 +2731,19 @@ export default function Home() {
                 <Smartphone className="size-4" />
                 <span>Opérations</span>
               </button>
+              {(role === 'proprio' || role === 'vm_hybrid') && (
+                <button
+                  onClick={() => setSubTab('caisse')}
+                  className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                    subTab === 'caisse'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                  }`}
+                >
+                  <Sliders className="size-4" />
+                  <span>Caisse & Flotte</span>
+                </button>
+              )}
               <button
                 onClick={() => setSubTab('notes')}
                 className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
@@ -2871,10 +2884,11 @@ export default function Home() {
         )}
 
         {/* TAB 1: CABINE (CAISSIER + ADMIN) */}
-        {activeTab === 'cabine' && subTab === 'dashboard' && (
+        {activeTab === 'cabine' && (subTab === 'dashboard' || subTab === 'caisse') && (
           <DashboardProprio
             theme={theme}
             role={role}
+            viewMode={subTab}
             balances={balances}
             syncAddTransaction={syncAddTransaction}
             syncToggleScamReport={syncToggleScamReport}
@@ -2969,7 +2983,7 @@ export default function Home() {
         )}
 
         {/* Floating Bottom Navigation Bar for active workspaces */}
-          <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="md:hidden fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
             <div className={`p-1.5 rounded-2xl border shadow-xl flex gap-1 pointer-events-auto backdrop-blur-lg ${
               theme === 'dark' ? 'bg-[#0E1B15]/90 border-[#1C2C22]' : 'bg-[#FAF9F6]/95 border-[#DCD6CD]'
             }`}>
@@ -2984,6 +2998,19 @@ export default function Home() {
                 <Smartphone className="size-4" />
                 <span>Opérations</span>
               </button>
+              {(role === 'proprio' || role === 'vm_hybrid') && (
+                <button
+                  onClick={() => setSubTab('caisse')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    subTab === 'caisse'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                  }`}
+                >
+                  <Sliders className="size-4" />
+                  <span>Caisse</span>
+                </button>
+              )}
               <button
                 onClick={() => setSubTab('notes')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
