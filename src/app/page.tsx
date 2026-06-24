@@ -38,6 +38,7 @@ import {
   LogOut,
   Building,
   UserPlus,
+  UserCheck,
   Users,
   Clock
 } from 'lucide-react'
@@ -233,6 +234,7 @@ export default function Home() {
   // Auth & Session States
   const [session, setSession] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [profile, setProfile] = useState<any>(null)
   const [cabins, setCabins] = useState<any[]>([])
   const [activeCabinId, setActiveCabinId] = useState<string | null>(null)
@@ -441,6 +443,7 @@ export default function Home() {
         setProfile(profileData)
         setRole(profileData.role)
         localStorage.setItem('momo_role', profileData.role)
+        setShowProfileSetup(false)
 
         if (profileData.role === 'proprio') {
           // Fetch owned cabins
@@ -511,6 +514,9 @@ export default function Home() {
             }
           }
         }
+      } else {
+        setProfile(null)
+        setShowProfileSetup(true)
       }
     } catch (e) {
       console.error("Error loading profile:", e)
@@ -1232,6 +1238,44 @@ export default function Home() {
     }
 
     try {
+      const { data: authData, error: signUpErr } = await client.auth.signUp({
+        email: emailInput,
+        password: passwordInput
+      })
+
+      if (signUpErr) throw signUpErr
+      if (!authData.user) throw new Error("Échec de la création de l'utilisateur.")
+
+      setAuthSuccess("Inscription réussie ! Connectez-vous maintenant pour compléter votre profil.")
+      setAuthView('login')
+      setEmailInput('')
+      setPasswordInput('')
+      setNameInput('')
+      setBossEmailInput('')
+    } catch (err: any) {
+      setAuthError(err.message || "Erreur d'inscription.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCompleteProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setAuthError('')
+    setAuthSuccess('')
+    const client = getSupabase()
+    if (!client || !session?.user) {
+      setAuthError("Base de données Supabase non connectée ou session expirée.")
+      setLoading(false)
+      return
+    }
+
+    try {
+      if (!nameInput.trim()) {
+        throw new Error("Le nom complet est requis.")
+      }
+
       let bossId: string | null = null
 
       if (roleInput === 'employe') {
@@ -1251,29 +1295,21 @@ export default function Home() {
         bossId = bossProfile.id
       }
 
-      const { data: authData, error: signUpErr } = await client.auth.signUp({
-        email: emailInput,
-        password: passwordInput
-      })
-
-      if (signUpErr) throw signUpErr
-      if (!authData.user) throw new Error("Échec de la création de l'utilisateur.")
-
       const { error: profileErr } = await client.from('momo_profiles').insert({
-        id: authData.user.id,
+        id: session.user.id,
         role: roleInput,
-        name: nameInput,
-        email: emailInput,
+        name: nameInput.trim(),
+        email: session.user.email,
         owner_id: bossId
       })
 
       if (profileErr) throw profileErr
 
       if (roleInput === 'proprio' || roleInput === 'vm' || roleInput === 'vm_hybrid') {
-        const cabinName = roleInput === 'vm' ? `Espace VM de ${nameInput}` : "Cabine Principale"
+        const cabinName = roleInput === 'vm' ? `Espace VM de ${nameInput.trim()}` : "Cabine Principale"
         const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
           name: cabinName,
-          owner_id: authData.user.id
+          owner_id: session.user.id
         }).select().single()
 
         if (cabinErr) throw cabinErr
@@ -1285,14 +1321,10 @@ export default function Home() {
         ])
       }
 
-      setAuthSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.")
-      setAuthView('login')
-      setEmailInput('')
-      setPasswordInput('')
-      setNameInput('')
-      setBossEmailInput('')
+      await loadUserProfile(session.user.id)
+      setShowProfileSetup(false)
     } catch (err: any) {
-      setAuthError(err.message || "Erreur d'inscription.")
+      setAuthError(err.message || "Erreur lors de la création du profil.")
     } finally {
       setLoading(false)
     }
@@ -2240,71 +2272,7 @@ export default function Home() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleSignUp} className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-1">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Type de Compte</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRoleInput('proprio')}
-                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                      roleInput === 'proprio'
-                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    👑 Proprio
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRoleInput('employe')}
-                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                      roleInput === 'employe'
-                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    👤 Gérant
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRoleInput('vm')}
-                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                      roleInput === 'vm'
-                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    🛵 VM Uniquement
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRoleInput('vm_hybrid')}
-                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                      roleInput === 'vm_hybrid'
-                        ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
-                        : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    🛵👑 VM & Proprio
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom Complet</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Jean Gnonlonfoun"
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
-                  className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
-                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
-                  }`}
-                />
-              </div>
-
+            <form onSubmit={handleSignUp} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Adresse Email</label>
                 <input
@@ -2333,27 +2301,6 @@ export default function Home() {
                 />
               </div>
 
-              {roleInput === 'employe' && (
-                <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-natural-accent/20 bg-natural-accent/5">
-                  <label className="text-[10px] font-bold text-natural-accent uppercase tracking-wide flex items-center gap-1">
-                    <Lock className="size-3" /> Email de votre Propriétaire (Boss)
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="boss@example.com"
-                    value={bossEmailInput}
-                    onChange={e => setBossEmailInput(e.target.value)}
-                    className={`w-full p-2.5 border rounded-lg focus:outline-none text-xs ${
-                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-stone-900'
-                    }`}
-                  />
-                  <span className="text-[8px] text-stone-400">
-                    Saisissez l'email exact avec lequel votre patron s'est inscrit afin d'associer votre compte à sa flotte.
-                  </span>
-                </div>
-              )}
-
               <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 py-3 rounded-xl font-bold cursor-pointer">
                 Créer mon Compte
               </Button>
@@ -2370,6 +2317,144 @@ export default function Home() {
               {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />} Mode {theme === 'dark' ? 'Clair' : 'Sombre'}
             </button>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (session && showProfileSetup) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center font-sans px-4 relative overflow-hidden ${
+        theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
+      }`}>
+        {/* Glow decorative spheres */}
+        <div className="absolute -left-32 -bottom-32 size-96 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+        <div className="absolute -right-32 -top-32 size-96 rounded-full bg-natural-accent/5 blur-3xl pointer-events-none" />
+
+        <div className={`w-full max-w-md p-8 rounded-[40px] border shadow-2xl transition-all relative z-10 ${
+          theme === 'dark' 
+            ? 'bg-gradient-to-b from-[#0E1B15] to-[#050807] border-[#1C2C22]' 
+            : 'bg-white border-[#DCD6CD]'
+        }`}>
+          <div className="flex flex-col items-center mb-6">
+            <div className={`size-16 rounded-2xl flex items-center justify-center mb-4 ${
+              theme === 'dark' ? 'bg-[#050807] border border-[#1C2C22] text-natural-accent' : 'bg-stone-50 border border-stone-200 text-natural-accent'
+            }`}>
+              <UserCheck className="size-8" />
+            </div>
+            <h1 className="font-serif text-2xl font-black text-center tracking-tight">Configuration du Profil</h1>
+            <p className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-extrabold -mt-1 font-mono">
+              Étape finale indispensable
+            </p>
+          </div>
+
+          {authError && (
+            <div className="p-3 mb-4 rounded-xl text-xs bg-rose-500/10 border border-rose-500/20 text-rose-500 font-bold flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              {authError}
+            </div>
+          )}
+
+          <form onSubmit={handleCompleteProfile} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Type de Compte</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRoleInput('proprio')}
+                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                    roleInput === 'proprio'
+                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  👑 Proprio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoleInput('employe')}
+                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                    roleInput === 'employe'
+                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  👤 Gérant
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoleInput('vm')}
+                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                    roleInput === 'vm'
+                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  🛵 VM Uniquement
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoleInput('vm_hybrid')}
+                  className={`py-2.5 px-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                    roleInput === 'vm_hybrid'
+                      ? 'border-natural-accent bg-natural-accent/10 text-natural-accent'
+                      : theme === 'dark' ? 'border-[#1C2C22] text-stone-400 hover:bg-[#1C2C22]' : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  🛵👑 VM & Proprio
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom Complet</label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: Jean Gnonlonfoun"
+                value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                  theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                }`}
+              />
+            </div>
+
+            {roleInput === 'employe' && (
+              <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-natural-accent/20 bg-natural-accent/5">
+                <label className="text-[10px] font-bold text-natural-accent uppercase tracking-wide flex items-center gap-1">
+                  <Lock className="size-3" /> Email de votre Propriétaire (Boss)
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="boss@example.com"
+                  value={bossEmailInput}
+                  onChange={e => setBossEmailInput(e.target.value)}
+                  className={`w-full p-2.5 border rounded-lg focus:outline-none text-xs ${
+                    theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-stone-900'
+                  }`}
+                />
+                <span className="text-[8px] text-stone-400">
+                  Saisissez l'email exact avec lequel votre patron s'est inscrit afin d'associer votre compte à sa flotte.
+                </span>
+              </div>
+            )}
+
+            <Button variant="premium" type="submit" loading={loading} className="w-full mt-2 py-3 rounded-xl font-bold cursor-pointer">
+              Valider mon Profil
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className={`w-full text-center text-xs font-bold mt-2 hover:underline cursor-pointer ${
+                theme === 'dark' ? 'text-stone-400' : 'text-stone-500'
+              }`}
+            >
+              Déconnexion / Annuler
+            </button>
+          </form>
         </div>
       </div>
     )
@@ -2503,7 +2588,37 @@ export default function Home() {
       {/* Main Body */}
       <main className="max-w-xl mx-auto px-4 pt-8 pb-24 md:pb-8 flex flex-col gap-6">
         
-        {role === 'vm_hybrid' && (
+        {role === 'employe' && !activeCabinId ? (
+          <div className={`p-8 rounded-[32px] border text-center flex flex-col items-center gap-6 my-8 ${
+            theme === 'dark'
+              ? 'border-[#1C2C22] bg-gradient-to-b from-[#0E1B15] to-[#050807]'
+              : 'border-[#DCD6CD] bg-white shadow-sm'
+          }`}>
+            <div className={`size-16 rounded-full flex items-center justify-center border ${
+              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border-stone-200 text-[#D4AF37]'
+            }`}>
+              <ShieldAlert className="size-8" />
+            </div>
+            <div>
+              <h3 className="font-serif text-lg font-bold mb-2">En Attente d'Affectation</h3>
+              <p className={`text-xs leading-relaxed max-w-sm mx-auto ${
+                theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
+              }`}>
+                Votre compte a été lié avec succès à votre propriétaire. Veuillez patienter pendant qu'il vous affecte à une cabine active.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (session?.user) loadUserProfile(session.user.id);
+              }}
+              className="px-6 py-2.5 bg-[#D4AF37] hover:bg-[#c09d30] text-[#0A0F0D] rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="size-4" /> Rafraîchir mon statut
+            </button>
+          </div>
+        ) : (
+          <>
+            {role === 'vm_hybrid' && (
           <div className={`flex p-1 rounded-2xl border text-xs font-bold transition-all mb-4 ${
             theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
           }`}>
@@ -2670,6 +2785,8 @@ export default function Home() {
               )}
             </div>
           </div>
+          </>
+        )}
       </main>
 
       {/* FOOTER */}
