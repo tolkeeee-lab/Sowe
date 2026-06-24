@@ -248,7 +248,7 @@ export function Inventaire({
             <p className={`text-xs leading-relaxed max-w-xl ${
               theme === 'dark' ? 'text-stone-400' : 'text-stone-600'
             }`}>
-              Comparez les fonds physiques disponibles dans la cabine (billets dans le tiroir et soldes affichés sur vos téléphones) avec les soldes virtuels calculés par l'application pour détecter les écarts de caisse.
+              Comparez les fonds physiques disponibles ({role === 'vm' ? 'votre SIM active et le cash en poche' : 'dans la cabine (billets dans le tiroir et soldes affichés sur vos téléphones)'}) avec les soldes virtuels calculés par l'application pour détecter les écarts de caisse.
             </p>
           </div>
         </div>
@@ -325,13 +325,15 @@ export function Inventaire({
 
             {/* PHYSICAL CASH Audit Box */}
             <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-[#050807]/60 border-stone-850' : 'bg-stone-50 border-stone-200'}`}>
-              <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block mb-1">Tiroir Cash (Espèces)</label>
+              <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block mb-1">
+                {role === 'vm' ? "Espèces en poche (Cash)" : "Tiroir Cash (Espèces)"}
+              </label>
               <div className="text-[10px] text-stone-550 font-mono mb-2">Virtuel Système: {sysCash.toLocaleString('fr-FR')} FCFA</div>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   required
-                  placeholder="Espèces comptées dans le tiroir"
+                  placeholder={role === 'vm' ? "Espèces réelles en main / poche" : "Espèces comptées dans le tiroir"}
                   value={physCash}
                   onChange={e => setPhysCash(e.target.value)}
                   className={`flex-1 p-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 ${
