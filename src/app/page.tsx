@@ -2822,12 +2822,12 @@ export default function Home() {
 
         {/* Floating Bottom Navigation Bar for active workspaces */}
           <div className="md:hidden fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-            <div className={`p-1.5 rounded-2xl border shadow-xl flex gap-1 pointer-events-auto backdrop-blur-lg ${
+            <div className={`p-1.5 rounded-2xl border shadow-xl flex gap-1 pointer-events-auto backdrop-blur-lg overflow-x-auto max-w-full flex-nowrap scrollbar-none ${
               theme === 'dark' ? 'bg-[#0E1B15]/90 border-[#1C2C22]' : 'bg-[#FAF9F6]/95 border-[#DCD6CD]'
             }`}>
               <button
                 onClick={() => setSubTab('dashboard')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   subTab === 'dashboard'
                     ? 'bg-natural-accent text-[#0A0F0D]'
                     : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
@@ -2839,7 +2839,7 @@ export default function Home() {
               {(role === 'proprio') && (
                 <button
                   onClick={() => setSubTab('caisse')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                     subTab === 'caisse'
                       ? 'bg-natural-accent text-[#0A0F0D]'
                       : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
@@ -2851,7 +2851,7 @@ export default function Home() {
               )}
               <button
                 onClick={() => setSubTab('notes')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   subTab === 'notes'
                     ? 'bg-natural-accent text-[#0A0F0D]'
                     : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
@@ -2863,7 +2863,7 @@ export default function Home() {
               {activeTab !== 'vm' && (
                 <button
                   onClick={() => setSubTab('debts')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                     subTab === 'debts'
                       ? 'bg-natural-accent text-[#0A0F0D]'
                       : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
@@ -2875,7 +2875,7 @@ export default function Home() {
               )}
               <button
                 onClick={() => setSubTab('inventaire')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   subTab === 'inventaire'
                     ? 'bg-natural-accent text-[#0A0F0D]'
                     : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
@@ -2887,7 +2887,7 @@ export default function Home() {
               {(role === 'proprio' || role === 'vm') && (
                 <button
                   onClick={() => setSubTab('bilan')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                     subTab === 'bilan'
                       ? 'bg-natural-accent text-[#0A0F0D]'
                       : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
