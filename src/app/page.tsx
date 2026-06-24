@@ -38,7 +38,8 @@ import {
   LogOut,
   Building,
   UserPlus,
-  Users
+  Users,
+  Clock
 } from 'lucide-react'
 import { getSupabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
@@ -197,6 +198,7 @@ const BENIN_FORFAITS = {
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [activeTab, setActiveTab] = useState<'caissier' | 'vm' | 'proprietaire'>('caissier')
+  const [subTab, setSubTab] = useState<'dashboard' | 'notes' | 'debts'>('dashboard')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -2512,6 +2514,7 @@ export default function Home() {
                     setActiveTab('caissier')
                   }
                   setShowHub(false)
+                  setSubTab('dashboard')
                 }}
                 className={`p-6 rounded-[36px] border text-left flex flex-col justify-between h-44 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative overflow-hidden group ${
                   theme === 'dark'
@@ -2544,6 +2547,7 @@ export default function Home() {
                 onClick={() => {
                   setActiveTab('vm')
                   setShowHub(false)
+                  setSubTab('dashboard')
                 }}
                 className={`p-6 rounded-[36px] border text-left flex flex-col justify-between h-44 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative overflow-hidden group ${
                   theme === 'dark'
@@ -2580,7 +2584,7 @@ export default function Home() {
             theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
           }`}>
             <button
-              onClick={() => setActiveTab('caissier')}
+              onClick={() => { setActiveTab('caissier'); setSubTab('dashboard'); }}
               className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
                 activeTab === 'caissier' 
                   ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
@@ -2590,7 +2594,7 @@ export default function Home() {
               <span>Espace Caissier 👤</span>
             </button>
             <button
-              onClick={() => setActiveTab('vm')}
+              onClick={() => { setActiveTab('vm'); setSubTab('dashboard'); }}
               className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
                 activeTab === 'vm' 
                   ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
@@ -2603,6 +2607,7 @@ export default function Home() {
               onClick={() => {
                 if (role === 'proprio') {
                   setActiveTab('proprietaire')
+                  setSubTab('dashboard')
                 } else {
                   setShowPinModal(true)
                 }
@@ -2624,7 +2629,7 @@ export default function Home() {
             theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
           }`}>
             <button
-              onClick={() => setActiveTab('caissier')}
+              onClick={() => { setActiveTab('caissier'); setSubTab('dashboard'); }}
               className={`flex-1 py-3 rounded-xl transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
                 activeTab === 'caissier' 
                   ? 'bg-natural-accent text-[#0A0F0D] shadow-md' 
@@ -2648,7 +2653,7 @@ export default function Home() {
         )}
 
         {/* TAB 1: CAISSIER / OPERATIONS */}
-        {activeTab === 'caissier' && (
+        {activeTab === 'caissier' && subTab === 'dashboard' && (
           <DashboardCaissier
             theme={theme}
             balances={balances}
@@ -2667,7 +2672,7 @@ export default function Home() {
         )}
 
         {/* Carnet de Bord — espace caissier */}
-        {activeTab === 'caissier' && (
+        {activeTab === 'caissier' && subTab === 'notes' && (
           <CarnetDeBord
             theme={theme}
             role={role}
@@ -2678,7 +2683,7 @@ export default function Home() {
         )}
 
         {/* Dettes & Rappels — espace caissier */}
-        {activeTab === 'caissier' && (
+        {activeTab === 'caissier' && subTab === 'debts' && (
           <DettesRappels
             theme={theme}
             role={role}
@@ -2691,7 +2696,7 @@ export default function Home() {
 
 
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
-        {activeTab === 'vm' && (
+        {activeTab === 'vm' && subTab === 'dashboard' && (
           <DashboardVm
             theme={theme}
             profile={profile}
@@ -2711,8 +2716,19 @@ export default function Home() {
           />
         )}
 
+        {/* Carnet de Bord — espace VM */}
+        {activeTab === 'vm' && subTab === 'notes' && (
+          <CarnetDeBord
+            theme={theme}
+            role={role}
+            notes={cabinNotes}
+            onAddNote={syncAddCabinNote}
+            onDeleteNote={syncDeleteCabinNote}
+          />
+        )}
+
         {/* TAB 2: PROPRIÉTAIRE / CONFIG */}
-        {activeTab === 'proprietaire' && role === 'proprio' && (
+        {activeTab === 'proprietaire' && role === 'proprio' && subTab === 'dashboard' && (
           <DashboardProprio
             theme={theme}
             role={role}
@@ -2753,27 +2769,73 @@ export default function Home() {
           />
         )}
 
-        {/* Saisie Rapide + Carnet de Bord — espace proprio */}
-        {activeTab === 'proprietaire' && role === 'proprio' && (
-          <>
-            <CarnetDeBord
-              theme={theme}
-              role={role}
-              notes={cabinNotes}
-              onAddNote={syncAddCabinNote}
-              onDeleteNote={syncDeleteCabinNote}
-            />
-            <DettesRappels
-              theme={theme}
-              role={role}
-              debts={debts}
-              onAddDebt={syncAddDebt}
-              onSettleDebt={syncSettleDebt}
-              onDeleteDebt={syncDeleteDebt}
-            />
-          </>
+        {/* Carnet de Bord — espace proprio */}
+        {activeTab === 'proprietaire' && role === 'proprio' && subTab === 'notes' && (
+          <CarnetDeBord
+            theme={theme}
+            role={role}
+            notes={cabinNotes}
+            onAddNote={syncAddCabinNote}
+            onDeleteNote={syncDeleteCabinNote}
+          />
+        )}
+
+        {/* Dettes & Rappels — espace proprio */}
+        {activeTab === 'proprietaire' && role === 'proprio' && subTab === 'debts' && (
+          <DettesRappels
+            theme={theme}
+            role={role}
+            debts={debts}
+            onAddDebt={syncAddDebt}
+            onSettleDebt={syncSettleDebt}
+            onDeleteDebt={syncDeleteDebt}
+          />
         )}
           </>
+        )}
+        {/* Floating Bottom Navigation Bar for active workspaces */}
+        {!showHub && (
+          <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+            <div className={`p-1.5 rounded-2xl border shadow-xl flex gap-1 pointer-events-auto backdrop-blur-lg ${
+              theme === 'dark' ? 'bg-[#0E1B15]/90 border-[#1C2C22]' : 'bg-[#FAF9F6]/95 border-[#DCD6CD]'
+            }`}>
+              <button
+                onClick={() => setSubTab('dashboard')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  subTab === 'dashboard'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <Smartphone className="size-4" />
+                <span>Opérations</span>
+              </button>
+              <button
+                onClick={() => setSubTab('notes')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  subTab === 'notes'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <FileText className="size-4" />
+                <span>Notes</span>
+              </button>
+              {activeTab !== 'vm' && (
+                <button
+                  onClick={() => setSubTab('debts')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    subTab === 'debts'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                  }`}
+                >
+                  <Coins className="size-4" />
+                  <span>Dettes & Rappels</span>
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </main>
 
