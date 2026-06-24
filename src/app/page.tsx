@@ -2397,7 +2397,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`min-h-screen w-full overflow-x-hidden transition-colors duration-550 font-sans ${
+    <div className={`min-h-screen md:h-screen w-full flex flex-col overflow-x-hidden md:overflow-hidden transition-colors duration-550 font-sans ${
       theme === 'dark' ? 'bg-[#050807] text-[#E4EAD8]' : 'bg-[#FAF9F6] text-[#111614]'
     }`}>
       
@@ -2495,9 +2495,9 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-row">
+      <div className="flex-1 flex flex-row overflow-hidden">
         {/* Sidebar Desktop */}
-        <aside className={`hidden md:flex flex-col w-64 border-r p-6 gap-6 sticky top-0 h-[calc(100vh-42px)] shrink-0 overflow-y-auto ${
+        <aside className={`hidden md:flex flex-col w-64 border-r p-6 gap-6 shrink-0 h-full overflow-y-auto overflow-x-hidden ${
           theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
         }`}>
           {/* Logo / Company Name */}
@@ -2660,7 +2660,7 @@ export default function Home() {
         </aside>
 
         {/* Main Body */}
-        <main className="flex-1 max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-24 md:pb-8 flex flex-col gap-6 w-full">
+        <main className="flex-1 max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-24 md:pb-8 flex flex-col gap-6 w-full overflow-y-auto">
         
         {role === 'employe' && !activeCabinId ? (
           <div className={`p-8 rounded-[32px] border text-center flex flex-col items-center gap-6 my-8 ${
