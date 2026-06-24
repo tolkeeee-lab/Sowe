@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -24,7 +24,6 @@ import { Button } from './ui/button'
 import { Transaction } from '../types'
 import { getSupabase } from '../lib/supabase'
 import { SaisieRapide } from './saisie-rapide'
-import { BilanPeriodique } from './bilan-periodique'
 
 const BENIN_FORFAITS = {
   mtn: [
@@ -850,17 +849,6 @@ export function DashboardProprio({
           <Download className="size-4 mr-2" /> EXPORTER L'HISTORIQUE CSV
         </Button>
       </section>
-
-      {/* Bilan Périodique — visible pour tous les rôles */}
-      <BilanPeriodique
-        theme={theme}
-        transactions={transactions}
-        TODAY_STR={TODAY_STR}
-        YESTERDAY_STR={YESTERDAY_STR}
-        mode="cabine"
-        getWeekRange={getWeekRange}
-        getLocalDateString={getLocalDateString}
-      />
     </div>
   )
 }
