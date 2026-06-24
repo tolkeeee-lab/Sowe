@@ -25,6 +25,7 @@ CREATE TABLE public.momo_profiles (
     role TEXT NOT NULL CHECK (role IN ('proprio', 'employe', 'vm', 'vm_hybrid')),
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
+    business_name TEXT, -- For owners, name of their company
     owner_id UUID REFERENCES auth.users(id), -- NULL for owners, refers to boss/owner for employees
     assigned_cabin_id UUID REFERENCES public.momo_cabins(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()

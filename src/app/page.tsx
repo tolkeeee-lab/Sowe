@@ -247,6 +247,8 @@ export default function Home() {
   const [nameInput, setNameInput] = useState('')
   const [roleInput, setRoleInput] = useState<'proprio' | 'employe' | 'vm' | 'vm_hybrid'>('proprio')
   const [bossEmailInput, setBossEmailInput] = useState('')
+  const [businessNameInput, setBusinessNameInput] = useState('')
+  const [firstCabinNameInput, setFirstCabinNameInput] = useState('Cabine Principale')
   const [newCabinName, setNewCabinName] = useState('')
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
@@ -1295,18 +1297,31 @@ export default function Home() {
         bossId = bossProfile.id
       }
 
+      const isOwnerRole = roleInput === 'proprio' || roleInput === 'vm_hybrid'
+      if (isOwnerRole) {
+        if (!businessNameInput.trim()) {
+          throw new Error("Le nom de votre entreprise est requis.")
+        }
+        if (!firstCabinNameInput.trim()) {
+          throw new Error("Le nom de votre première cabine est requis.")
+        }
+      }
+
       const { error: profileErr } = await client.from('momo_profiles').insert({
         id: session.user.id,
         role: roleInput,
         name: nameInput.trim(),
         email: session.user.email,
-        owner_id: bossId
+        owner_id: bossId,
+        business_name: isOwnerRole ? businessNameInput.trim() : null
       })
 
       if (profileErr) throw profileErr
 
       if (roleInput === 'proprio' || roleInput === 'vm' || roleInput === 'vm_hybrid') {
-        const cabinName = roleInput === 'vm' ? `Espace VM de ${nameInput.trim()}` : "Cabine Principale"
+        const cabinName = roleInput === 'vm' 
+          ? `Espace VM de ${nameInput.trim()}` 
+          : firstCabinNameInput.trim()
         const { data: cabinData, error: cabinErr } = await client.from('momo_cabins').insert({
           name: cabinName,
           owner_id: session.user.id
@@ -2420,6 +2435,38 @@ export default function Home() {
               />
             </div>
 
+            {(roleInput === 'proprio' || roleInput === 'vm_hybrid') && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom de l'Entreprise</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Bénin Telecom / Global Flotte"
+                    value={businessNameInput}
+                    onChange={e => setBusinessNameInput(e.target.value)}
+                    className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                    }`}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Nom de votre Première Cabine</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Cabine Etoile / Cabine Principale"
+                    value={firstCabinNameInput}
+                    onChange={e => setFirstCabinNameInput(e.target.value)}
+                    className={`w-full p-3 border rounded-xl focus:outline-none text-sm ${
+                      theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-[#111614]'
+                    }`}
+                  />
+                </div>
+              </>
+            )}
+
             {roleInput === 'employe' && (
               <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-natural-accent/20 bg-natural-accent/5">
                 <label className="text-[10px] font-bold text-natural-accent uppercase tracking-wide flex items-center gap-1">
@@ -2479,7 +2526,7 @@ export default function Home() {
       </div>
 
       {/* Header */}
-      <header className={`border-b transition-colors sticky top-0 z-40 backdrop-blur-md ${
+      <header className={`md:hidden border-b transition-colors sticky top-0 z-40 backdrop-blur-md ${
         theme === 'dark' 
           ? 'border-[#1C2C22] bg-[#050807]/90' 
           : 'border-[#DCD6CD] bg-[#FAF9F6]/90'
@@ -2585,8 +2632,155 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Body */}
-      <main className="max-w-xl mx-auto px-4 pt-8 pb-24 md:pb-8 flex flex-col gap-6">
+      <div className="flex-1 flex flex-row">
+        {/* Sidebar Desktop */}
+        <aside className={`hidden md:flex flex-col w-64 border-r p-6 gap-6 sticky top-0 h-[calc(100vh-42px)] shrink-0 overflow-y-auto ${
+          theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-[#DCD6CD]'
+        }`}>
+          {/* Logo / Company Name */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`size-10 rounded-xl flex items-center justify-center border ${
+              theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-[#D4AF37]' : 'bg-stone-50 border-stone-200 text-[#D4AF37]'
+            }`}>
+              <Wallet className="size-5" />
+            </div>
+            <div>
+              <span className="font-serif text-base font-black tracking-tight block truncate w-40">
+                {profile?.business_name || "MOMO PREMIUM"}
+              </span>
+              <span className="text-[9px] block font-bold tracking-widest uppercase text-natural-accent -mt-1">
+                {profile?.role === 'proprio' ? 'Administration' : 'Gérant'}
+              </span>
+            </div>
+          </div>
+
+          {/* Cabin Selector for Proprio (Desktop) */}
+          {profile?.role === 'proprio' && cabins.length > 0 && (
+            <div className="flex flex-col gap-2 p-3.5 rounded-2xl border bg-natural-accent/5 border-natural-accent/15">
+              <label className="text-[9px] font-bold text-natural-accent uppercase tracking-wider flex items-center gap-1.5">
+                <Building className="size-3.5" /> Cabine Active
+              </label>
+              <select
+                value={activeCabinId || ''}
+                onChange={(e) => {
+                  setActiveCabinId(e.target.value)
+                  localStorage.setItem('momo_active_cabin_id', e.target.value)
+                }}
+                className={`w-full p-2.5 rounded-xl border text-xs font-bold focus:outline-none transition-all cursor-pointer ${
+                  theme === 'dark' ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD] text-stone-850'
+                }`}
+              >
+                {cabins.map(cab => (
+                  <option key={cab.id} value={cab.id}>{cab.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* User Info Card */}
+          <div className={`p-4 rounded-2xl border flex flex-col gap-1.5 ${
+            theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+          }`}>
+            <span className="text-[9px] font-mono uppercase text-stone-500 font-bold">Utilisateur</span>
+            <div className="font-bold text-sm truncate">{profile?.name}</div>
+            <div className="text-[10px] text-stone-400 truncate">{profile?.email}</div>
+          </div>
+
+          {/* Navigation Links */}
+          {activeCabinId && (
+            <nav className="flex flex-col gap-1.5 mt-2">
+              <button
+                onClick={() => setSubTab('dashboard')}
+                className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  subTab === 'dashboard'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <Smartphone className="size-4" />
+                <span>Opérations</span>
+              </button>
+              <button
+                onClick={() => setSubTab('notes')}
+                className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  subTab === 'notes'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <FileText className="size-4" />
+                <span>Notes / Carnet</span>
+              </button>
+              {activeTab !== 'vm' && (
+                <button
+                  onClick={() => setSubTab('debts')}
+                  className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                    subTab === 'debts'
+                      ? 'bg-natural-accent text-[#0A0F0D]'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                  }`}
+                >
+                  <Coins className="size-4" />
+                  <span>Dettes & Rappels</span>
+                </button>
+              )}
+            </nav>
+          )}
+
+          {/* Bottom Actions */}
+          <div className="mt-auto flex flex-col gap-2 pt-4 border-t border-stone-850/10 dark:border-[#1C2C22]">
+            {role === 'proprio' && (
+              <button
+                onClick={handleSwitchToEmployee}
+                className={`w-full px-3 py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  theme === 'dark' 
+                    ? 'bg-rose-950/20 border-rose-900/30 text-rose-500 hover:bg-rose-950/40' 
+                    : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                }`}
+              >
+                <Lock className="size-3" /> Verrouiller Proprio
+              </button>
+            )}
+
+            {role === 'employe' && (
+              <button
+                onClick={() => setShowPinModal(true)}
+                className={`w-full px-3 py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  theme === 'dark' 
+                    ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-400 hover:bg-emerald-950/40' 
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                <Lock className="size-3" /> Espace Admin (PIN)
+              </button>
+            )}
+
+            <button
+              onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+              className={`w-full px-3 py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-yellow-400' : 'bg-white border-[#DCD6CD] text-stone-700'
+              }`}
+            >
+              {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+              <span>Thème {theme === 'dark' ? 'Clair' : 'Sombre'}</span>
+            </button>
+
+            <button
+              onClick={handleSignOut}
+              className={`w-full px-3 py-2.5 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                theme === 'dark' 
+                  ? 'bg-red-950/20 border-red-900/30 text-red-400 hover:bg-red-950/40' 
+                  : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+              }`}
+            >
+              <LogOut className="size-3.5" />
+              <span>Se Déconnecter</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Body */}
+        <main className="flex-1 max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-24 md:pb-8 flex flex-col gap-6 w-full">
         
         {role === 'employe' && !activeCabinId ? (
           <div className={`p-8 rounded-[32px] border text-center flex flex-col items-center gap-6 my-8 ${
@@ -2788,6 +2982,7 @@ export default function Home() {
           </>
         )}
       </main>
+      </div>
 
       {/* FOOTER */}
       <footer className="border-t border-stone-900/10 dark:border-[#1C2C22] py-10 mt-16 text-center text-xs text-stone-500">
