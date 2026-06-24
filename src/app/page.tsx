@@ -2660,7 +2660,7 @@ export default function Home() {
         </aside>
 
         {/* Main Body */}
-        <main className="flex-1 max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-24 md:pb-8 flex flex-col gap-6 w-full overflow-y-auto">
+        <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 pt-8 pb-24 md:pb-8 flex flex-col gap-6 w-full overflow-y-auto">
         
         {role === 'employe' && !activeCabinId ? (
           <div className={`p-8 rounded-[32px] border text-center flex flex-col items-center gap-6 my-8 ${
@@ -2901,18 +2901,17 @@ export default function Home() {
           </div>
           </>
         )}
+        {/* FOOTER */}
+        <footer className="border-t border-stone-900/10 dark:border-[#1C2C22] py-10 mt-16 text-center text-xs text-stone-500 w-full">
+          <p className="max-w-md mx-auto px-4 leading-relaxed font-bold">
+            « Momo Premium » — Outil d'assistance numérique pour les points de vente agréés MTN MoMo, Moov Money et Celtiis au Bénin.
+          </p>
+          <p className="mt-2 text-[9px] text-stone-600">
+            Propulsé localement · Cotonou, Bénin · v1.1.2
+          </p>
+        </footer>
       </main>
       </div>
-
-      {/* FOOTER */}
-      <footer className="border-t border-stone-900/10 dark:border-[#1C2C22] py-10 mt-16 text-center text-xs text-stone-500">
-        <p className="max-w-md mx-auto px-4 leading-relaxed font-bold">
-          « Momo Premium » — Outil d'assistance numérique pour les points de vente agréés MTN MoMo, Moov Money et Celtiis au Bénin.
-        </p>
-        <p className="mt-2 text-[9px] text-stone-600">
-          Propulsé localement · Cotonou, Bénin · v1.1.2
-        </p>
-      </footer>
 
       {/* THERMAL TICKET DE CAISSE DIALOG (DEPOSITS ONLY) */}
       <AnimatePresence>
