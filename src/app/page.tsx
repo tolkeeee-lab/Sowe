@@ -2686,6 +2686,37 @@ export default function Home() {
             <div className="text-[10px] text-stone-400 truncate">{profile?.email}</div>
           </div>
 
+          {/* Espace Selector for VM Hybrid (Desktop Sidebar) */}
+          {role === 'vm_hybrid' && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[9px] font-mono uppercase text-stone-500 font-bold px-1">Espace Actif</span>
+              <div className={`flex p-1 rounded-xl border text-[10px] font-bold transition-all ${
+                theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+              }`}>
+                <button
+                  onClick={() => { setActiveTab('cabine'); setSubTab('dashboard'); }}
+                  className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
+                    activeTab === 'cabine'
+                      ? 'bg-natural-accent text-[#0A0F0D] shadow'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  🗄️ Cabine
+                </button>
+                <button
+                  onClick={() => { setActiveTab('vm'); setSubTab('dashboard'); }}
+                  className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
+                    activeTab === 'vm'
+                      ? 'bg-natural-accent text-[#0A0F0D] shadow'
+                      : theme === 'dark' ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  🛵 VM
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Navigation Links */}
           {activeCabinId && (
             <nav className="flex flex-col gap-1.5 mt-2">
@@ -2813,7 +2844,7 @@ export default function Home() {
         ) : (
           <>
             {role === 'vm_hybrid' && (
-          <div className={`flex p-1 rounded-2xl border text-xs font-bold transition-all mb-4 ${
+          <div className={`md:hidden flex p-1 rounded-2xl border text-xs font-bold transition-all mb-4 ${
             theme === 'dark' ? 'bg-[#0A0F0D] border-[#1C2C22]' : 'bg-[#EFECE6] border-[#DCD6CD]'
           }`}>
             <button
