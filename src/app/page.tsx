@@ -1183,7 +1183,7 @@ export default function Home() {
           .from('momo_profiles')
           .select('id')
           .eq('role', 'proprio')
-          .eq('email', bossEmailInput.trim())
+          .ilike('email', bossEmailInput.trim())
           .maybeSingle()
 
         if (bossErr || !bossProfile) {
