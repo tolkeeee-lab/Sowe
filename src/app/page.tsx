@@ -797,8 +797,22 @@ export default function Home() {
   }
 
   const syncCoffres = async (newCoffres: typeof coffres) => {
+    const deltaMtn = newCoffres.mtn - coffres.mtn
+    const deltaMoov = newCoffres.moov - coffres.moov
+    const deltaCeltiis = newCoffres.celtiis - coffres.celtiis
+    const deltaCash = newCoffres.cash - coffres.cash
+
     setCoffres(newCoffres)
     localStorage.setItem('momo_coffres', JSON.stringify(newCoffres))
+
+    const nextBalances = {
+      mtn: balances.mtn + deltaMtn,
+      moov: balances.moov + deltaMoov,
+      celtiis: balances.celtiis + deltaCeltiis,
+      cash: balances.cash + deltaCash,
+    }
+    await syncBalances(nextBalances)
+
     const client = getSupabase()
     if (client && activeCabinId) {
       try {
