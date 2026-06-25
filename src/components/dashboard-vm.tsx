@@ -49,6 +49,8 @@ interface DashboardVmProps {
   TODAY_STR: string;
   vmOperator: 'mtn' | 'moov' | 'celtiis' | null;
   setVmOperator: (op: 'mtn' | 'moov' | 'celtiis' | null) => void;
+  sommeConfiee: number;
+  setSommeConfiee: (amount: number) => void;
   vmClients: VmClient[];
   syncAddVmClient: (name: string, phone: string) => Promise<void>;
   syncDeleteVmClient: (id: string) => Promise<void>;
@@ -69,6 +71,8 @@ export function DashboardVm({
   TODAY_STR,
   vmOperator,
   setVmOperator,
+  sommeConfiee,
+  setSommeConfiee,
   vmClients,
   syncAddVmClient,
   syncDeleteVmClient,
@@ -102,7 +106,6 @@ export function DashboardVm({
   const [quickLoading, setQuickLoading] = useState(false)
 
   // Float management & outstanding credit states (saved locally)
-  const [sommeConfiee, setSommeConfiee] = useState<number>(0)
   const [isEditingSomme, setIsEditingSomme] = useState(false)
   const [sommeInput, setSommeInput] = useState('')
   const [dehorsList, setDehorsList] = useState<VmDehorsItem[]>([])
@@ -119,7 +122,8 @@ export function DashboardVm({
       setVirtuelInput(vmBalances[vmOperator].toString())
     }
     setCashInput(vmBalances.cash.toString())
-  }, [vmBalances, vmOperator])
+    setSommeInput(sommeConfiee.toString())
+  }, [vmBalances, vmOperator, sommeConfiee])
 
   // Setup Wizard States
   const [setupStep, setSetupStep] = useState(1)
@@ -132,11 +136,6 @@ export function DashboardVm({
 
   // Load float config & dehors list from localStorage on mount
   useEffect(() => {
-    const savedSomme = localStorage.getItem('momo_vm_somme_confiee')
-    if (savedSomme) {
-      setSommeConfiee(parseFloat(savedSomme))
-      setSommeInput(savedSomme)
-    }
     const savedDehors = localStorage.getItem('momo_vm_dehors_list')
     if (savedDehors) {
       setDehorsList(JSON.parse(savedDehors))
@@ -146,8 +145,8 @@ export function DashboardVm({
   // Calculate totals
   const totalDehors = dehorsList.reduce((sum, item) => sum + item.amount, 0)
   const virtualAvailable = vmOperator ? vmBalances[vmOperator] : 0
-  const totalActifReel = virtualAvailable + vmBalances.cash - totalDehors
-  const ecart = totalActifReel - sommeConfiee
+  const totalActifReel = virtualAvailable + vmBalances.cash
+  const ecart = (totalActifReel + totalDehors) - sommeConfiee
 
   // Group dehorsList by client/enterprise (using name as key, fallback to phone)
   const groupedDehors = dehorsList.reduce((acc, item) => {
@@ -175,7 +174,6 @@ export function DashboardVm({
     const val = parseFloat(sommeInput)
     if (!isNaN(val) && val >= 0) {
       setSommeConfiee(val)
-      localStorage.setItem('momo_vm_somme_confiee', val.toString())
       setIsEditingSomme(false)
     }
   }
@@ -230,7 +228,6 @@ export function DashboardVm({
     // Set capital
     setSommeConfiee(cap)
     setSommeInput(cap.toString())
-    localStorage.setItem('momo_vm_somme_confiee', cap.toString())
 
     // Set balances
     const newBalances = {
@@ -1566,7 +1563,11 @@ export function DashboardVm({
               <div className="flex justify-between text-xs">
                 <span className="text-amber-500 font-medium">Somme dehors à récupérer (Crédits du jour)</span>
                 <span className="font-mono font-bold text-amber-500">
-                  {transactions.filter(t => t.category === 'Vente Mobile VM (Crédit Dehors)' && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0).toLocaleString('fr-FR')} FCFA
+                  {(() => {
+                    const credits = transactions.filter(t => t.category === 'Vente Mobile VM (Crédit Dehors)' && t.type === 'deposit' && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0);
+                    const recov = transactions.filter(t => (t.id.startsWith('RECOV-') || t.category.includes('Encaissement') || t.category.includes('Règlement Global')) && t.date === TODAY_STR).reduce((a, t) => a + t.amount, 0);
+                    return Math.max(0, credits - recov).toLocaleString('fr-FR');
+                  })()} FCFA
                 </span>
               </div>
             </div>

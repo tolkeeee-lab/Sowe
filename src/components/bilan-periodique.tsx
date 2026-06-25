@@ -149,7 +149,6 @@ export function BilanPeriodique({
       ? [
           { label: "Envois (Dépôts / Crédits)", dot: "bg-cyan-400", textColor: isDark ? "text-cyan-400" : "text-cyan-700", s: stats.vmEnvoi },
           { label: "Retraits (Cash Versé)", dot: "bg-rose-500", textColor: isDark ? "text-rose-400" : "text-rose-700", s: stats.vmRetrait },
-          { label: "Rotations Agence (Échanges)", dot: "bg-indigo-500", textColor: isDark ? "text-indigo-400" : "text-indigo-700", s: stats.vmSwap },
         ]
       : [
           { label: "Dépôts (Envois)", dot: "bg-natural-accent", textColor: isDark ? "text-stone-200" : "text-stone-900", s: stats.deposit },
@@ -384,7 +383,7 @@ export function BilanPeriodique({
       </div>
 
       {mode === "vm" && (
-        <div className={`grid grid-cols-2 gap-4 p-4 rounded-2xl border ${isDark ? "bg-[#050807] border-[#1C2C22]" : "bg-stone-50 border-stone-200"}`}>
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-2xl border ${isDark ? "bg-[#050807] border-[#1C2C22]" : "bg-stone-50 border-stone-200"}`}>
           <div className="flex flex-col gap-0.5">
             <span className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-amber-500" : "text-amber-700"}`}>
               ⚠️ Crédits Dehors Accordés
@@ -392,8 +391,8 @@ export function BilanPeriodique({
             <div className="font-mono font-bold text-base text-amber-500">
               {stats.vmCredit.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
             </div>
-            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-500" : "text-stone-500"}`}>
-              {stats.vmCredit.count} transaction{stats.vmCredit.count !== 1 ? "s" : ""} (Déjà inclus dans les Envois)
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-550" : "text-stone-500"}`}>
+              {stats.vmCredit.count} transaction{stats.vmCredit.count !== 1 ? "s" : ""} (Inclus dans Envois)
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
@@ -403,8 +402,19 @@ export function BilanPeriodique({
             <div className="font-mono font-bold text-base text-emerald-500">
               {stats.vmRecov.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
             </div>
-            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-500" : "text-stone-500"}`}>
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-550" : "text-stone-500"}`}>
               {stats.vmRecov.count} transaction{stats.vmRecov.count !== 1 ? "s" : ""} (Non cumulés dans le CA)
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-indigo-400" : "text-indigo-650"}`}>
+              🔄 Rotations Agence (Échanges)
+            </span>
+            <div className="font-mono font-bold text-base text-indigo-500">
+              {stats.vmSwap.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+            </div>
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-550" : "text-stone-500"}`}>
+              {stats.vmSwap.count} transaction{stats.vmSwap.count !== 1 ? "s" : ""} (Non cumulés dans le CA)
             </span>
           </div>
         </div>

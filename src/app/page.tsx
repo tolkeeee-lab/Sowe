@@ -124,6 +124,7 @@ export default function Home() {
     cash: 0
   })
   const [vmOperator, setVmOperator] = useState<'mtn' | 'moov' | 'celtiis' | null>(null) // Let user set it up
+  const [vmSommeConfiee, setVmSommeConfiee] = useState<number>(0)
   const [selectedVmRunner, setSelectedVmRunner] = useState('')
   const [vmRunners, setVmRunners] = useState<any[]>([])
   const [newRunnerName, setNewRunnerName] = useState('')
@@ -455,10 +456,19 @@ export default function Home() {
             setVmOperator(null)
             localStorage.removeItem('momo_vm_operator')
           }
+          if (parts[2]) {
+            const val = parseFloat(parts[2])
+            setVmSommeConfiee(isNaN(val) ? 0 : val)
+            localStorage.setItem('momo_vm_somme_confiee', parts[2])
+          } else {
+            const savedSomme = localStorage.getItem('momo_vm_somme_confiee')
+            setVmSommeConfiee(savedSomme ? parseFloat(savedSomme) : 0)
+          }
         } else {
           await client.from('momo_settings').insert({ cabin_id: activeCabinId, pin_code: '1234' })
           setPinCode('1234')
           setVmOperator(null)
+          setVmSommeConfiee(0)
           localStorage.removeItem('momo_vm_operator')
         }
 
@@ -634,6 +644,13 @@ export default function Home() {
     } else {
       setVmOperator(null)
       setVmOpInput('mtn')
+    }
+
+    const storedVmSommeConfiee = localStorage.getItem('momo_vm_somme_confiee')
+    if (storedVmSommeConfiee) {
+      setVmSommeConfiee(parseFloat(storedVmSommeConfiee) || 0)
+    } else {
+      setVmSommeConfiee(0)
     }
 
     const storedVmRunners = localStorage.getItem('momo_vm_runners')
@@ -815,10 +832,24 @@ export default function Home() {
     const client = getSupabase()
     if (client && activeCabinId) {
       try {
-        const val = `${pinCode}|${op || ''}`
+        const val = `${pinCode}|${op || ''}|${vmSommeConfiee}`
         await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: val, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync VM operator error:", e)
+      }
+    }
+  }
+
+  const syncVmSommeConfiee = async (amount: number) => {
+    setVmSommeConfiee(amount)
+    localStorage.setItem('momo_vm_somme_confiee', amount.toString())
+    const client = getSupabase()
+    if (client && activeCabinId) {
+      try {
+        const val = `${pinCode}|${vmOperator || ''}|${amount}`
+        await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: val, updated_at: new Date().toISOString() })
+      } catch (e) {
+        console.error("Supabase sync VM Somme Confiee error:", e)
       }
     }
   }
@@ -1136,7 +1167,7 @@ export default function Home() {
     const client = getSupabase()
     if (client && activeCabinId) {
       try {
-        const val = role === 'vm' ? `${newPin}|${vmOperator || ''}` : newPin
+        const val = role === 'vm' ? `${newPin}|${vmOperator || ''}|${vmSommeConfiee}` : newPin
         await client.from('momo_settings').upsert({ cabin_id: activeCabinId, pin_code: val, updated_at: new Date().toISOString() })
       } catch (e) {
         console.error("Supabase sync PIN error:", e)
@@ -2802,6 +2833,8 @@ export default function Home() {
             TODAY_STR={TODAY_STR}
             vmOperator={vmOperator}
             setVmOperator={syncVmOperator}
+            sommeConfiee={vmSommeConfiee}
+            setSommeConfiee={syncVmSommeConfiee}
             vmClients={vmClients}
             syncAddVmClient={syncAddVmClient}
             syncDeleteVmClient={syncDeleteVmClient}
