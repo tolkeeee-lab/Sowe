@@ -114,6 +114,7 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
   const [freeText, setFreeText] = useState('')
   
   // Phone and Validation states
+  const [clientNameInput, setClientNameInput] = useState('')
   const [phoneInput, setPhoneInput] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [shake, setShake] = useState(false)
@@ -184,6 +185,7 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
       date:           getLocalDate(),
       category:       label,
       isScamReported: false,
+      clientName:     clientNameInput.trim() || undefined,
     }
     
     onAdd(txn)
@@ -192,6 +194,7 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
     
     // Reset states after success
     setPhoneInput('')
+    setClientNameInput('')
     setPhoneError(null)
     setAccumulatedAmounts([])
     setCustomAmountInput('')
@@ -311,8 +314,28 @@ export function SaisieRapide({ theme, getLocalDateString, onAdd }: SaisieRapideP
         isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
       }`}>
 
-        {/* N° Bénéficiaire & Montant libre Inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-1">
+        {/* Nom du Client, N° Bénéficiaire & Montant libre Inputs */}
+        <div className={`grid grid-cols-1 gap-3 px-1 ${
+          opType !== 'forfait' ? 'md:grid-cols-3' : 'md:grid-cols-2'
+        }`}>
+          {/* Client Name Input */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[8px] font-extrabold text-stone-500 uppercase tracking-widest flex items-center justify-between">
+              <span>👤 Nom du Client</span>
+            </span>
+            <input
+              type="text"
+              value={clientNameInput}
+              onChange={e => setClientNameInput(e.target.value)}
+              placeholder="Ex: Jean Dupont (Optionnel)"
+              className={`w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-natural-accent/30 font-bold ${
+                isDark
+                  ? 'bg-[#050807] border-[#1C2C22] text-white placeholder:text-stone-650'
+                  : 'bg-stone-50 border-[#DCD6CD] text-[#111614] placeholder:text-stone-400'
+              }`}
+            />
+          </div>
+
           {/* Phone Number Input */}
           <motion.div 
             className="flex flex-col gap-1"
