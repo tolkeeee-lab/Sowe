@@ -1512,6 +1512,10 @@ export default function Home() {
       }
     } else {
       // Client veut cash → VM prend virtuel. Cash baisse, virtuel monte.
+      if (vmBalances.cash < amount) {
+        alert(`Cash en poche insuffisant (${vmBalances.cash.toLocaleString('fr-FR')} FCFA) pour effectuer ce retrait !`);
+        return;
+      }
       nextVmBalances = {
         ...vmBalances,
         cash: vmBalances.cash - amount,

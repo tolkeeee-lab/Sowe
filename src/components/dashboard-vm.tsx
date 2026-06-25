@@ -146,7 +146,7 @@ export function DashboardVm({
   // Calculate totals
   const totalDehors = dehorsList.reduce((sum, item) => sum + item.amount, 0)
   const virtualAvailable = vmOperator ? vmBalances[vmOperator] : 0
-  const totalActifReel = virtualAvailable + vmBalances.cash + totalDehors
+  const totalActifReel = virtualAvailable + vmBalances.cash - totalDehors
   const ecart = totalActifReel - sommeConfiee
 
   // Group dehorsList by client/enterprise (using name as key, fallback to phone)
@@ -292,6 +292,11 @@ export function DashboardVm({
         }
       } else {
         // Withdrawal: VM gives cash -> VM takes virtual. Cash decreases, virtual increases.
+        if (vmBalances.cash < amount) {
+          alert(`Cash en poche insuffisant (${vmBalances.cash.toLocaleString('fr-FR')} FCFA) pour effectuer ce retrait !`);
+          setLoading(false);
+          return;
+        }
         nextVmBalances = {
           ...vmBalances,
           cash: vmBalances.cash - amount,

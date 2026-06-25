@@ -380,7 +380,7 @@ function InventaireVm({ theme, profile, balances }: Pick<InventaireProps, 'theme
   // Diff calculations
   const diffVirtuel = useMemo(() => { const v = parseFloat(physVirtuel); return isNaN(v) ? 0 : v - sysVirtuel }, [physVirtuel, sysVirtuel])
   const diffCash = useMemo(() => { const v = parseFloat(physCash); return isNaN(v) ? 0 : v - sysCash }, [physCash, sysCash])
-  const totalActifSys = sysVirtuel + sysCash + deholrsTotal
+  const totalActifSys = sysVirtuel + sysCash - deholrsTotal
   const ecartCapital = totalActifSys - capitalConfie
 
   useEffect(() => {

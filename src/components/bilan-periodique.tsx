@@ -75,8 +75,6 @@ export function BilanPeriodique({
       total:      { sum: 0, count: 0 },
     };
     periodTxns.forEach((t) => {
-      s.total.sum += t.amount;
-      s.total.count += 1;
       if (mode === "vm") {
         if (t.id.startsWith("RECOV-") || t.category.includes("Encaissement") || t.category.includes("Règlement Global")) {
           s.vmRecov.sum += t.amount; s.vmRecov.count += 1;
@@ -84,18 +82,24 @@ export function BilanPeriodique({
           s.vmSwap.sum += t.amount; s.vmSwap.count += 1;
         } else if (t.type === "withdrawal") {
           s.vmRetrait.sum += t.amount; s.vmRetrait.count += 1;
+          s.total.sum += t.amount;
+          s.total.count += 1;
         } else {
           if (t.category.includes("Crédit Dehors") || t.category.includes("Crédit")) {
             s.vmCredit.sum += t.amount; s.vmCredit.count += 1;
+            // Treat as deposit (envoi) too
+            s.vmEnvoi.sum += t.amount; s.vmEnvoi.count += 1;
           } else {
             s.vmEnvoi.sum += t.amount; s.vmEnvoi.count += 1;
           }
+          s.total.sum += t.amount;
+          s.total.count += 1;
         }
       } else {
-        if (t.type === "deposit")    { s.deposit.sum    += t.amount; s.deposit.count    += 1; }
-        else if (t.type === "withdrawal") { s.withdrawal.sum += t.amount; s.withdrawal.count += 1; }
-        else if (t.type === "credit")     { s.credit.sum     += t.amount; s.credit.count     += 1; }
-        else if (t.type === "forfait")    { s.forfait.sum    += t.amount; s.forfait.count    += 1; }
+        if (t.type === "deposit")    { s.deposit.sum    += t.amount; s.deposit.count    += 1; s.total.sum += t.amount; s.total.count += 1; }
+        else if (t.type === "withdrawal") { s.withdrawal.sum += t.amount; s.withdrawal.count += 1; s.total.sum += t.amount; s.total.count += 1; }
+        else if (t.type === "credit")     { s.credit.sum     += t.amount; s.credit.count     += 1; s.total.sum += t.amount; s.total.count += 1; }
+        else if (t.type === "forfait")    { s.forfait.sum    += t.amount; s.forfait.count    += 1; s.total.sum += t.amount; s.total.count += 1; }
         else if (t.type === "appro_sim")  { s.appro.sum      += t.amount; s.appro.count      += 1; }
         else if (t.type === "ajust_cash") { s.ajust.sum      += t.amount; s.ajust.count      += 1; }
       }
@@ -143,10 +147,8 @@ export function BilanPeriodique({
   const rows =
     mode === "vm"
       ? [
-          { label: "Envois (Cash Direct)", dot: "bg-cyan-400", textColor: isDark ? "text-cyan-400" : "text-cyan-700", s: stats.vmEnvoi },
+          { label: "Envois (Dépôts / Crédits)", dot: "bg-cyan-400", textColor: isDark ? "text-cyan-400" : "text-cyan-700", s: stats.vmEnvoi },
           { label: "Retraits (Cash Versé)", dot: "bg-rose-500", textColor: isDark ? "text-rose-400" : "text-rose-700", s: stats.vmRetrait },
-          { label: "Crédits Dehors (Terrain)", dot: "bg-amber-500", textColor: isDark ? "text-amber-400" : "text-amber-800", s: stats.vmCredit },
-          { label: "Récupérations de Crédits", dot: "bg-emerald-500", textColor: isDark ? "text-emerald-400" : "text-emerald-700", s: stats.vmRecov },
           { label: "Rotations Agence (Échanges)", dot: "bg-indigo-500", textColor: isDark ? "text-indigo-400" : "text-indigo-700", s: stats.vmSwap },
         ]
       : [
@@ -380,6 +382,33 @@ export function BilanPeriodique({
           </tbody>
         </table>
       </div>
+
+      {mode === "vm" && (
+        <div className={`grid grid-cols-2 gap-4 p-4 rounded-2xl border ${isDark ? "bg-[#050807] border-[#1C2C22]" : "bg-stone-50 border-stone-200"}`}>
+          <div className="flex flex-col gap-0.5">
+            <span className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-amber-500" : "text-amber-700"}`}>
+              ⚠️ Crédits Dehors Accordés
+            </span>
+            <div className="font-mono font-bold text-base text-amber-500">
+              {stats.vmCredit.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+            </div>
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-500" : "text-stone-500"}`}>
+              {stats.vmCredit.count} transaction{stats.vmCredit.count !== 1 ? "s" : ""} (Déjà inclus dans les Envois)
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-emerald-500" : "text-emerald-700"}`}>
+              ✔ Crédits Récupérés (Encaissements)
+            </span>
+            <div className="font-mono font-bold text-base text-emerald-500">
+              {stats.vmRecov.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+            </div>
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-500" : "text-stone-500"}`}>
+              {stats.vmRecov.count} transaction{stats.vmRecov.count !== 1 ? "s" : ""} (Non cumulés dans le CA)
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Mini bar chart for week/month/custom */}
       {byDate && byDate.length > 0 && (() => {
