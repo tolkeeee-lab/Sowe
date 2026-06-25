@@ -54,6 +54,7 @@ import { SaisieRapide } from '../components/saisie-rapide'
 import { DettesRappels } from '../components/dettes-rappels'
 import { Inventaire } from '../components/inventaire'
 import { BilanPeriodique } from '../components/bilan-periodique'
+import { HistoriqueTransactions } from '../components/historique-transactions'
 
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -112,7 +113,7 @@ const BENIN_FORFAITS = {
 export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [activeTab, setActiveTab] = useState<'cabine' | 'vm'>('cabine')
-  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts' | 'inventaire' | 'bilan'>('dashboard')
+  const [subTab, setSubTab] = useState<'dashboard' | 'caisse' | 'notes' | 'debts' | 'inventaire' | 'bilan' | 'historique'>('dashboard')
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -2677,6 +2678,17 @@ export default function Home() {
                   <span>Bilan Périodique</span>
                 </button>
               )}
+              <button
+                onClick={() => setSubTab('historique')}
+                className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
+                  subTab === 'historique'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <Clock className="size-4" />
+                <span>Historique</span>
+              </button>
             </nav>
           )}
 
@@ -2835,6 +2847,19 @@ export default function Home() {
           />
         )}
 
+        {subTab === 'historique' && (
+          <HistoriqueTransactions
+            theme={theme}
+            transactions={role === 'vm' ? transactions.filter(isVmTransaction) : (activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t)))}
+            TODAY_STR={TODAY_STR}
+            YESTERDAY_STR={YESTERDAY_STR}
+            role={role}
+            getWeekRange={getWeekRange}
+            getLocalDateString={getLocalDateString}
+            onDeleteTransaction={deleteTransaction}
+          />
+        )}
+
         {/* TAB 3: MON ESPACE VM (Vendeur Motorisé) */}
         {activeTab === 'vm' && subTab === 'dashboard' && (
           <DashboardVm
@@ -2948,6 +2973,17 @@ export default function Home() {
                   <span>Bilan</span>
                 </button>
               )}
+              <button
+                onClick={() => setSubTab('historique')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  subTab === 'historique'
+                    ? 'bg-natural-accent text-[#0A0F0D]'
+                    : theme === 'dark' ? 'text-stone-400 hover:text-white hover:bg-stone-900/40' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40'
+                }`}
+              >
+                <Clock className="size-4" />
+                <span>Historique</span>
+              </button>
             </div>
           </div>
           </>
