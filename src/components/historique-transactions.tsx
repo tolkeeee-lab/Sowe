@@ -25,6 +25,7 @@ interface HistoriqueTransactionsProps {
   getWeekRange: (dateStr: string) => { start: string; end: string };
   getLocalDateString: (d?: Date) => string;
   activeTab: 'cabine' | 'vm';
+  onViewReceipt?: (txn: Transaction) => void;
   onDeleteTransaction?: (id: string) => Promise<void>;
 }
 
@@ -39,6 +40,7 @@ export function HistoriqueTransactions({
   getWeekRange,
   getLocalDateString,
   activeTab,
+  onViewReceipt,
   onDeleteTransaction
 }: HistoriqueTransactionsProps) {
   const isDark = theme === 'dark'
@@ -449,7 +451,7 @@ export function HistoriqueTransactions({
                 <th className="py-3 px-4 font-sans">Client / Téléphone</th>
                 <th className="py-3 px-4 font-sans">Type & Catégorie</th>
                 <th className="py-3 px-4 text-right font-sans">Montant (FCFA)</th>
-                {role === 'proprio' && <th className="py-3 px-4 text-center font-sans">Actions</th>}
+                <th className="py-3 px-4 text-center font-sans">Actions</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDark ? 'divide-stone-850' : 'divide-stone-150'}`}>
@@ -569,10 +571,20 @@ export function HistoriqueTransactions({
                         )}
                       </td>
 
-                      {/* Actions (Delete for Owner) */}
-                      {role === 'proprio' && (
-                        <td className="py-3.5 px-4 text-center">
-                          {onDeleteTransaction ? (
+                      {/* Actions Column (Print Ticket for everyone, Delete for Proprio) */}
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {onViewReceipt && (
+                            <button
+                              type="button"
+                              onClick={() => onViewReceipt(t)}
+                              className="text-stone-500 hover:text-natural-accent transition-colors p-1 cursor-pointer"
+                              title="Voir / Imprimer le reçu"
+                            >
+                              📄
+                            </button>
+                          )}
+                          {role === 'proprio' && onDeleteTransaction && (
                             <button
                               type="button"
                               onClick={() => onDeleteTransaction(t.id)}
@@ -581,15 +593,15 @@ export function HistoriqueTransactions({
                             >
                               <Trash2 className="size-3.5" />
                             </button>
-                          ) : '—'}
-                        </td>
-                      )}
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td colSpan={role === 'proprio' ? 6 : 5} className="py-12 text-center text-stone-500">
+                  <td colSpan={6} className="py-12 text-center text-stone-500">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="size-7 text-stone-600" />
                       <span className="font-sans text-xs">Aucune transaction trouvée pour les filtres sélectionnés.</span>

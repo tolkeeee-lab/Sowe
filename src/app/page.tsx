@@ -1739,7 +1739,9 @@ export default function Home() {
 
   // WhatsApp share link generator
   const shareOnWhatsApp = (txn: Transaction) => {
-    const text = `*MOMO PREMIUM - REÇU DE DÉPÔT*%0A---------------------------%0A*Date* : ${txn.date} à ${txn.time}%0A*Réseau* : ${txn.operator.toUpperCase()}%0A*Numéro Client* : ${txn.phone}%0A*Montant* : ${txn.amount.toLocaleString('fr-FR')} FCFA%0A*Statut* : RÉUSSI%0A---------------------------%0AMerci de votre confiance !`
+    const businessName = profile?.business_name || "MOMO PREMIUM"
+    const cabinName = cabins.find(c => c.id === activeCabinId)?.name || "Cabine"
+    const text = `*${businessName.toUpperCase()} - REÇU (${txn.type.toUpperCase()})*%0A---------------------------%0A*Cabine* : ${cabinName}%0A*Date* : ${txn.date} à ${txn.time}%0A*Réseau* : ${txn.operator.toUpperCase()}%0A*Numéro Client* : ${txn.phone}%0A*Montant* : ${txn.amount.toLocaleString('fr-FR')} FCFA%0A*Statut* : RÉUSSI%0A---------------------------%0AMerci de votre confiance !`
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
 
@@ -2874,6 +2876,7 @@ export default function Home() {
             getWeekRange={getWeekRange}
             getLocalDateString={getLocalDateString}
             activeTab={activeTab}
+            onViewReceipt={setActiveReceipt}
             onDeleteTransaction={deleteTransaction}
           />
         )}
@@ -3045,8 +3048,15 @@ export default function Home() {
 
               {/* Receipt Content */}
               <div className="text-center mt-3">
-                <h4 className="text-xs font-black tracking-widest uppercase">*** REÇU DE PAIEMENT ***</h4>
-                <p className="text-[10px] text-stone-500 uppercase mt-0.5">Momo Premium - Cabine Bénin</p>
+                <h4 className="text-xs font-black tracking-widest uppercase">
+                  {activeReceipt.type === 'withdrawal' ? '*** TICKET DE RETRAIT ***' : '*** REÇU DE PAIEMENT ***'}
+                </h4>
+                <p className="text-[10px] text-stone-500 uppercase mt-0.5">
+                  {profile?.business_name || "MOMO PREMIUM"}
+                </p>
+                <p className="text-[9px] text-stone-400 uppercase font-bold">
+                  {cabins.find(c => c.id === activeCabinId)?.name || "Cabine active"}
+                </p>
                 <p className="text-[8px] text-stone-400 font-mono mt-1">ID: {activeReceipt.id}</p>
               </div>
 
@@ -3067,10 +3077,14 @@ export default function Home() {
                 </div>
                 <div className="flex justify-between">
                   <span>TYPE FLUX :</span>
-                  <span>ENVOI (DEPOT)</span>
+                  <span className="font-bold uppercase">
+                    {activeReceipt.type === 'deposit' ? 'ENVOI (DEPOT)' 
+                     : activeReceipt.type === 'withdrawal' ? 'RETRAIT' 
+                     : activeReceipt.type === 'credit' ? 'VENTE DE CREDIT' : 'FORFAIT'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>FRAIS CABINE :</span>
+                  <span>FRAIS :</span>
                   <span>0 FCFA</span>
                 </div>
               </div>
