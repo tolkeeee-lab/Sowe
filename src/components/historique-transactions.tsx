@@ -51,6 +51,7 @@ export function HistoriqueTransactions({
   const [searchQuery, setSearchQuery] = useState('')
   const [opFilter, setOpFilter] = useState<'all' | 'mtn' | 'moov' | 'celtiis'>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'credit' | 'forfait'>('all')
+  const [envFilter, setEnvFilter] = useState<'cabine' | 'vm'>(role === 'vm' ? 'vm' : 'cabine')
 
   // Parse period labels
   const periodLabel = useMemo(() => {
@@ -76,6 +77,18 @@ export function HistoriqueTransactions({
   // Filter transactions based on date and selections
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
+      // 0. Environment (Cabine vs VM) Filter
+      const isVm = t.id.startsWith('VM-') || 
+                   t.id.startsWith('RECOV-') || 
+                   t.id.startsWith('agency-swap-') || 
+                   t.category.includes('Vente Mobile') || 
+                   t.category.includes('Point Agence') || 
+                   t.category.includes('Terrain') || 
+                   t.category.includes('Règlement Global') || 
+                   t.clientName === 'AGENCE ROTATION';
+      if (envFilter === 'vm' && !isVm) return false
+      if (envFilter === 'cabine' && isVm) return false
+
       // 1. Date Range Filter
       let matchesDate = false
       if (periodType === 'day') {
@@ -113,7 +126,7 @@ export function HistoriqueTransactions({
 
       return true
     })
-  }, [transactions, periodType, selectedDate, customStart, customEnd, opFilter, typeFilter, searchQuery, getWeekRange])
+  }, [transactions, periodType, selectedDate, customStart, customEnd, opFilter, typeFilter, searchQuery, envFilter, getWeekRange])
 
   // Compute stats on filtered list
   const stats = useMemo(() => {
@@ -186,6 +199,32 @@ export function HistoriqueTransactions({
       <section className={`p-5 rounded-[28px] border transition-all flex flex-col gap-4 ${
         isDark ? 'bg-[#0E1B15]/30 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
       }`}>
+        {/* Environment selector for Proprietor */}
+        {role === 'proprio' && (
+          <div className="flex gap-2 border-b border-stone-500/10 pb-3.5">
+            <button
+              onClick={() => setEnvFilter('cabine')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                envFilter === 'cabine'
+                  ? 'bg-natural-accent text-[#0A0F0D] font-black'
+                  : isDark ? 'text-stone-400 hover:text-white bg-stone-900/20' : 'text-stone-600 hover:text-stone-900 bg-stone-100/50'
+              }`}
+            >
+              🗄️ Espace Cabine
+            </button>
+            <button
+              onClick={() => setEnvFilter('vm')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                envFilter === 'vm'
+                  ? 'bg-natural-accent text-[#0A0F0D] font-black'
+                  : isDark ? 'text-stone-400 hover:text-white bg-stone-900/20' : 'text-stone-600 hover:text-stone-900 bg-stone-100/50'
+              }`}
+            >
+              🛵 Espace Vendeur Mobile (VM)
+            </button>
+          </div>
+        )}
+
         {/* Period Tabs */}
         <div className="flex flex-wrap gap-4 justify-between items-center border-b border-stone-500/10 pb-4">
           <div className={`flex p-0.5 rounded-xl border text-[10px] font-bold ${

@@ -2850,7 +2850,7 @@ export default function Home() {
         {subTab === 'historique' && (
           <HistoriqueTransactions
             theme={theme}
-            transactions={role === 'vm' ? transactions.filter(isVmTransaction) : (activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t)))}
+            transactions={role === 'vm' ? transactions.filter(isVmTransaction) : (role === 'proprio' ? transactions : transactions.filter(t => !isVmTransaction(t)))}
             TODAY_STR={TODAY_STR}
             YESTERDAY_STR={YESTERDAY_STR}
             role={role}

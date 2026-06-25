@@ -155,8 +155,6 @@ export function BilanPeriodique({
           { label: "Retraits (Sorties)", dot: "bg-rose-500", textColor: isDark ? "text-rose-400" : "text-rose-700", s: stats.withdrawal },
           { label: "Ventes de Crédits", dot: "bg-amber-500", textColor: isDark ? "text-amber-400" : "text-amber-800", s: stats.credit },
           { label: "Ventes de Forfaits", dot: "bg-emerald-500", textColor: isDark ? "text-emerald-400" : "text-emerald-700", s: stats.forfait },
-          { label: "Recharges SIM (Appro)", dot: "bg-indigo-500", textColor: isDark ? "text-indigo-400" : "text-indigo-700", s: stats.appro },
-          { label: "Ajustements Caisse (Cash)", dot: "bg-stone-500", textColor: isDark ? "text-stone-400" : "text-stone-600", s: stats.ajust },
         ];
 
   const byDate = useMemo(() => {
@@ -415,6 +413,33 @@ export function BilanPeriodique({
             </div>
             <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-550" : "text-stone-500"}`}>
               {stats.vmSwap.count} transaction{stats.vmSwap.count !== 1 ? "s" : ""} (Non cumulés dans le CA)
+            </span>
+          </div>
+        </div>
+      )}
+
+      {mode === "cabine" && (
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl border ${isDark ? "bg-[#050807] border-[#1C2C22]" : "bg-stone-50 border-stone-200"}`}>
+          <div className="flex flex-col gap-0.5">
+            <span className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-indigo-455" : "text-indigo-650"}`}>
+              🔄 Recharges SIM (Approvisionnements)
+            </span>
+            <div className="font-mono font-bold text-base text-indigo-500">
+              {stats.appro.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+            </div>
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-550" : "text-stone-500"}`}>
+              {stats.appro.count} transaction{stats.appro.count !== 1 ? "s" : ""} (Non cumulés dans le CA)
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDark ? "text-stone-400" : "text-stone-600"}`}>
+              💵 Ajustements Caisse (Mouvements Safe/Cash)
+            </span>
+            <div className="font-mono font-bold text-base text-stone-500">
+              {stats.ajust.sum.toLocaleString("fr-FR")} <span className="text-[10px] text-stone-500 font-normal">FCFA</span>
+            </div>
+            <span className={`text-[8.5px] leading-tight ${isDark ? "text-stone-550" : "text-stone-500"}`}>
+              {stats.ajust.count} transaction{stats.ajust.count !== 1 ? "s" : ""} (Non cumulés dans le CA)
             </span>
           </div>
         </div>
