@@ -1812,6 +1812,27 @@ export default function Home() {
     }
 
     const amount = parseFloat(amountInput)
+    if (isNaN(amount) || amount <= 0) {
+      alert("⚠️ Veuillez renseigner un montant valide supérieur à 0.")
+      setLoading(false)
+      return
+    }
+
+    // Balance validations to keep caissiers comfortable and prevent errors
+    if (actionType === 'deposit' || actionType === 'credit' || actionType === 'forfait') {
+      if (balances[opInput] < amount) {
+        alert(`❌ Solde SIM ${opInput.toUpperCase()} insuffisant ! Solde disponible : ${balances[opInput].toLocaleString('fr-FR')} FCFA. L'opération a été bloquée pour éviter les écarts.`);
+        setLoading(false)
+        return
+      }
+    } else if (actionType === 'withdrawal') {
+      if (balances.cash < amount) {
+        alert(`❌ Tiroir Cash (Espèces) insuffisant ! Cash disponible : ${balances.cash.toLocaleString('fr-FR')} FCFA. L'opération a été bloquée pour éviter les écarts.`);
+        setLoading(false)
+        return
+      }
+    }
+
     const isBlacklisted = blacklist.includes(phoneInput.trim())
     if (isBlacklisted) {
       alert("⚠️ Ce numéro est répertorié dans la BLACKLIST COMMUNAUTAIRE. Soyez vigilant !")
