@@ -1222,7 +1222,7 @@ export function DashboardVm({
                                   <span className={`font-mono font-bold ${
                                     txn.type === 'deposit' ? 'text-cyan-400' : 'text-rose-400'
                                   }`}>
-                                    {txn.type === 'deposit' ? '+' : '-'}{txn.amount.toLocaleString('fr-FR')} F
+                                    {txn.type === 'deposit' ? '+' : ''}{txn.amount.toLocaleString('fr-FR')} F
                                   </span>
                                 </div>
                               ))}

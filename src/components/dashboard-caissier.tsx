@@ -344,7 +344,7 @@ export function DashboardCaissier({
                     </div>
 
                     <div className="font-mono font-bold text-sm">
-                      {txn.type === 'saisie_rapide' && txn.amount > 0 ? '+ ' : txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : '-'} {txn.amount > 0 ? txn.amount.toLocaleString('fr-FR') : '—'} {txn.amount > 0 ? <span className="text-[10px] font-normal">FCFA</span> : null}
+                      {txn.type === 'saisie_rapide' && txn.amount > 0 ? '+ ' : txn.type === 'deposit' || txn.type === 'credit' || txn.type === 'forfait' || (txn.type === 'ajust_cash' && txn.category === 'Injection Cash') || txn.type === 'appro_sim' ? '+' : ''} {txn.amount > 0 ? txn.amount.toLocaleString('fr-FR') : '—'} {txn.amount > 0 ? <span className="text-[10px] font-normal">FCFA</span> : null}
                     </div>
                   </div>
 

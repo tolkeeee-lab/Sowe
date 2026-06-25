@@ -562,7 +562,7 @@ export function HistoriqueTransactions({
                             ? (isDark ? 'text-emerald-400' : 'text-emerald-700') 
                             : (isDark ? 'text-rose-400' : 'text-rose-700')
                         }`}>
-                          {isDeposit ? '+' : '-'}{t.amount.toLocaleString('fr-FR')} F
+                          {isDeposit ? '+' : ''}{t.amount.toLocaleString('fr-FR')} F
                         </span>
                         {t.note && (
                           <span className={`block text-[8.5px] font-sans mt-0.5 italic ${isDark ? 'text-stone-550' : 'text-stone-400'}`} title={t.note}>

@@ -82,8 +82,7 @@ export function BilanPeriodique({
           s.vmSwap.sum += t.amount; s.vmSwap.count += 1;
         } else if (t.type === "withdrawal") {
           s.vmRetrait.sum += t.amount; s.vmRetrait.count += 1;
-          s.total.sum += t.amount;
-          s.total.count += 1;
+          // Retraits ne comptent pas dans le Chiffre d'Affaires du VM
         } else {
           if (t.category.includes("Crédit Dehors") || t.category.includes("Crédit")) {
             s.vmCredit.sum += t.amount; s.vmCredit.count += 1;
