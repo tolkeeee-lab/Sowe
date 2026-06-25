@@ -223,7 +223,6 @@ export function DashboardVm({
 
     // Set operator
     setVmOperator(setupOperator)
-    localStorage.setItem('momo_vm_operator', setupOperator)
 
     // Set capital
     setSommeConfiee(cap)

@@ -24,6 +24,7 @@ interface HistoriqueTransactionsProps {
   role: 'proprio' | 'employe' | 'vm';
   getWeekRange: (dateStr: string) => { start: string; end: string };
   getLocalDateString: (d?: Date) => string;
+  activeTab: 'cabine' | 'vm';
   onDeleteTransaction?: (id: string) => Promise<void>;
 }
 
@@ -37,6 +38,7 @@ export function HistoriqueTransactions({
   role,
   getWeekRange,
   getLocalDateString,
+  activeTab,
   onDeleteTransaction
 }: HistoriqueTransactionsProps) {
   const isDark = theme === 'dark'
@@ -50,8 +52,10 @@ export function HistoriqueTransactions({
   // Advanced search/filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [opFilter, setOpFilter] = useState<'all' | 'mtn' | 'moov' | 'celtiis'>('all')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'credit' | 'forfait'>('all')
-  const [envFilter, setEnvFilter] = useState<'cabine' | 'vm'>(role === 'vm' ? 'vm' : 'cabine')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'credit' | 'forfait' | 'vmEnvoi' | 'vmRetrait' | 'vmCredit' | 'vmRecov' | 'vmSwap'>('all')
+  
+  // envFilter is locked to the workspace environment (Cabine vs VM)
+  const envFilter = activeTab
 
   // Parse period labels
   const periodLabel = useMemo(() => {
@@ -108,7 +112,22 @@ export function HistoriqueTransactions({
       if (opFilter !== 'all' && t.operator !== opFilter) return false
 
       // 3. Type Filter
-      if (typeFilter !== 'all' && t.type !== typeFilter) return false
+      if (typeFilter !== 'all') {
+        if (envFilter === 'vm') {
+          const isRecov = t.id.startsWith("RECOV-") || t.category.includes("Encaissement") || t.category.includes("Règlement Global");
+          const isSwap = t.id.startsWith("agency-swap-") || t.category.includes("Échange") || t.category.includes("Rotation") || t.clientName === "AGENCE ROTATION";
+          const isWithdrawal = t.type === "withdrawal";
+          const isCredit = t.category.includes("Crédit Dehors") || t.category.includes("Crédit");
+
+          if (typeFilter === 'vmRecov' && !isRecov) return false;
+          if (typeFilter === 'vmSwap' && !isSwap) return false;
+          if (typeFilter === 'vmRetrait' && (!isWithdrawal || isRecov || isSwap)) return false;
+          if (typeFilter === 'vmCredit' && (!isCredit || isRecov || isSwap)) return false;
+          if (typeFilter === 'vmEnvoi' && (isRecov || isSwap || isWithdrawal || isCredit)) return false;
+        } else {
+          if (t.type !== typeFilter) return false;
+        }
+      }
 
       // 4. Text Search (Phone, ClientName, ID, Category, Note)
       if (searchQuery.trim() !== '') {
@@ -136,13 +155,26 @@ export function HistoriqueTransactions({
     let withdrawalCount = 0
 
     filteredTransactions.forEach(t => {
-      if (t.type === 'withdrawal') {
-        withdrawalSum += t.amount
-        withdrawalCount++
+      if (envFilter === 'vm') {
+        const isRecov = t.id.startsWith("RECOV-") || t.category.includes("Encaissement") || t.category.includes("Règlement Global");
+        const isSwap = t.id.startsWith("agency-swap-") || t.category.includes("Échange") || t.category.includes("Rotation") || t.clientName === "AGENCE ROTATION";
+        if (isRecov || isSwap) {
+          // Exclude from total CA stats to avoid double counting
+        } else if (t.type === 'withdrawal') {
+          withdrawalSum += t.amount
+          withdrawalCount++
+        } else {
+          depositSum += t.amount
+          depositCount++
+        }
       } else {
-        // deposit, credit, forfait, appro, ajust are all cash inflows/outflows or sales
-        depositSum += t.amount
-        depositCount++
+        if (t.type === 'withdrawal') {
+          withdrawalSum += t.amount
+          withdrawalCount++
+        } else {
+          depositSum += t.amount
+          depositCount++
+        }
       }
     })
 
@@ -199,31 +231,7 @@ export function HistoriqueTransactions({
       <section className={`p-5 rounded-[28px] border transition-all flex flex-col gap-4 ${
         isDark ? 'bg-[#0E1B15]/30 border-[#1C2C22]' : 'bg-white border-[#DCD6CD] shadow-sm'
       }`}>
-        {/* Environment selector for Proprietor */}
-        {role === 'proprio' && (
-          <div className="flex gap-2 border-b border-stone-500/10 pb-3.5">
-            <button
-              onClick={() => setEnvFilter('cabine')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                envFilter === 'cabine'
-                  ? 'bg-natural-accent text-[#0A0F0D] font-black'
-                  : isDark ? 'text-stone-400 hover:text-white bg-stone-900/20' : 'text-stone-600 hover:text-stone-900 bg-stone-100/50'
-              }`}
-            >
-              🗄️ Espace Cabine
-            </button>
-            <button
-              onClick={() => setEnvFilter('vm')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                envFilter === 'vm'
-                  ? 'bg-natural-accent text-[#0A0F0D] font-black'
-                  : isDark ? 'text-stone-400 hover:text-white bg-stone-900/20' : 'text-stone-600 hover:text-stone-900 bg-stone-100/50'
-              }`}
-            >
-              🛵 Espace Vendeur Mobile (VM)
-            </button>
-          </div>
-        )}
+        {/* Environment toggle removed. Users stay in their active workspace context */}
 
         {/* Period Tabs */}
         <div className="flex flex-wrap gap-4 justify-between items-center border-b border-stone-500/10 pb-4">
@@ -360,9 +368,6 @@ export function HistoriqueTransactions({
             </select>
           </div>
 
-          {/* Type Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-stone-500" />
             <select
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value as any)}
@@ -370,13 +375,25 @@ export function HistoriqueTransactions({
                 isDark ? 'bg-[#050807] border-[#1C2C22] text-white' : 'bg-stone-50 border-[#DCD6CD]'
               }`}
             >
-              <option value="all">Toutes les opérations</option>
-              <option value="deposit">Dépôts / Envois</option>
-              <option value="withdrawal">Retraits</option>
-              <option value="credit">Crédits</option>
-              <option value="forfait">Forfaits</option>
+              {envFilter === 'vm' ? (
+                <>
+                  <option value="all">Toutes les opérations</option>
+                  <option value="vmEnvoi">Envois (Dépôts)</option>
+                  <option value="vmRetrait">Retraits</option>
+                  <option value="vmCredit">Crédits Dehors</option>
+                  <option value="vmRecov">Récupérations de Crédits</option>
+                  <option value="vmSwap">Rotations Agence</option>
+                </>
+              ) : (
+                <>
+                  <option value="all">Toutes les opérations</option>
+                  <option value="deposit">Dépôts / Envois</option>
+                  <option value="withdrawal">Retraits</option>
+                  <option value="credit">Crédits</option>
+                  <option value="forfait">Forfaits</option>
+                </>
+              )}
             </select>
-          </div>
         </div>
       </section>
 
@@ -472,16 +489,67 @@ export function HistoriqueTransactions({
 
                       {/* Type & Category */}
                       <td className="py-3.5 px-4 font-sans">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
-                          t.type === 'withdrawal' 
-                            ? (isDark ? 'bg-rose-950/20 text-rose-400 border border-rose-900/30' : 'bg-rose-50 text-rose-700 border border-rose-100')
-                            : t.type === 'credit'
-                            ? (isDark ? 'bg-amber-950/20 text-amber-500 border border-amber-900/30' : 'bg-amber-50 text-amber-800 border border-amber-100')
-                            : (isDark ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-900/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-100')
-                        }`}>
-                          {t.type === 'withdrawal' ? <ArrowDownLeft className="size-2.5" /> : <ArrowUpRight className="size-2.5" />}
-                          {t.type === 'withdrawal' ? 'Retrait' : t.type === 'credit' ? 'Crédit' : 'Dépôt'}
-                        </span>
+                        {envFilter === 'vm' ? (() => {
+                          const isRecov = t.id.startsWith("RECOV-") || t.category.includes("Encaissement") || t.category.includes("Règlement Global");
+                          const isSwap = t.id.startsWith("agency-swap-") || t.category.includes("Échange") || t.category.includes("Rotation") || t.clientName === "AGENCE ROTATION";
+                          const isWithdrawal = t.type === "withdrawal";
+                          const isCredit = t.category.includes("Crédit Dehors") || t.category.includes("Crédit");
+
+                          if (isRecov) {
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                isDark ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-900/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              }`}>
+                                <ArrowUpRight className="size-2.5" /> Récupération
+                              </span>
+                            );
+                          }
+                          if (isSwap) {
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                isDark ? 'bg-indigo-950/20 text-indigo-400 border border-indigo-900/30' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                              }`}>
+                                🔄 Rotation
+                              </span>
+                            );
+                          }
+                          if (isWithdrawal) {
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                isDark ? 'bg-rose-950/20 text-rose-400 border border-rose-900/30' : 'bg-rose-50 text-rose-700 border border-rose-100'
+                              }`}>
+                                <ArrowDownLeft className="size-2.5" /> Retrait
+                              </span>
+                            );
+                          }
+                          if (isCredit) {
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                isDark ? 'bg-amber-950/20 text-amber-500 border border-amber-900/30' : 'bg-amber-50 text-amber-800 border border-amber-100'
+                              }`}>
+                                <ArrowUpRight className="size-2.5" /> Crédit Dehors
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                              isDark ? 'bg-cyan-950/20 text-cyan-400 border border-cyan-900/30' : 'bg-cyan-50 text-cyan-700 border border-cyan-100'
+                            }`}>
+                              <ArrowUpRight className="size-2.5" /> Envoi
+                            </span>
+                          );
+                        })() : (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                            t.type === 'withdrawal' 
+                              ? (isDark ? 'bg-rose-950/20 text-rose-400 border border-rose-900/30' : 'bg-rose-50 text-rose-700 border border-rose-100')
+                              : t.type === 'credit'
+                              ? (isDark ? 'bg-amber-950/20 text-amber-500 border border-amber-900/30' : 'bg-amber-50 text-amber-800 border border-amber-100')
+                              : (isDark ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-900/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-100')
+                          }`}>
+                            {t.type === 'withdrawal' ? <ArrowDownLeft className="size-2.5" /> : <ArrowUpRight className="size-2.5" />}
+                            {t.type === 'withdrawal' ? 'Retrait' : t.type === 'credit' ? 'Crédit' : 'Dépôt'}
+                          </span>
+                        )}
                         <span className={`block text-[9px] mt-1 ${isDark ? 'text-stone-600' : 'text-stone-400'}`}>{t.category}</span>
                       </td>
 
