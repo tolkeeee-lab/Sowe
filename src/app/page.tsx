@@ -355,6 +355,16 @@ export default function Home() {
       if (profileErr) throw profileErr
 
       if (profileData) {
+        if (profileData.role !== 'proprio' && profileData.owner_id) {
+          const { data: bossProfile } = await client
+            .from('momo_profiles')
+            .select('business_name')
+            .eq('id', profileData.owner_id)
+            .maybeSingle()
+          if (bossProfile) {
+            profileData.business_name = bossProfile.business_name
+          }
+        }
         setProfile(profileData)
         setRole(profileData.role)
         localStorage.setItem('momo_role', profileData.role)
@@ -1741,7 +1751,8 @@ export default function Home() {
   const shareOnWhatsApp = (txn: Transaction) => {
     const businessName = profile?.business_name || "MOMO PREMIUM"
     const cabinName = cabins.find(c => c.id === activeCabinId)?.name || "Cabine"
-    const text = `*${businessName.toUpperCase()} - REÇU (${txn.type.toUpperCase()})*%0A---------------------------%0A*Cabine* : ${cabinName}%0A*Date* : ${txn.date} à ${txn.time}%0A*Réseau* : ${txn.operator.toUpperCase()}%0A*Numéro Client* : ${txn.phone}%0A*Montant* : ${txn.amount.toLocaleString('fr-FR')} FCFA%0A*Statut* : RÉUSSI%0A---------------------------%0AMerci de votre confiance !`
+    const clientText = txn.clientName ? `*Nom Client* : ${txn.clientName.toUpperCase()}%0A` : ""
+    const text = `*${businessName.toUpperCase()} - REÇU (${txn.type.toUpperCase()})*%0A---------------------------%0A*Cabine* : ${cabinName}%0A*Date* : ${txn.date} à ${txn.time}%0A*Réseau* : ${txn.operator.toUpperCase()}%0A*Numéro Client* : ${txn.phone}%0A${clientText}*Montant* : ${txn.amount.toLocaleString('fr-FR')} FCFA%0A*Statut* : RÉUSSI%0A---------------------------%0AMerci de votre confiance !`
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
 
@@ -3075,6 +3086,12 @@ export default function Home() {
                   <span>NUMERO CLIENT :</span>
                   <span className="font-bold">{activeReceipt.phone}</span>
                 </div>
+                {activeReceipt.clientName && (
+                  <div className="flex justify-between">
+                    <span>NOM CLIENT :</span>
+                    <span className="font-bold uppercase">{activeReceipt.clientName}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>TYPE FLUX :</span>
                   <span className="font-bold uppercase">
