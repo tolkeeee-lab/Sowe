@@ -437,9 +437,53 @@ export function HistoriqueTransactions({
       </div>
 
       {/* HISTORIC LIST TABLE */}
-      <div className={`overflow-hidden rounded-[24px] border shadow-sm ${
+      <div className={`overflow-hidden rounded-[24px] border shadow-sm flex flex-col ${
         isDark ? 'bg-[#0A0F0D] border-stone-850' : 'bg-white border-stone-200'
       }`}>
+        {/* Quick Separation Buttons for Entrées vs Sorties */}
+        <div className={`p-3.5 border-b flex flex-wrap items-center justify-between gap-3 ${
+          isDark ? 'bg-[#050807] border-stone-850' : 'bg-stone-50 border-stone-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase text-stone-400 font-sans tracking-wider">Séparer dans la vue :</span>
+            <div className="flex items-center gap-1 bg-stone-900/40 p-1 rounded-xl border border-stone-800/60 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => setTypeFilter('all')}
+                className={`px-3 py-1.5 rounded-lg transition-all font-sans cursor-pointer ${
+                  typeFilter === 'all' 
+                    ? 'bg-natural-accent text-stone-950 font-black shadow' 
+                    : 'text-stone-400 hover:text-white'
+                }`}
+              >
+                🔄 Toutes ({filteredTransactions.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter(envFilter === 'vm' ? 'vmEnvoi' as any : 'deposit')}
+                className={`px-3 py-1.5 rounded-lg transition-all font-sans cursor-pointer flex items-center gap-1 ${
+                  typeFilter === 'deposit' || typeFilter === 'vmEnvoi'
+                    ? 'bg-emerald-500 text-stone-950 font-black shadow' 
+                    : 'text-emerald-400 hover:text-emerald-300'
+                }`}
+              >
+                📥 Entrées uniquement
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter(envFilter === 'vm' ? 'vmRetrait' as any : 'withdrawal')}
+                className={`px-3 py-1.5 rounded-lg transition-all font-sans cursor-pointer flex items-center gap-1 ${
+                  typeFilter === 'withdrawal' || typeFilter === 'vmRetrait'
+                    ? 'bg-rose-500 text-white font-black shadow' 
+                    : 'text-rose-400 hover:text-rose-300'
+                }`}
+              >
+                📤 Sorties uniquement
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="max-h-[500px] overflow-y-auto">
           <table className="w-full text-left text-xs font-mono border-collapse">
             <thead>
@@ -610,6 +654,35 @@ export function HistoriqueTransactions({
                 </tr>
               )}
             </tbody>
+            <tfoot>
+              <tr className={`border-t font-extrabold sticky bottom-0 z-10 ${
+                isDark ? 'bg-[#0E1B15] border-stone-800 text-stone-300' : 'bg-stone-100 border-stone-300 text-stone-900'
+              }`}>
+                <td colSpan={3} className="py-3.5 px-4 font-sans text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="uppercase tracking-wider">Cumul des Transactions :</span>
+                    <span className="text-[10px] text-stone-400 font-normal">({filteredTransactions.length} filtrée(s))</span>
+                  </div>
+                </td>
+                <td colSpan={3} className="py-3.5 px-4">
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-5 font-mono">
+                    {/* Somme Totale des Entrées */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-[10px] uppercase text-emerald-500 font-sans font-black">📥 Somme Entrées :</span>
+                      <span className="font-black text-emerald-400 text-sm">+{stats.depositSum.toLocaleString('fr-FR')} FCFA</span>
+                      <span className="text-[9px] text-stone-400 font-sans font-normal">({stats.depositCount})</span>
+                    </div>
+
+                    {/* Somme Totale des Sorties */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-[10px] uppercase text-rose-400 font-sans font-black">📤 Somme Sorties :</span>
+                      <span className="font-black text-rose-400 text-sm">-{stats.withdrawalSum.toLocaleString('fr-FR')} FCFA</span>
+                      <span className="text-[9px] text-stone-400 font-sans font-normal">({stats.withdrawalCount})</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
