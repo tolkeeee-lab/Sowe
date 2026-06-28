@@ -41,6 +41,22 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
   const [text, setText] = useState('')
   const [filter, setFilter] = useState<'all' | 'flows' | 'memos'>('all')
 
+  // Date & Search Filtering State
+  const getLocalDateString = (d = new Date()) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  const todayStr = getLocalDateString(new Date())
+  const yesterdayDate = new Date()
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+  const yesterdayStr = getLocalDateString(yesterdayDate)
+
+  const [dateFilterMode, setDateFilterMode] = useState<'today' | 'yesterday' | 'custom' | 'all'>('today')
+  const [customDate, setCustomDate] = useState(todayStr)
+  const [searchQuery, setSearchQuery] = useState('')
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isDark = theme === 'dark'
 
@@ -78,7 +94,32 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
     }
   }
 
-  // Calculate Totals & Net Difference for Today
+  // Filtered notes based on Date, Type, and Search
+  const filteredNotes = useMemo(() => {
+    return [...notes].reverse().filter(n => {
+      // 1. Date filter
+      if (dateFilterMode === 'today' && n.date !== todayStr) return false
+      if (dateFilterMode === 'yesterday' && n.date !== yesterdayStr) return false
+      if (dateFilterMode === 'custom' && n.date !== customDate) return false
+
+      // 2. Type filter
+      if (filter === 'flows' && !(n.entry_type === 'apport' || n.entry_type === 'sortie')) return false
+      if (filter === 'memos' && (n.entry_type === 'apport' || n.entry_type === 'sortie')) return false
+
+      // 3. Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matchText = n.text.toLowerCase().includes(q)
+        const matchPerson = n.person_name?.toLowerCase().includes(q)
+        const matchAmount = n.amount?.toString().includes(q)
+        if (!matchText && !matchPerson && !matchAmount) return false
+      }
+
+      return true
+    })
+  }, [notes, filter, dateFilterMode, customDate, searchQuery, todayStr, yesterdayStr])
+
+  // Calculate Totals & Net Difference for Selected Period
   const totals = useMemo(() => {
     let apports = 0
     let sorties = 0
@@ -89,7 +130,7 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
       celtiis: { apports: 0, sorties: 0 }
     }
 
-    notes.forEach(n => {
+    filteredNotes.forEach(n => {
       const amt = n.amount || 0
       const m = n.method || 'cash'
       if (n.entry_type === 'apport') {
@@ -124,16 +165,7 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
       virtuelSorties,
       virtuelDiff
     }
-  }, [notes])
-
-  // Filtered notes
-  const filteredNotes = useMemo(() => {
-    return [...notes].reverse().filter(n => {
-      if (filter === 'flows') return n.entry_type === 'apport' || n.entry_type === 'sortie'
-      if (filter === 'memos') return !n.entry_type || n.entry_type === 'memo'
-      return true
-    })
-  }, [notes, filter])
+  }, [filteredNotes])
 
   return (
     <section className="flex flex-col gap-5">
@@ -169,6 +201,72 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
           >
             📝 Mémos
           </button>
+        </div>
+      </div>
+
+      {/* Date & Search Filter Bar for History */}
+      <div className={`p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 ${isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-stone-200 shadow-sm'}`}>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+          <span className="text-[10px] uppercase text-stone-400 font-sans tracking-wider font-black flex items-center gap-1">
+            📅 Période du Cahier :
+          </span>
+          <div className="flex items-center gap-1 bg-stone-900/40 p-1 rounded-xl border border-stone-800/60 text-[10px]">
+            <button
+              type="button"
+              onClick={() => setDateFilterMode('today')}
+              className={`px-3 py-1.5 rounded-lg transition-all font-sans cursor-pointer ${
+                dateFilterMode === 'today' ? 'bg-natural-accent text-stone-950 font-black shadow' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Aujourd'hui
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilterMode('yesterday')}
+              className={`px-3 py-1.5 rounded-lg transition-all font-sans cursor-pointer ${
+                dateFilterMode === 'yesterday' ? 'bg-natural-accent text-stone-950 font-black shadow' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Hier
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilterMode('all')}
+              className={`px-3 py-1.5 rounded-lg transition-all font-sans cursor-pointer ${
+                dateFilterMode === 'all' ? 'bg-natural-accent text-stone-950 font-black shadow' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              📜 Tout l'historique ({notes.length})
+            </button>
+          </div>
+
+          {/* Custom date picker */}
+          <input 
+            type="date"
+            value={customDate}
+            onChange={e => {
+              if (e.target.value) {
+                setCustomDate(e.target.value)
+                setDateFilterMode('custom')
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl border font-mono text-xs focus:outline-none cursor-pointer ${
+              dateFilterMode === 'custom' ? 'border-natural-accent text-natural-accent font-bold' : isDark ? 'bg-[#050807] border-[#1C2C22] text-stone-400' : 'bg-stone-50 border-stone-300 text-stone-700'
+            }`}
+          />
+        </div>
+
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-xs min-w-[200px]">
+          <input 
+            type="text"
+            placeholder="🔍 Rechercher intervenant, motif..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className={`w-full px-3.5 py-2 rounded-xl border text-xs focus:outline-none ${
+              isDark ? 'bg-[#050807] border-[#1C2C22] text-white placeholder:text-stone-600' : 'bg-stone-50 border-stone-300 text-stone-900'
+            }`}
+          />
         </div>
       </div>
 
