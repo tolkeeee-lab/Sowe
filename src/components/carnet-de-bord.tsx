@@ -78,16 +78,32 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
     }
   }
 
-  // Calculate Totals for Today
+  // Calculate Totals & Net Difference for Today
   const totals = useMemo(() => {
     let apports = 0
     let sorties = 0
+    const byMethod = {
+      cash: { apports: 0, sorties: 0 },
+      mtn: { apports: 0, sorties: 0 },
+      moov: { apports: 0, sorties: 0 },
+      celtiis: { apports: 0, sorties: 0 }
+    }
+
     notes.forEach(n => {
       const amt = n.amount || 0
-      if (n.entry_type === 'apport') apports += amt
-      if (n.entry_type === 'sortie') sorties += amt
+      const m = n.method || 'cash'
+      if (n.entry_type === 'apport') {
+        apports += amt
+        if (byMethod[m]) byMethod[m].apports += amt
+      }
+      if (n.entry_type === 'sortie') {
+        sorties += amt
+        if (byMethod[m]) byMethod[m].sorties += amt
+      }
     })
-    return { apports, sorties, balance: apports - sorties }
+
+    const difference = apports - sorties
+    return { apports, sorties, difference, byMethod }
   }, [notes])
 
   // Filtered notes
@@ -109,7 +125,7 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
           </div>
           <div>
             <h3 className="text-base font-bold uppercase font-serif text-natural-accent tracking-tight">Cahier Comptable & Carnet de Bord</h3>
-            <p className="text-[10px] text-stone-400 font-medium">Suivez les échanges d'argent (Propriétaire/Caissier/Tiers) et notes quotidiennes</p>
+            <p className="text-[10px] text-stone-400 font-medium">Suivez les échanges d'argent (Propriétaire/Caissier/Tiers) et calcul de la différence nette</p>
           </div>
         </div>
 
@@ -136,33 +152,61 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
         </div>
       </div>
 
-      {/* KPI Summary Banner */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-stone-200 shadow-sm'}`}>
-          <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-black uppercase tracking-wider">
-            <ArrowDownLeft className="size-3.5" /> Apports Reçus
+      {/* KPI Summary Banner with Explicit Net Difference */}
+      <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-stone-200 shadow-sm'}`}>
+            <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-black uppercase tracking-wider">
+              <ArrowDownLeft className="size-3.5" /> Total Entrées (Apports)
+            </div>
+            <span className={`text-xl font-black font-serif ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+              +{totals.apports.toLocaleString()} <span className="text-[10px] font-normal">FCFA</span>
+            </span>
           </div>
-          <span className={`text-lg sm:text-xl font-black font-serif ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-            +{totals.apports.toLocaleString()} <span className="text-[10px] font-normal">F</span>
-          </span>
+
+          <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-stone-200 shadow-sm'}`}>
+            <div className="flex items-center gap-1.5 text-rose-500 text-[10px] font-black uppercase tracking-wider">
+              <ArrowUpRight className="size-3.5" /> Total Sorties (Prises)
+            </div>
+            <span className={`text-xl font-black font-serif ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
+              -{totals.sorties.toLocaleString()} <span className="text-[10px] font-normal">FCFA</span>
+            </span>
+          </div>
+
+          {/* Explicit Net Difference Box */}
+          <div className={`p-4 rounded-2xl border flex flex-col gap-1 relative overflow-hidden ${
+            totals.difference >= 0 
+              ? (isDark ? 'bg-emerald-950/30 border-emerald-800/50' : 'bg-emerald-50 border-emerald-200')
+              : (isDark ? 'bg-rose-950/30 border-rose-800/50' : 'bg-rose-50 border-rose-200')
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider ${totals.difference >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <Coins className="size-3.5" /> Différence Nette (Entrées - Sorties)
+              </div>
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${totals.difference >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                {totals.difference >= 0 ? 'Excédent Entrées' : 'Déficit / En Faveur Caissier'}
+              </span>
+            </div>
+            <span className={`text-2xl font-black font-serif ${totals.difference >= 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-700') : 'text-rose-500'}`}>
+              {totals.difference >= 0 ? '+' : ''}{totals.difference.toLocaleString()} <span className="text-xs font-normal">FCFA</span>
+            </span>
+          </div>
         </div>
 
-        <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-stone-200 shadow-sm'}`}>
-          <div className="flex items-center gap-1.5 text-rose-500 text-[10px] font-black uppercase tracking-wider">
-            <ArrowUpRight className="size-3.5" /> Prises & Sorties
-          </div>
-          <span className={`text-lg sm:text-xl font-black font-serif ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
-            -{totals.sorties.toLocaleString()} <span className="text-[10px] font-normal">F</span>
-          </span>
-        </div>
-
-        <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${isDark ? 'bg-[#0E1B15] border-[#1C2C22]' : 'bg-white border-stone-200 shadow-sm'}`}>
-          <div className="flex items-center gap-1.5 text-natural-accent text-[10px] font-black uppercase tracking-wider">
-            <Coins className="size-3.5" /> Solde Échanges
-          </div>
-          <span className={`text-lg sm:text-xl font-black font-serif ${totals.balance >= 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : 'text-rose-500'}`}>
-            {totals.balance >= 0 ? '+' : ''}{totals.balance.toLocaleString()} <span className="text-[10px] font-normal">F</span>
-          </span>
+        {/* Detailed breakdown per support */}
+        <div className={`p-3 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] ${isDark ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'}`}>
+          {(['cash', 'mtn', 'moov', 'celtiis'] as const).map(m => {
+            const diff = totals.byMethod[m].apports - totals.byMethod[m].sorties
+            const label = m === 'cash' ? '💵 Cash' : m.toUpperCase()
+            return (
+              <div key={m} className="flex flex-col gap-0.5 px-2 py-1 border-r last:border-r-0 border-stone-800/40">
+                <span className="text-[9px] font-black uppercase text-stone-400">{label}</span>
+                <span className={`font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  Diff: {diff >= 0 ? '+' : ''}{diff.toLocaleString()} F
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
 
