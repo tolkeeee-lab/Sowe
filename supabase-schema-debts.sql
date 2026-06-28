@@ -37,3 +37,43 @@ CREATE POLICY "Access debts" ON public.momo_debts
             SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
         )
     );
+
+-- #################################################################
+-- MOMO PREMIUM - EXTRA TABLE FOR CABIN NOTES & ACCOUNTING LEDGER
+-- #################################################################
+
+CREATE TABLE IF NOT EXISTS public.momo_cabin_notes (
+    id TEXT PRIMARY KEY,
+    cabin_id UUID NOT NULL REFERENCES public.momo_cabins(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    date DATE NOT NULL,
+    time TEXT NOT NULL,
+    author TEXT NOT NULL,
+    entry_type TEXT CHECK (entry_type IN ('memo', 'apport', 'sortie')),
+    person_name TEXT,
+    amount NUMERIC,
+    method TEXT CHECK (method IN ('cash', 'mtn', 'moov', 'celtiis')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.momo_cabin_notes ENABLE ROW LEVEL SECURITY;
+
+-- Drop policy if it exists to allow clean re-runs
+DROP POLICY IF EXISTS "Access cabin notes" ON public.momo_cabin_notes;
+
+-- Create policy for notes
+CREATE POLICY "Access cabin notes" ON public.momo_cabin_notes
+    FOR ALL USING (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    ) WITH CHECK (
+        cabin_id IN (
+            SELECT id FROM public.momo_cabins WHERE owner_id = auth.uid()
+            UNION
+            SELECT assigned_cabin_id FROM public.momo_profiles WHERE id = auth.uid()
+        )
+    );

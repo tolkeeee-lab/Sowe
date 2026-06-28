@@ -539,7 +539,7 @@ export default function Home() {
           .eq('cabin_id', activeCabinId)
           .order('date', { ascending: false })
           .order('time', { ascending: false })
-        if (transactionsData) {
+        if (transactionsData && transactionsData.length > 0) {
           setTransactions(transactionsData.map(t => ({
             id: t.id,
             phone: t.phone,
@@ -553,7 +553,32 @@ export default function Home() {
             clientName: t.client_name
           })))
         } else {
-          setTransactions([])
+          const localTxns = localStorage.getItem('momo_transactions')
+          if (localTxns) setTransactions(JSON.parse(localTxns))
+        }
+
+        // Fetch Cabin Notes & Cahier Comptable
+        const { data: notesData } = await client
+          .from('momo_cabin_notes')
+          .select('*')
+          .eq('cabin_id', activeCabinId)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false })
+        if (notesData && notesData.length > 0) {
+          setCabinNotes(notesData.map(n => ({
+            id: n.id,
+            text: n.text,
+            date: typeof n.date === 'string' ? n.date : getLocalDateString(new Date(n.date)),
+            time: n.time,
+            author: n.author,
+            entry_type: n.entry_type || undefined,
+            person_name: n.person_name || undefined,
+            amount: n.amount ? Number(n.amount) : undefined,
+            method: n.method || undefined
+          })))
+        } else {
+          const localNotes = localStorage.getItem('momo_cabin_notes')
+          if (localNotes) setCabinNotes(JSON.parse(localNotes))
         }
 
         // Fetch VM Clients
@@ -565,7 +590,7 @@ export default function Home() {
           .select('*')
           .eq('cabin_id', activeCabinId)
           .order('created_at', { ascending: false })
-        if (debtsData) {
+        if (debtsData && debtsData.length > 0) {
           setDebts(debtsData.map(d => ({
             id: d.id,
             cabin_id: d.cabin_id,
@@ -579,7 +604,8 @@ export default function Home() {
             created_at: d.created_at
           })))
         } else {
-          setDebts([])
+          const localDebts = localStorage.getItem('momo_debts')
+          if (localDebts) setDebts(JSON.parse(localDebts))
         }
       } catch (err) {
         console.error("Error loading cabin data:", err)
