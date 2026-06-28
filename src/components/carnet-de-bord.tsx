@@ -394,103 +394,166 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
         </div>
       </form>
 
-      {/* Notes & Mouvements List */}
-      <div className="flex flex-col gap-2.5">
-        <AnimatePresence mode="popLayout">
-          {filteredNotes.length === 0 ? (
+      {/* 2-Column Side-by-Side Layout: Entrées à gauche, Sorties à droite */}
+      {(() => {
+        const apportsNotes = filteredNotes.filter(n => n.entry_type === 'apport')
+        const sortiesNotes = filteredNotes.filter(n => n.entry_type === 'sortie')
+        const memoNotes = filteredNotes.filter(n => !n.entry_type || n.entry_type === 'memo')
+
+        const renderNoteCard = (note: CabinNote) => {
+          const isApport = note.entry_type === 'apport'
+          const isSortie = note.entry_type === 'sortie'
+          const isFlow = isApport || isSortie
+
+          return (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className={`text-center py-10 rounded-2xl border border-dashed text-xs ${isDark ? 'border-stone-800 text-stone-500' : 'border-stone-300 text-stone-400'}`}
+              key={note.id}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -20, scale: 0.97 }}
+              className={`p-4 rounded-2xl border flex flex-col gap-3 group transition-all ${
+                isApport 
+                  ? (isDark ? 'bg-emerald-950/15 border-emerald-900/30 hover:border-emerald-700/50' : 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300 shadow-sm')
+                  : isSortie
+                  ? (isDark ? 'bg-rose-950/15 border-rose-900/30 hover:border-rose-700/50' : 'bg-rose-50/40 border-rose-200 hover:border-rose-300 shadow-sm')
+                  : (isDark ? 'bg-[#0E1B15]/60 border-[#1C2C22] hover:border-[#2A3C2E]' : 'bg-white border-[#DCD6CD] hover:border-stone-300 shadow-sm')
+              }`}
             >
-              Aucun enregistrement dans ce filtre. Saisissez votre première note ou mouvement ci-dessus !
-            </motion.div>
-          ) : (
-            filteredNotes.map(note => {
-              const isApport = note.entry_type === 'apport'
-              const isSortie = note.entry_type === 'sortie'
-              const isFlow = isApport || isSortie
-
-              return (
-                <motion.div
-                  key={note.id}
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20, scale: 0.97 }}
-                  className={`p-4 rounded-2xl border flex flex-col gap-3 group transition-all ${
-                    isDark
-                      ? 'bg-[#0E1B15]/60 border-[#1C2C22] hover:border-[#2A3C2E]'
-                      : 'bg-white border-[#DCD6CD] hover:border-stone-300 shadow-sm'
-                  }`}
-                >
-                  {/* Flow Header Badge (If accounting entry) */}
-                  {isFlow ? (
-                    <div className="flex items-center justify-between border-b pb-2.5 border-stone-800/30">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`p-2 rounded-xl flex items-center justify-center font-black ${
-                          isApport ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              {/* Flow Header Badge */}
+              {isFlow ? (
+                <div className="flex items-center justify-between border-b pb-2.5 border-stone-800/20">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-xl flex items-center justify-center font-black ${
+                      isApport ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}>
+                      {isApport ? <ArrowDownLeft className="size-3.5" /> : <ArrowUpRight className="size-3.5" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[11px] font-black uppercase tracking-wider ${isApport ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isApport ? '📥 Apport' : '📤 Sortie'}
+                        </span>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase ${
+                          isDark ? 'bg-stone-900 text-stone-300' : 'bg-stone-200 text-stone-700'
                         }`}>
-                          {isApport ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs font-black uppercase tracking-wider ${isApport ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {isApport ? '📥 Apport / Dépot' : '📤 Sortie / Prise d\'argent'}
-                            </span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
-                              isDark ? 'bg-stone-900 text-stone-400' : 'bg-stone-100 text-stone-600'
-                            }`}>
-                              {note.person_name || 'Intervenant'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-stone-400 font-medium mt-0.5">
-                            Moyen : <span className="font-bold uppercase text-natural-accent">{note.method === 'cash' ? '💵 Cash' : note.method}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <span className={`text-base sm:text-lg font-black font-serif ${isApport ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {isApport ? '+' : '-'}{(note.amount || 0).toLocaleString()} FCFA
+                          {note.person_name || 'Intervenant'}
                         </span>
                       </div>
+                      <p className="text-[9.5px] text-stone-400 font-medium mt-0.5">
+                        Moyen : <span className="font-bold uppercase text-natural-accent">{note.method === 'cash' ? '💵 Cash' : note.method}</span>
+                      </p>
                     </div>
-                  ) : null}
-
-                  {/* Note Description / Text */}
-                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isDark ? 'text-[#E4EAD8]' : 'text-[#111614]'}`}>
-                    {note.text}
-                  </p>
-
-                  {/* Meta row */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className={`flex items-center gap-2 text-[10px] font-bold ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
-                      <Clock className="size-3" />
-                      <span>{note.date} à {note.time}</span>
-                      <span className={`px-2 py-0.5 rounded-md border ${
-                        isDark ? 'bg-[#050807] border-[#1C2C22] text-stone-400' : 'bg-stone-50 border-stone-200 text-stone-500'
-                      }`}>
-                        {ROLE_LABELS[note.author] ?? note.author}
-                      </span>
-                    </div>
-
-                    {/* Delete only for proprio */}
-                    {role === 'proprio' && (
-                      <button
-                        onClick={() => onDeleteNote(note.id)}
-                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-400 cursor-pointer flex items-center gap-1 text-[10px] font-bold`}
-                      >
-                        <Trash2 className="size-3.5" />
-                        <span>Supprimer</span>
-                      </button>
-                    )}
                   </div>
-                </motion.div>
-              )
-            })
-          )}
-        </AnimatePresence>
-      </div>
+
+                  <div className="text-right">
+                    <span className={`text-base font-black font-serif ${isApport ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {isApport ? '+' : '-'}{(note.amount || 0).toLocaleString()} FCFA
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Note Description / Text */}
+              <p className={`text-xs leading-relaxed whitespace-pre-wrap ${isDark ? 'text-[#E4EAD8]' : 'text-[#111614]'}`}>
+                {note.text}
+              </p>
+
+              {/* Meta row */}
+              <div className="flex items-center justify-between pt-1">
+                <div className={`flex items-center gap-2 text-[9.5px] font-bold ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
+                  <Clock className="size-3" />
+                  <span>{note.date} à {note.time}</span>
+                  <span className={`px-2 py-0.5 rounded-md border ${
+                    isDark ? 'bg-[#050807] border-[#1C2C22] text-stone-400' : 'bg-stone-50 border-stone-200 text-stone-500'
+                  }`}>
+                    {ROLE_LABELS[note.author] ?? note.author}
+                  </span>
+                </div>
+
+                {/* Delete only for proprio */}
+                {role === 'proprio' && (
+                  <button
+                    onClick={() => onDeleteNote(note.id)}
+                    className={`opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-400 cursor-pointer flex items-center gap-1 text-[10px] font-bold`}
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Supprimer</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )
+        }
+
+        return (
+          <div className="flex flex-col gap-6">
+            {/* 2 COLUMNS GRID FOR ACCOUNTING FLOWS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* LEFT COLUMN: ENTRÉES / APPORTS */}
+              <div className="flex flex-col gap-3">
+                <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${
+                  isDark ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}>
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
+                    <ArrowDownLeft className="size-4" /> 📥 LISTE DES ENTRÉES / APPORTS
+                  </div>
+                  <span className="font-mono font-black text-sm text-emerald-400">+{totals.apports.toLocaleString()} FCFA</span>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <AnimatePresence mode="popLayout">
+                    {apportsNotes.length === 0 ? (
+                      <div className={`text-center py-8 rounded-2xl border border-dashed text-xs ${isDark ? 'border-stone-800 text-stone-500' : 'border-stone-300 text-stone-400'}`}>
+                        Aucun apport d'argent enregistré.
+                      </div>
+                    ) : (
+                      apportsNotes.map(note => renderNoteCard(note))
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: SORTIES / PRISES D'ARGENT */}
+              <div className="flex flex-col gap-3">
+                <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${
+                  isDark ? 'bg-rose-950/20 border-rose-900/40 text-rose-400' : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}>
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
+                    <ArrowUpRight className="size-4" /> 📤 LISTE DES SORTIES / PRISES
+                  </div>
+                  <span className="font-mono font-black text-sm text-rose-400">-{totals.sorties.toLocaleString()} FCFA</span>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <AnimatePresence mode="popLayout">
+                    {sortiesNotes.length === 0 ? (
+                      <div className={`text-center py-8 rounded-2xl border border-dashed text-xs ${isDark ? 'border-stone-800 text-stone-500' : 'border-stone-300 text-stone-400'}`}>
+                        Aucune sortie d'argent enregistrée.
+                      </div>
+                    ) : (
+                      sortiesNotes.map(note => renderNoteCard(note))
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+
+            {/* BOTTOM SECTION FOR FREE MEMOS (If any exist or when filter is all/memos) */}
+            {(filter === 'all' || filter === 'memos') && memoNotes.length > 0 && (
+              <div className="flex flex-col gap-3 pt-4 border-t border-stone-800/40">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-natural-accent">
+                  <FileText className="size-4" /> 📝 Mémos & Notes Libres
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <AnimatePresence mode="popLayout">
+                    {memoNotes.map(note => renderNoteCard(note))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </section>
   )
 }
