@@ -2039,7 +2039,7 @@ export default function Home() {
               }`}>
                 <Wallet className="size-4.5" />
               </div>
-              <span className="font-serif text-lg font-bold tracking-tight">MOMO PREMIUM</span>
+              <span className="font-serif text-lg font-bold tracking-tight">MOMOFLOW</span>
             </div>
             <button
               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
@@ -2188,7 +2188,7 @@ export default function Home() {
           <div className={`py-6 text-center text-[10px] font-bold border-t relative z-10 ${
             theme === 'dark' ? 'border-[#1C2C22] text-stone-600' : 'border-[#DCD6CD] text-stone-400'
           }`}>
-            MOMO PREMIUM · Cotonou, Bénin · Propulsé localement · v1.1.2
+            MOMOFLOW · Cotonou, Bénin · Propulsé localement · v1.1.2
           </div>
         </div>
       )
@@ -2224,7 +2224,7 @@ export default function Home() {
             }`}>
               <Wallet className="size-8" />
             </div>
-            <h1 className="font-serif text-3xl font-black text-center tracking-tight">MOMO PREMIUM</h1>
+            <h1 className="font-serif text-3xl font-black text-center tracking-tight">MOMOFLOW</h1>
             <p className="text-[10px] uppercase tracking-widest text-natural-accent font-extrabold -mt-1">
               {roleInput === 'proprio' ? '👑 Espace Propriétaire' : roleInput === 'employe' ? '👤 Espace Gérant' : roleInput === 'vm' ? '🛵 Espace VM Motorisé' : 'Luxury Cabin Suite'}
             </p>
@@ -2622,7 +2622,7 @@ export default function Home() {
             </div>
             <div>
               <span className="font-serif text-base font-black tracking-tight block truncate w-40">
-                {profile?.business_name || "MOMO PREMIUM"}
+                {profile?.business_name || "MOMOFLOW"}
               </span>
               <span className="text-[9px] block font-bold tracking-widest uppercase text-natural-accent -mt-1">
                 {profile?.role === 'proprio' 

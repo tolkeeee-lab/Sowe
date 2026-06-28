@@ -15,13 +15,13 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Momo Premium - Gestion de Transactions Mobile Money",
-  description: "Suivez vos comptes Orange Money, MTN MoMo et Wave sur une interface premium conçue pour les professionnels et fondateurs d'entreprises.",
+  title: "MOMOFLOW - Gestion de Transactions Mobile Money",
+  description: "Suivez vos comptes MTN MoMo, Moov Money et Celtiis sur une interface premium conçue pour la gestion des cabines et des équipes sur le terrain.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Momo Premium",
+    title: "MOMOFLOW",
   },
 };
 
