@@ -1024,15 +1024,18 @@ export default function Home() {
   }
 
   // ─── Carnet de Bord ───────────────────────────────────────────────────────
-  const syncAddCabinNote = (text: string) => {
+  const syncAddCabinNote = (noteInputData: string | Omit<CabinNote, 'id' | 'date' | 'time' | 'author'>) => {
     const now = new Date()
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    
+    const extraData = typeof noteInputData === 'string' ? { text: noteInputData } : noteInputData
+
     const newNote: CabinNote = {
       id: `NOTE-${Date.now()}`,
-      text,
       date: getLocalDateString(),
       time: timeStr,
       author: role,
+      ...extraData
     }
     setCabinNotes(prev => {
       const updated = [...prev, newNote]
@@ -1049,6 +1052,10 @@ export default function Home() {
         date: newNote.date,
         time: newNote.time,
         author: newNote.author,
+        entry_type: newNote.entry_type || null,
+        person_name: newNote.person_name || null,
+        amount: newNote.amount || null,
+        method: newNote.method || null,
       }]).then(({ error }) => {
         if (error) console.error('Supabase cabin note insert error:', error)
       })

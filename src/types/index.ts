@@ -21,10 +21,14 @@ export interface VmClient {
 
 export interface CabinNote {
   id: string;
-  text: string;       // Free text: "dépôt mtn 30000", "retrait moov 5000", etc.
+  text: string;       // Description or note
   date: string;       // YYYY-MM-DD
   time: string;       // HH:MM
   author: string;     // role: 'proprio', 'employe', 'vm', etc.
+  entry_type?: 'memo' | 'apport' | 'sortie';
+  person_name?: string; // Person involved (Propriétaire, Caissier, Livreure, etc.)
+  amount?: number;      // Amount in FCFA
+  method?: 'cash' | 'mtn' | 'moov' | 'celtiis';
 }
 
 export interface Debt {
