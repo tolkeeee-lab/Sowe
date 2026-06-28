@@ -1076,10 +1076,11 @@ export default function Home() {
     const extraData = typeof noteInputData === 'string' ? { text: noteInputData } : noteInputData
 
     const newNote: CabinNote = {
-      id: `NOTE-${Date.now()}`,
+      id: activeTab === 'vm' ? `VM-NOTE-${Date.now()}` : `NOTE-${Date.now()}`,
       date: getLocalDateString(),
       time: timeStr,
       author: role,
+      env: activeTab,
       ...extraData
     }
     setCabinNotes(prev => {
@@ -2885,7 +2886,7 @@ export default function Home() {
           <CarnetDeBord
             theme={theme}
             role={role}
-            notes={cabinNotes}
+            notes={cabinNotes.filter(n => n.id.startsWith('VM-NOTE-') || n.env === 'vm' || n.author === 'vm' ? false : true)}
             onAddNote={syncAddCabinNote}
             onDeleteNote={syncDeleteCabinNote}
           />
@@ -2920,10 +2921,10 @@ export default function Home() {
         {(role === 'proprio' || role === 'vm') && subTab === 'bilan' && (
           <BilanPeriodique
             theme={theme}
-            transactions={role === 'vm' ? transactions.filter(isVmTransaction) : (activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t)))}
+            transactions={activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t))}
             TODAY_STR={TODAY_STR}
             YESTERDAY_STR={YESTERDAY_STR}
-            mode={role === 'vm' ? 'vm' : (activeTab === 'vm' ? 'vm' : 'cabine')}
+            mode={activeTab === 'vm' ? 'vm' : 'cabine'}
             getWeekRange={getWeekRange}
             getLocalDateString={getLocalDateString}
           />
@@ -2932,7 +2933,7 @@ export default function Home() {
         {subTab === 'historique' && (
           <HistoriqueTransactions
             theme={theme}
-            transactions={role === 'vm' ? transactions.filter(isVmTransaction) : (role === 'proprio' ? transactions : transactions.filter(t => !isVmTransaction(t)))}
+            transactions={activeTab === 'vm' ? transactions.filter(isVmTransaction) : transactions.filter(t => !isVmTransaction(t))}
             TODAY_STR={TODAY_STR}
             YESTERDAY_STR={YESTERDAY_STR}
             role={role}
@@ -2974,7 +2975,7 @@ export default function Home() {
           <CarnetDeBord
             theme={theme}
             role={role}
-            notes={cabinNotes}
+            notes={cabinNotes.filter(n => n.id.startsWith('VM-NOTE-') || n.env === 'vm' || n.author === 'vm')}
             onAddNote={syncAddCabinNote}
             onDeleteNote={syncDeleteCabinNote}
           />

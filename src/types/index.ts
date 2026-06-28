@@ -25,6 +25,7 @@ export interface CabinNote {
   date: string;       // YYYY-MM-DD
   time: string;       // HH:MM
   author: string;     // role: 'proprio', 'employe', 'vm', etc.
+  env?: 'cabine' | 'vm'; // Workspace environment tag
   entry_type?: 'memo' | 'apport' | 'sortie';
   person_name?: string; // Person involved (Propriétaire, Caissier, Livreure, etc.)
   amount?: number;      // Amount in FCFA
