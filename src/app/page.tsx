@@ -532,81 +532,100 @@ export default function Home() {
           setBlacklist(blacklistData.map(b => b.phone))
         }
 
-        // Fetch Transactions
+        // Fetch Transactions with smart merge (Supabase + LocalStorage)
+        const localTxnsStr = localStorage.getItem('momo_transactions')
+        const localTxns: Transaction[] = localTxnsStr ? JSON.parse(localTxnsStr) : []
+
         const { data: transactionsData } = await client
           .from('momo_transactions')
           .select('*')
           .eq('cabin_id', activeCabinId)
           .order('date', { ascending: false })
           .order('time', { ascending: false })
-        if (transactionsData && transactionsData.length > 0) {
-          setTransactions(transactionsData.map(t => ({
-            id: t.id,
-            phone: t.phone,
-            operator: t.operator,
-            type: t.type,
-            amount: Number(t.amount),
-            time: t.time,
-            date: typeof t.date === 'string' ? t.date : getLocalDateString(new Date(t.date)),
-            category: t.category,
-            isScamReported: t.is_scam_reported,
-            clientName: t.client_name
-          })))
-        } else {
-          const localTxns = localStorage.getItem('momo_transactions')
-          if (localTxns) setTransactions(JSON.parse(localTxns))
-        }
 
-        // Fetch Cabin Notes & Cahier Comptable
+        const remoteTxns: Transaction[] = transactionsData ? transactionsData.map(t => ({
+          id: t.id,
+          phone: t.phone,
+          operator: t.operator,
+          type: t.type,
+          amount: Number(t.amount),
+          time: t.time,
+          date: typeof t.date === 'string' ? t.date : getLocalDateString(new Date(t.date)),
+          category: t.category,
+          isScamReported: t.is_scam_reported,
+          clientName: t.client_name,
+          note: t.note ?? undefined
+        })) : []
+
+        const mergedTxnsMap = new Map<string, Transaction>()
+        remoteTxns.forEach(t => mergedTxnsMap.set(t.id, t))
+        localTxns.forEach(t => mergedTxnsMap.set(t.id, t))
+        const combinedTxns = Array.from(mergedTxnsMap.values()).sort((a, b) => b.id.localeCompare(a.id))
+        setTransactions(combinedTxns)
+        localStorage.setItem('momo_transactions', JSON.stringify(combinedTxns))
+
+        // Fetch Cabin Notes & Cahier Comptable with smart merge
+        const localNotesStr = localStorage.getItem('momo_cabin_notes')
+        const localNotes: CabinNote[] = localNotesStr ? JSON.parse(localNotesStr) : []
+
         const { data: notesData } = await client
           .from('momo_cabin_notes')
           .select('*')
           .eq('cabin_id', activeCabinId)
           .order('date', { ascending: false })
           .order('time', { ascending: false })
-        if (notesData && notesData.length > 0) {
-          setCabinNotes(notesData.map(n => ({
-            id: n.id,
-            text: n.text,
-            date: typeof n.date === 'string' ? n.date : getLocalDateString(new Date(n.date)),
-            time: n.time,
-            author: n.author,
-            entry_type: n.entry_type || undefined,
-            person_name: n.person_name || undefined,
-            amount: n.amount ? Number(n.amount) : undefined,
-            method: n.method || undefined
-          })))
-        } else {
-          const localNotes = localStorage.getItem('momo_cabin_notes')
-          if (localNotes) setCabinNotes(JSON.parse(localNotes))
-        }
+
+        const remoteNotes: CabinNote[] = notesData ? notesData.map(n => ({
+          id: n.id,
+          text: n.text,
+          date: typeof n.date === 'string' ? n.date : getLocalDateString(new Date(n.date)),
+          time: n.time,
+          author: n.author,
+          entry_type: n.entry_type || undefined,
+          person_name: n.person_name || undefined,
+          amount: n.amount ? Number(n.amount) : undefined,
+          method: n.method || undefined
+        })) : []
+
+        const mergedNotesMap = new Map<string, CabinNote>()
+        remoteNotes.forEach(n => mergedNotesMap.set(n.id, n))
+        localNotes.forEach(n => mergedNotesMap.set(n.id, n))
+        const combinedNotes = Array.from(mergedNotesMap.values()).sort((a, b) => b.id.localeCompare(a.id))
+        setCabinNotes(combinedNotes)
+        localStorage.setItem('momo_cabin_notes', JSON.stringify(combinedNotes))
 
         // Fetch VM Clients
         fetchVmClients(activeCabinId)
 
-        // Fetch Debts
+        // Fetch Debts with smart merge
+        const localDebtsStr = localStorage.getItem('momo_debts')
+        const localDebts: Debt[] = localDebtsStr ? JSON.parse(localDebtsStr) : []
+
         const { data: debtsData } = await client
           .from('momo_debts')
           .select('*')
           .eq('cabin_id', activeCabinId)
           .order('created_at', { ascending: false })
-        if (debtsData && debtsData.length > 0) {
-          setDebts(debtsData.map(d => ({
-            id: d.id,
-            cabin_id: d.cabin_id,
-            client_name: d.client_name,
-            amount: Number(d.amount),
-            due_date: d.due_date || undefined,
-            phone: d.phone || undefined,
-            status: d.status,
-            type: d.type,
-            operator: d.operator || undefined,
-            created_at: d.created_at
-          })))
-        } else {
-          const localDebts = localStorage.getItem('momo_debts')
-          if (localDebts) setDebts(JSON.parse(localDebts))
-        }
+
+        const remoteDebts: Debt[] = debtsData ? debtsData.map(d => ({
+          id: d.id,
+          cabin_id: d.cabin_id,
+          client_name: d.client_name,
+          amount: Number(d.amount),
+          due_date: d.due_date || undefined,
+          phone: d.phone || undefined,
+          status: d.status,
+          type: d.type,
+          operator: d.operator || undefined,
+          created_at: d.created_at
+        })) : []
+
+        const mergedDebtsMap = new Map<string, Debt>()
+        remoteDebts.forEach(d => mergedDebtsMap.set(d.id, d))
+        localDebts.forEach(d => mergedDebtsMap.set(d.id, d))
+        const combinedDebts = Array.from(mergedDebtsMap.values())
+        setDebts(combinedDebts)
+        localStorage.setItem('momo_debts', JSON.stringify(combinedDebts))
       } catch (err) {
         console.error("Error loading cabin data:", err)
       }
