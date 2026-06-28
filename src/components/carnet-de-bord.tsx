@@ -103,7 +103,27 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
     })
 
     const difference = apports - sorties
-    return { apports, sorties, difference, byMethod }
+    
+    const cashApports = byMethod.cash.apports
+    const cashSorties = byMethod.cash.sorties
+    const cashDiff = cashApports - cashSorties
+
+    const virtuelApports = byMethod.mtn.apports + byMethod.moov.apports + byMethod.celtiis.apports
+    const virtuelSorties = byMethod.mtn.sorties + byMethod.moov.sorties + byMethod.celtiis.sorties
+    const virtuelDiff = virtuelApports - virtuelSorties
+
+    return { 
+      apports, 
+      sorties, 
+      difference, 
+      byMethod,
+      cashApports,
+      cashSorties,
+      cashDiff,
+      virtuelApports,
+      virtuelSorties,
+      virtuelDiff
+    }
   }, [notes])
 
   // Filtered notes
@@ -193,17 +213,72 @@ export function CarnetDeBord({ theme, role, notes, onAddNote, onDeleteNote }: Ca
           </div>
         </div>
 
+        {/* BARRE DE CUMUL DE LA JOURNÉE : CASH vs VIRTUEL */}
+        <div className={`p-4 rounded-2xl border grid grid-cols-1 md:grid-cols-2 gap-4 ${isDark ? 'bg-[#09130E] border-[#1C2C22]' : 'bg-stone-100 border-stone-300'}`}>
+          {/* CASH TOTAL */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase text-natural-accent flex items-center gap-1.5">
+                💵 TOTAL CASH (Espèces Physiques)
+              </span>
+              <span className={`text-xs font-mono font-black ${totals.cashDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                Solde Cash: {totals.cashDiff >= 0 ? '+' : ''}{totals.cashDiff.toLocaleString()} F
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+              <div className={`p-2 rounded-xl border ${isDark ? 'bg-[#050807] border-emerald-900/30' : 'bg-white border-emerald-200'}`}>
+                <span className="block text-[8.5px] uppercase text-emerald-500 font-sans font-bold">Apports Cash</span>
+                <span className="font-bold text-emerald-400">+{totals.cashApports.toLocaleString()} FCFA</span>
+              </div>
+              <div className={`p-2 rounded-xl border ${isDark ? 'bg-[#050807] border-rose-900/30' : 'bg-white border-rose-200'}`}>
+                <span className="block text-[8.5px] uppercase text-rose-400 font-sans font-bold">Sorties Cash</span>
+                <span className="font-bold text-rose-400">-{totals.cashSorties.toLocaleString()} FCFA</span>
+              </div>
+            </div>
+          </div>
+
+          {/* VIRTUEL TOTAL (MTN + MOOV + CELTIIS) */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase text-cyan-400 flex items-center gap-1.5">
+                📱 TOTAL VIRTUEL (MTN + Moov + Celtiis)
+              </span>
+              <span className={`text-xs font-mono font-black ${totals.virtuelDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                Solde Virtuel: {totals.virtuelDiff >= 0 ? '+' : ''}{totals.virtuelDiff.toLocaleString()} F
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+              <div className={`p-2 rounded-xl border ${isDark ? 'bg-[#050807] border-emerald-900/30' : 'bg-white border-emerald-200'}`}>
+                <span className="block text-[8.5px] uppercase text-emerald-500 font-sans font-bold">Apports Virtuels</span>
+                <span className="font-bold text-emerald-400">+{totals.virtuelApports.toLocaleString()} FCFA</span>
+              </div>
+              <div className={`p-2 rounded-xl border ${isDark ? 'bg-[#050807] border-rose-900/30' : 'bg-white border-rose-200'}`}>
+                <span className="block text-[8.5px] uppercase text-rose-400 font-sans font-bold">Sorties Virtuelles</span>
+                <span className="font-bold text-rose-400">-{totals.virtuelSorties.toLocaleString()} FCFA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Detailed breakdown per support */}
         <div className={`p-3 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] ${isDark ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'}`}>
           {(['cash', 'mtn', 'moov', 'celtiis'] as const).map(m => {
-            const diff = totals.byMethod[m].apports - totals.byMethod[m].sorties
+            const app = totals.byMethod[m].apports
+            const sor = totals.byMethod[m].sorties
+            const diff = app - sor
             const label = m === 'cash' ? '💵 Cash' : m.toUpperCase()
             return (
-              <div key={m} className="flex flex-col gap-0.5 px-2 py-1 border-r last:border-r-0 border-stone-800/40">
-                <span className="text-[9px] font-black uppercase text-stone-400">{label}</span>
-                <span className={`font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  Diff: {diff >= 0 ? '+' : ''}{diff.toLocaleString()} F
-                </span>
+              <div key={m} className="flex flex-col gap-1 px-2.5 py-1.5 border-r last:border-r-0 border-stone-800/40 font-mono">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase text-stone-400 font-sans">{label}</span>
+                  <span className={`text-[10px] font-black ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {diff >= 0 ? '+' : ''}{diff.toLocaleString()} F
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[8.5px] text-stone-500">
+                  <span className="text-emerald-500">+{app.toLocaleString()}</span>
+                  <span className="text-rose-400">-{sor.toLocaleString()}</span>
+                </div>
               </div>
             )
           })}
