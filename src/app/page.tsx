@@ -3716,7 +3716,164 @@ export default function Home() {
         )}
       </AnimatePresence>
 
+      {/* THERMAL RECEIPT / TICKET MODAL */}
+      <AnimatePresence>
+        {activeReceipt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveReceipt(null)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className={`relative w-full max-w-sm rounded-[32px] p-6 shadow-2xl flex flex-col gap-4 overflow-hidden border ${
+                theme === 'dark' ? 'bg-[#0E1B15] border-[#1C2C22] text-white' : 'bg-white border-stone-300 text-[#121214]'
+              }`}
+            >
+              <div className="flex justify-between items-center border-b pb-3 border-stone-800/40">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-natural-accent/10 text-natural-accent border border-natural-accent/20">
+                    <FileText className="size-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-serif font-bold text-natural-accent">Reçu de Transaction</h3>
+                    <p className="text-[10px] text-stone-400 font-mono">{activeReceipt.id}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveReceipt(null)} 
+                  className="text-stone-400 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-stone-800/40 transition-colors"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
 
+              {/* Printable Receipt Preview Card */}
+              <div className={`p-5 rounded-2xl border flex flex-col gap-3 font-mono text-xs ${
+                theme === 'dark' ? 'bg-[#050807] border-[#1C2C22]' : 'bg-stone-50 border-stone-200'
+              }`}>
+                <div className="text-center font-bold text-sm text-natural-accent uppercase tracking-wider">
+                  ★ CABINE MOBILE MONEY ★
+                </div>
+                <div className="text-center text-[10px] text-stone-400 uppercase">
+                  TICKET DE RÈGLEMENT
+                </div>
+                <div className="border-b border-dashed border-stone-700/60 my-1" />
+
+                <div className="flex justify-between">
+                  <span className="text-stone-400">Date & Heure :</span>
+                  <span className="font-bold">{activeReceipt.date} {activeReceipt.time}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-400">Opérateur :</span>
+                  <span className="font-black uppercase text-natural-accent">{activeReceipt.operator}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-400">Type d'Opération :</span>
+                  <span className="font-bold uppercase">{activeReceipt.type === 'deposit' ? 'Dépôt' : activeReceipt.type === 'withdrawal' ? 'Retrait' : 'Opération'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-400">Numéro Téléphone :</span>
+                  <span className="font-bold font-mono text-white">{activeReceipt.phone}</span>
+                </div>
+                {activeReceipt.clientName && (
+                  <div className="flex justify-between">
+                    <span className="text-stone-400">Client :</span>
+                    <span className="font-bold">{activeReceipt.clientName}</span>
+                  </div>
+                )}
+
+                <div className="border-b border-dashed border-stone-700/60 my-1" />
+
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-stone-400 font-sans font-bold text-xs uppercase">Montant Total :</span>
+                  <span className="text-xl font-black font-serif text-emerald-400">{activeReceipt.amount.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+
+                {activeReceipt.note && (
+                  <div className="mt-1 p-2 rounded-lg bg-stone-900/60 border border-stone-800 text-[10px] text-stone-300 italic">
+                    Note : {activeReceipt.note}
+                  </div>
+                )}
+
+                <div className="border-b border-dashed border-stone-700/60 my-1" />
+                <div className="text-center text-[9px] text-stone-500 uppercase tracking-wider">
+                  Merci de votre confiance !
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printWin = window.open('', '_blank', 'width=400,height=600');
+                    if (printWin) {
+                      printWin.document.write(`
+                        <html>
+                          <head>
+                            <title>Reçu ${activeReceipt.id}</title>
+                            <style>
+                              body { font-family: monospace; padding: 20px; text-align: center; }
+                              .title { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+                              .sub { font-size: 11px; color: #555; margin-bottom: 15px; }
+                              .dash { border-top: 1px dashed #000; margin: 10px 0; }
+                              .row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 12px; }
+                              .amt { font-size: 20px; font-weight: bold; margin: 15px 0; }
+                            </style>
+                          </head>
+                          <body>
+                            <div class="title">CABINE MOBILE MONEY</div>
+                            <div class="sub">TICKET DE TRANSACTION</div>
+                            <div class="dash"></div>
+                            <div class="row"><span>ID:</span><strong>${activeReceipt.id}</strong></div>
+                            <div class="row"><span>Date:</span><span>${activeReceipt.date} ${activeReceipt.time}</span></div>
+                            <div class="row"><span>Opérateur:</span><strong style="text-transform:uppercase;">${activeReceipt.operator}</strong></div>
+                            <div class="row"><span>Téléphone:</span><strong>${activeReceipt.phone}</strong></div>
+                            ${activeReceipt.clientName ? `<div class="row"><span>Client:</span><strong>${activeReceipt.clientName}</strong></div>` : ''}
+                            <div class="dash"></div>
+                            <div class="amt">${activeReceipt.amount.toLocaleString('fr-FR')} FCFA</div>
+                            <div class="dash"></div>
+                            <div style="font-size:10px;color:#666;">Merci de votre confiance !</div>
+                            <script>window.onload = function() { window.print(); }</script>
+                          </body>
+                        </html>
+                      `);
+                      printWin.document.close();
+                    }
+                  }}
+                  className="px-4 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-stone-700"
+                >
+                  🖨️ Imprimer
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const content = `CABINE MOBILE MONEY - REÇU DE TRANSACTION\n----------------------------------------\nID Transaction : ${activeReceipt.id}\nDate & Heure    : ${activeReceipt.date} ${activeReceipt.time}\nOpérateur       : ${activeReceipt.operator.toUpperCase()}\nType            : ${activeReceipt.type === 'deposit' ? 'Dépôt' : 'Retrait'}\nTéléphone Client: ${activeReceipt.phone}\nMontant         : ${activeReceipt.amount.toLocaleString('fr-FR')} FCFA\n----------------------------------------\nMerci de votre confiance !`;
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `Recu_${activeReceipt.id}.txt`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="px-4 py-3 rounded-xl bg-natural-accent hover:bg-[#c9a430] text-stone-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md"
+                >
+                  📥 Télécharger PDF
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   )
